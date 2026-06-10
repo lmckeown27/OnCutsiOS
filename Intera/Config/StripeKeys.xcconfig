@@ -1,0 +1,20 @@
+// `STRIPE_PUBLISHABLE_KEY` is substituted into `GoogleSignInURL.plist` as `StripePublishableKey` at build time.
+// Debug and Release both use this file as the Intera target’s base xcconfig — one source of truth.
+// Also linked at the Project (not only Target) configurations so `$(STRIPE_PUBLISHABLE_KEY)` resolves reliably.
+// If the built app’s Info.plist still shows `$(STRIPE_PUBLISHABLE_KEY)` literally: Product → Clean Build Folder, delete the app, rebuild.
+//
+// For Stripe **test** mode against a test API, temporarily set STRIPE_PUBLISHABLE_KEY = pk_test_… here,
+// then Product → Clean Build Folder. Do not commit test keys if your repo is public.
+//
+// Optional local-only file (not wired by #include): copy `StripeKeys.secret.xcconfig.example` →
+// `StripeKeys.secret.xcconfig` in this folder and merge its lines into this file manually if you prefer
+// keeping secrets out of the main xcconfig — Xcode does not auto-merge that file unless you add it.
+//
+// Apple Pay (PaymentSheet shows cards from Wallet): set `STRIPE_APPLE_PAY_MERCHANT_ID` to your
+// `merchant.…` id from Apple Developer → Identifiers → Merchant IDs, enable the Apple Pay capability
+// on the Intera target, and register Apple Pay in Stripe Dashboard → Settings → Payment methods.
+
+STRIPE_APPLE_PAY_MERCHANT_ID = merchant.com.liammckeown.Intera
+STRIPE_APPLE_PAY_MERCHANT_COUNTRY_CODE = US
+
+STRIPE_PUBLISHABLE_KEY = pk_live_51RxiiGLzWXLHXumdBmIFfB9YB2YweCV05WEW1feteXWkFZBTw1eLrhFETKXUXHQyIGwYZOULEsxrWRt30miKqNQR00BPYBYu0C

@@ -1,0 +1,185 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -scheme Intera -destination "platform=iOS Simulator,name=iPhone 16" -derivedDataPath /Users/liammckeown/Desktop/Intera/Intera/.derivedDataQuick build
+
+Resolve Package Graph
+
+Fetching from https://github.com/google/abseil-cpp-binary.git (cached)
+
+Fetching from https://github.com/google/promises.git (cached)
+
+Fetching from https://github.com/firebase/leveldb.git (cached)
+
+Fetching from https://github.com/google/GoogleDataTransport.git (cached)
+
+Fetching from https://github.com/firebase/nanopb.git (cached)
+
+Fetching from https://github.com/google/GTMAppAuth.git (cached)
+
+Fetching from https://github.com/google/app-check.git (cached)
+
+Fetching from https://github.com/openid/AppAuth-iOS.git (cached)
+
+Fetching from https://github.com/google/grpc-binary.git (cached)
+
+Fetching from https://github.com/googleads/google-ads-on-device-conversion-ios-sdk (cached)
+
+Fetching from https://github.com/google/gtm-session-fetcher.git (cached)
+
+Fetching from https://github.com/google/GoogleSignIn-iOS.git (cached)
+
+Fetching from https://github.com/google/GoogleUtilities.git (cached)
+
+Fetching from https://github.com/firebase/firebase-ios-sdk.git (cached)
+
+Fetching from https://github.com/google/interop-ios-for-google-sdks.git (cached)
+
+Fetching from https://github.com/socketio/socket.io-client-swift.git (cached)
+
+Fetching from https://github.com/google/GoogleAppMeasurement.git (cached)
+
+Fetching from https://github.com/daltoniam/Starscream (cached)
+
+Creating working copy of package ‘GoogleUtilities’
+
+Checking out 8.1.0 of package ‘GoogleUtilities’
+
+Creating working copy of package ‘GoogleAppMeasurement’
+
+Checking out 12.11.0 of package ‘GoogleAppMeasurement’
+
+Creating working copy of package ‘interop-ios-for-google-sdks’
+
+Checking out 101.0.0 of package ‘interop-ios-for-google-sdks’
+
+Creating working copy of package ‘abseil-cpp-binary’
+
+Checking out 1.2024072200.0 of package ‘abseil-cpp-binary’
+
+Creating working copy of package ‘GoogleDataTransport’
+
+Checking out 10.1.0 of package ‘GoogleDataTransport’
+
+Creating working copy of package ‘grpc-binary’
+
+Checking out 1.69.1 of package ‘grpc-binary’
+
+Creating working copy of package ‘socket.io-client-swift’
+
+Checking out 16.1.1 of package ‘socket.io-client-swift’
+
+Creating working copy of package ‘gtm-session-fetcher’
+
+Checking out 3.5.0 of package ‘gtm-session-fetcher’
+
+Creating working copy of package ‘AppAuth-iOS’
+
+Checking out 2.0.0 of package ‘AppAuth-iOS’
+
+Creating working copy of package ‘google-ads-on-device-conversion-ios-sdk’
+
+Checking out 3.4.0 of package ‘google-ads-on-device-conversion-ios-sdk’
+
+Creating working copy of package ‘firebase-ios-sdk’
+
+Checking out 12.11.0 of package ‘firebase-ios-sdk’
+
+Creating working copy of package ‘leveldb’
+
+Checking out 1.22.5 of package ‘leveldb’
+
+Creating working copy of package ‘app-check’
+
+Checking out 11.2.0 of package ‘app-check’
+
+Creating working copy of package ‘GTMAppAuth’
+
+Checking out 5.0.0 of package ‘GTMAppAuth’
+
+Creating working copy of package ‘nanopb’
+
+Checking out 2.30910.0 of package ‘nanopb’
+
+Creating working copy of package ‘promises’
+
+Checking out 2.4.0 of package ‘promises’
+
+Creating working copy of package ‘GoogleSignIn-iOS’
+
+Checking out 9.1.0 of package ‘GoogleSignIn-iOS’
+
+Creating working copy of package ‘Starscream’
+
+Checking out 4.0.8 of package ‘Starscream’
+
+
+Resolved source packages:
+  GoogleAdsOnDeviceConversion: https://github.com/googleads/google-ads-on-device-conversion-ios-sdk @ 3.4.0
+  AppCheck: https://github.com/google/app-check.git @ 11.2.0
+  CampusCutsModule: /Users/liammckeown/Desktop/Intera/CampusCutsPackage @ local
+  GoogleAppMeasurement: https://github.com/google/GoogleAppMeasurement.git @ 12.11.0
+  InteropForGoogle: https://github.com/google/interop-ios-for-google-sdks.git @ 101.0.0
+  Starscream: https://github.com/daltoniam/Starscream @ 4.0.8
+  SocketIO: https://github.com/socketio/socket.io-client-swift.git @ 16.1.1
+  leveldb: https://github.com/firebase/leveldb.git @ 1.22.5
+  AppAuth: https://github.com/openid/AppAuth-iOS.git @ 2.0.0
+  Promises: https://github.com/google/promises.git @ 2.4.0
+  GoogleUtilities: https://github.com/google/GoogleUtilities.git @ 8.1.0
+  GTMAppAuth: https://github.com/google/GTMAppAuth.git @ 5.0.0
+  Firebase: https://github.com/firebase/firebase-ios-sdk.git @ 12.11.0
+  nanopb: https://github.com/firebase/nanopb.git @ 2.30910.0
+  GoogleSignIn: https://github.com/google/GoogleSignIn-iOS.git @ 9.1.0
+  abseil: https://github.com/google/abseil-cpp-binary.git @ 1.2024072200.0
+  GoogleDataTransport: https://github.com/google/GoogleDataTransport.git @ 10.1.0
+  GTMSessionFetcher: https://github.com/google/gtm-session-fetcher.git @ 3.5.0
+  gRPC: https://github.com/google/grpc-binary.git @ 1.69.1
+
+2026-03-29 01:29:30.503 xcodebuild[80016:18952131] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+2026-03-29 01:30:47.331 xcodebuild[80016:18952131] Writing error result bundle to /var/folders/sg/82tttdlj5j509rsdj3w53xvr0000gn/T/ResultBundle_2026-29-03_01-30-0047.xcresult
+xcodebuild: error: Unable to find a device matching the provided destination specifier:
+		{ platform:iOS Simulator, OS:latest, name:iPhone 16 }
+
+	The requested device could not be found because no available devices matched the request.
+
+	Available destinations for the "Intera" scheme:
+		{ platform:macOS, arch:arm64, id:00008112-000818E6019A401E, name:My Mac }
+		{ platform:macOS, arch:x86_64, id:00008112-000818E6019A401E, name:My Mac }
+		{ platform:iOS, arch:arm64, id:00008140-001601160EF3001C, name:Not Liams Iphone (2) }
+		{ platform:iOS, id:dvtdevice-DVTiPhonePlaceholder-iphoneos:placeholder, name:Any iOS Device }
+		{ platform:iOS Simulator, id:dvtdevice-DVTiOSDeviceSimulatorPlaceholder-iphonesimulator:placeholder, name:Any iOS Simulator Device }
+		{ platform:macOS, name:Any Mac }
+		{ platform:iOS Simulator, arch:arm64, id:BB96CAEC-645A-4650-AFBC-73BA9FFC388D, OS:18.6, name:iPad (A16) }
+		{ platform:iOS Simulator, arch:x86_64, id:BB96CAEC-645A-4650-AFBC-73BA9FFC388D, OS:18.6, name:iPad (A16) }
+		{ platform:iOS Simulator, arch:arm64, id:19D22DC9-069A-4BBD-8E22-CC1853309649, OS:26.3.1, name:iPad (A16) }
+		{ platform:iOS Simulator, arch:arm64, id:99E10290-9AF3-415B-9304-B5E85D140611, OS:18.6, name:iPad Air 11-inch (M3) }
+		{ platform:iOS Simulator, arch:x86_64, id:99E10290-9AF3-415B-9304-B5E85D140611, OS:18.6, name:iPad Air 11-inch (M3) }
+		{ platform:iOS Simulator, arch:arm64, id:F8C518CF-BE32-487D-8A2F-BF52A931CCD3, OS:26.3.1, name:iPad Air 11-inch (M3) }
+		{ platform:iOS Simulator, arch:arm64, id:D2676B98-BB71-4792-8D2C-541E36A07BF8, OS:18.6, name:iPad Air 13-inch (M3) }
+		{ platform:iOS Simulator, arch:x86_64, id:D2676B98-BB71-4792-8D2C-541E36A07BF8, OS:18.6, name:iPad Air 13-inch (M3) }
+		{ platform:iOS Simulator, arch:arm64, id:4F13830E-15E4-4850-B036-7454E29F63E1, OS:26.3.1, name:iPad Air 13-inch (M3) }
+		{ platform:iOS Simulator, arch:arm64, id:A3200A1E-7028-41AC-9B13-54008F9C6695, OS:18.6, name:iPad Pro 11-inch (M4) }
+		{ platform:iOS Simulator, arch:x86_64, id:A3200A1E-7028-41AC-9B13-54008F9C6695, OS:18.6, name:iPad Pro 11-inch (M4) }
+		{ platform:iOS Simulator, arch:arm64, id:14C71658-6978-4CF8-8ACE-08BED9A6EF43, OS:26.3.1, name:iPad Pro 11-inch (M5) }
+		{ platform:iOS Simulator, arch:arm64, id:D58DDC9A-8895-4E19-BC16-2156C75783FE, OS:18.6, name:iPad Pro 13-inch (M4) }
+		{ platform:iOS Simulator, arch:x86_64, id:D58DDC9A-8895-4E19-BC16-2156C75783FE, OS:18.6, name:iPad Pro 13-inch (M4) }
+		{ platform:iOS Simulator, arch:arm64, id:62B0BD63-A8D1-43BB-BEF6-CF7743E678AC, OS:26.3.1, name:iPad Pro 13-inch (M5) }
+		{ platform:iOS Simulator, arch:arm64, id:6BA02C39-7ACA-4EC2-A9AB-5845351A894C, OS:18.6, name:iPad mini (A17 Pro) }
+		{ platform:iOS Simulator, arch:x86_64, id:6BA02C39-7ACA-4EC2-A9AB-5845351A894C, OS:18.6, name:iPad mini (A17 Pro) }
+		{ platform:iOS Simulator, arch:arm64, id:D8D28D7C-7239-4137-961A-6BE6079824EE, OS:26.3.1, name:iPad mini (A17 Pro) }
+		{ platform:iOS Simulator, arch:arm64, id:7FB73B25-1A79-4741-80FE-4751D3A59E7C, OS:18.6, name:iPhone 16 }
+		{ platform:iOS Simulator, arch:x86_64, id:7FB73B25-1A79-4741-80FE-4751D3A59E7C, OS:18.6, name:iPhone 16 }
+		{ platform:iOS Simulator, arch:arm64, id:BA6924C7-28C7-4A67-8682-EEDC34A47566, OS:18.6, name:iPhone 16 Plus }
+		{ platform:iOS Simulator, arch:x86_64, id:BA6924C7-28C7-4A67-8682-EEDC34A47566, OS:18.6, name:iPhone 16 Plus }
+		{ platform:iOS Simulator, arch:arm64, id:680B4A72-58F4-438C-A5CF-6081A6EEA21E, OS:18.6, name:iPhone 16 Pro }
+		{ platform:iOS Simulator, arch:x86_64, id:680B4A72-58F4-438C-A5CF-6081A6EEA21E, OS:18.6, name:iPhone 16 Pro }
+		{ platform:iOS Simulator, arch:arm64, id:2F57E553-539D-4607-BDC5-5275972699D0, OS:18.6, name:iPhone 16 Pro Max }
+		{ platform:iOS Simulator, arch:x86_64, id:2F57E553-539D-4607-BDC5-5275972699D0, OS:18.6, name:iPhone 16 Pro Max }
+		{ platform:iOS Simulator, arch:arm64, id:9522CFC6-54F4-4CD3-B4DF-C3F08A241C83, OS:18.6, name:iPhone 16e }
+		{ platform:iOS Simulator, arch:x86_64, id:9522CFC6-54F4-4CD3-B4DF-C3F08A241C83, OS:18.6, name:iPhone 16e }
+		{ platform:iOS Simulator, arch:arm64, id:1052AF41-EC55-4C1F-BDCF-4C5EDB390190, OS:26.3.1, name:iPhone 16e }
+		{ platform:iOS Simulator, arch:arm64, id:73681426-F9A7-43EB-A4D3-569F147A4E5E, OS:26.3.1, name:iPhone 17 }
+		{ platform:iOS Simulator, arch:arm64, id:729A8FAE-6E25-4101-AA9D-8ED3AF43A035, OS:26.3.1, name:iPhone 17 Pro }
+		{ platform:iOS Simulator, arch:arm64, id:B6DF1DBD-2127-4E63-AD07-EFAF96CE5DDB, OS:26.3.1, name:iPhone 17 Pro Max }
+		{ platform:iOS Simulator, arch:arm64, id:E872A04F-1AF8-423C-BB09-A4DEEA25D212, OS:26.3.1, name:iPhone Air }
+
+	Ineligible destinations for the "Intera" scheme:
+		{ platform:visionOS, id:dvtdevice-DVTiOSDevicePlaceholder-xros:placeholder, name:Any visionOS Device, error:visionOS 26.2 is not installed. Please download and install the platform from Xcode > Settings > Components. }

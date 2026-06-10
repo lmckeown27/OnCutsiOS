@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>StripePublishableKey</key>
+	<string>$(STRIPE_PUBLISHABLE_KEY)</string>
+	
+	<key>CFBundleURLTypes</key>
+	<array>
+		<!-- Google Sign-In URL Scheme -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.googleusercontent.apps</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(REVERSED_CLIENT_ID)</string>
+			</array>
+		</dict>
+		<!-- Stripe Payment URL Scheme -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.stripe.payments</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>intera-payments</string>
+			</array>
+		</dict>
+		<!-- Your App's Custom URL Scheme (optional, for deep linking) -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.intera.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>intera</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>580972649195-j17ovaq2aj2iu6m6f1o2c8g83ac9idml.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.580972649195-j17ovaq2aj2iu6m6f1o2c8g83ac9idml</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCesT_hE3H6OdF538rN7L6DmSQ17DFEUO0</string>
+	<key>GCM_SENDER_ID</key>
+	<string>580972649195</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>Liam.Intera</string>
+	<key>PROJECT_ID</key>
+	<string>campuscuts-489123</string>
+	<key>STORAGE_BUCKET</key>
+	<string>campuscuts-489123.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:580972649195:ios:09933abd5a9e2403327cae</string>
+</dict>
+</plist>
