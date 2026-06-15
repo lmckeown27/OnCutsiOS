@@ -396,14 +396,14 @@ struct ConversationListView: View {
 /// Typography aligned with `TimelineSectionHeader` (Today / Past) and `BookingTimelineRow` upcoming `compactLabels` service line.
 private enum ConversationInboxTimelineTypography {
     /// `TimelineSectionHeader` “Today”.
-    static let providerName = Font.system(size: 28, weight: .bold, design: .default)
+    static let providerName = InteraFont.system(size: 28, weight: .bold, design: .default)
     /// Same size as `headlineSmall` (18pt) but **regular** weight for preview body over lava.
-    static let messagePreview = Font.system(size: 18, weight: .regular, design: .serif)
+    static let messagePreview = InteraFont.system(size: 18, weight: .regular, design: .serif)
     static let messagePreviewLineSpacing: CGFloat = 4
     /// Occupation · service under the preview (leading).
     static let pastHeaderKerning: CGFloat = 2.2
     static let occupationKerning: CGFloat = pastHeaderKerning * 1.15
-    static let occupationFont = Font.system(size: 14, weight: .medium, design: .default)
+    static let occupationFont = InteraFont.system(size: 14, weight: .medium, design: .default)
     /// Caps preview width so the stack sits right of the enlarged avatar.
     static let messagePreviewMaxWidth: CGFloat = 300
 }

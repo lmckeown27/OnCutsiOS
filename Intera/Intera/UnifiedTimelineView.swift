@@ -137,7 +137,7 @@ struct UnifiedTimelineView: View {
         Section {
             if items.isEmpty {
                 Text(emptyBlurb(for: .past))
-                    .font(.caption)
+                    .font(InteraFont.caption)
                     .foregroundStyle(Color.lavaShellCreamTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 6)
@@ -184,7 +184,7 @@ struct UnifiedTimelineView: View {
         Section {
             if rows.isEmpty {
                 Text(emptyBlurb(for: position))
-                    .font(.caption)
+                    .font(InteraFont.caption)
                     .foregroundStyle(Color.lavaShellCreamTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 6)
@@ -246,7 +246,7 @@ struct UnifiedTimelineView: View {
             }
         } label: {
             Image(systemName: "sun.max.fill")
-                .font(.title2.weight(.semibold))
+                .font(InteraFont.title2.weight(.semibold))
                 .foregroundStyle(.white)
                 .frame(width: 56, height: 56)
                 .background {

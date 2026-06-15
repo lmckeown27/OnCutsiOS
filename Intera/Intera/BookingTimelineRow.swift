@@ -20,13 +20,6 @@ struct BookingTimelineRow: View {
 
     @State private var confirmRemoveFromList = false
 
-    private static let timeEmphasisDF: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .none
-        f.timeStyle = .short
-        return f
-    }()
-
     private static let dayLineDF: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "EEE, MMM d"
@@ -39,7 +32,7 @@ struct BookingTimelineRow: View {
 
     private var timeEmphasis: String? {
         guard let d = row.scheduledAtDate else { return nil }
-        return Self.timeEmphasisDF.string(from: d)
+        return BookingPacificSchedule.displayTimeWithMinutes(from: d)
     }
 
     private var dayLine: String? {
@@ -104,13 +97,13 @@ struct BookingTimelineRow: View {
             VStack(alignment: .leading, spacing: 8) {
                 if let t = timeEmphasis {
                     Text(t)
-                        .font(.title3.weight(.bold))
+                        .font(InteraFont.title3.weight(.bold))
                         .foregroundStyle(Color.lavaShellCream)
                 }
                 compactLabels
                 if let d = dayLine {
                     Text(d)
-                        .font(.caption.weight(.medium))
+                        .font(InteraFont.caption.weight(.medium))
                         .foregroundStyle(Color.lavaShellCreamTertiary)
                 }
             }
@@ -126,11 +119,11 @@ struct BookingTimelineRow: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(row.displayServiceName)
-                        .font(.title3.weight(.bold))
+                        .font(InteraFont.title3.weight(.bold))
                         .foregroundStyle(Color.lavaShellCream)
                     Spacer(minLength: 8)
                     Text(row.displayStatus)
-                        .font(.caption2.weight(.bold))
+                        .font(InteraFont.caption2.weight(.bold))
                         .foregroundStyle(Color.lavaShellCream)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
@@ -138,11 +131,11 @@ struct BookingTimelineRow: View {
                 }
 
                 Text("with \(providerLine)")
-                    .font(.subheadline.weight(.semibold))
+                    .font(InteraFont.subheadline.weight(.semibold))
                     .foregroundStyle(Color.lavaShellCreamSecondary)
 
                 Text(scheduleLine)
-                    .font(.footnote.weight(.semibold))
+                    .font(InteraFont.footnote.weight(.semibold))
                     .foregroundStyle(Color.lavaShellCream.opacity(0.92))
             }
             .padding(16)
@@ -156,16 +149,16 @@ struct BookingTimelineRow: View {
     private var compactLabels: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(row.displayServiceName)
-                .font(.headlineSmall)
+                .font(InteraFont.headlineSmall)
                 .foregroundStyle(Color.lavaShellCream)
             Text(providerLine)
-                .font(.subheadline)
+                .font(InteraFont.subheadline)
                 .foregroundStyle(Color.lavaShellCreamSecondary)
             Text(scheduleLine)
-                .font(.caption)
+                .font(InteraFont.caption)
                 .foregroundStyle(Color.lavaShellCream.opacity(position == .past ? 0.62 : 0.92))
             Text(row.displayStatus)
-                .font(.caption2.weight(.semibold))
+                .font(InteraFont.caption2.weight(.semibold))
                 .foregroundStyle(Color.lavaShellCreamTertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

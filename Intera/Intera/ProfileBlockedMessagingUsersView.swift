@@ -47,7 +47,7 @@ struct ProfileBlockedMessagingUsersView: View {
                             )
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(user.displayName)
-                                    .font(.headline.weight(.semibold))
+                                    .font(InteraFont.headline.weight(.semibold))
                                     .foregroundStyle(.primary)
                                     .lineLimit(2)
                                     .minimumScaleFactor(0.85)
@@ -61,7 +61,7 @@ struct ProfileBlockedMessagingUsersView: View {
                                     unblockTarget = user
                                 } label: {
                                     Text("Unblock")
-                                        .font(.body.weight(.semibold))
+                                        .font(InteraFont.body.weight(.semibold))
                                 }
                                 .buttonStyle(.bordered)
                                 .tint(Color.red)

@@ -237,7 +237,7 @@ private struct BarberTabSwitcher: View {
                                 .matchedGeometryEffect(id: "barberTabPill", in: namespace)
                         }
                         Text(tab.title)
-                            .font(.subheadline.weight(.semibold))
+                            .font(InteraFont.subheadline.weight(.semibold))
                             .foregroundStyle(selection == tab ? Color.primary : Color.secondary)
                             .padding(.vertical, 10)
                             .frame(maxWidth: .infinity)
@@ -276,13 +276,13 @@ private struct UserProfileGlassHeaderCard: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .center, spacing: 8) {
                         Text(session.displayName)
-                            .font(.headlineSmall)
+                            .font(InteraFont.headlineSmall)
                             .foregroundStyle(.primary)
                             .lineLimit(2)
 
                         if showVerified {
                             Label("Verified", systemImage: "checkmark.seal.fill")
-                                .font(.caption.weight(.bold))
+                                .font(InteraFont.caption.weight(.bold))
                                 .foregroundStyle(Color.oliveGreen)
                                 .labelStyle(.titleAndIcon)
                                 .padding(.horizontal, 8)
@@ -295,7 +295,7 @@ private struct UserProfileGlassHeaderCard: View {
                     }
 
                     Text(session.role.displayName)
-                        .font(.caption.weight(.semibold))
+                        .font(InteraFont.caption.weight(.semibold))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .background(Color.oliveGreen.opacity(0.12))
@@ -308,10 +308,10 @@ private struct UserProfileGlassHeaderCard: View {
              // Consumer self-bio preview (disabled — not required at this time).
              VStack(alignment: .leading, spacing: 6) {
                  Text("Bio")
-                     .font(.caption.weight(.semibold))
+                     .font(InteraFont.caption.weight(.semibold))
                      .foregroundStyle(.secondary)
                  Text(bioText.isEmpty ? "Add a short bio in settings." : bioText)
-                     .font(.bodyMedium)
+                     .font(InteraFont.bodyMedium)
                      .foregroundStyle(bioText.isEmpty ? Color.secondary : Color.primary)
                      .fixedSize(horizontal: false, vertical: true)
              }
@@ -360,7 +360,7 @@ private struct UserProfileAppointmentList: View {
     var body: some View {
         if appointments.isEmpty {
             Text(emptyMessage)
-                .font(.subheadline)
+                .font(InteraFont.subheadline)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 24)
@@ -370,10 +370,10 @@ private struct UserProfileAppointmentList: View {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .firstTextBaseline) {
                             Text(item.serviceName)
-                                .font(.headlineSmall)
+                                .font(InteraFont.headlineSmall)
                             if let note = item.statusNote, !note.isEmpty {
                                 Text(note)
-                                    .font(.caption2.weight(.semibold))
+                                    .font(InteraFont.caption2.weight(.semibold))
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3)
@@ -381,10 +381,10 @@ private struct UserProfileAppointmentList: View {
                             }
                         }
                         Text(item.providerName)
-                            .font(.subheadline)
+                            .font(InteraFont.subheadline)
                             .foregroundStyle(.secondary)
                         Text(Self.df.string(from: item.scheduledAt))
-                            .font(.caption)
+                            .font(InteraFont.caption)
                             .foregroundStyle(Color.oliveGreen)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -414,7 +414,7 @@ private struct UserProfilePortfolioGrid: View {
     var body: some View {
         if urls.isEmpty {
             Text("No portfolio images on your profile yet. They appear here when `portfolioImages` is set on your barber record.")
-                .font(.subheadline)
+                .font(InteraFont.subheadline)
                 .foregroundStyle(.secondary)
                 .padding(.vertical, 20)
         } else {
@@ -467,7 +467,7 @@ private struct UserProfileServicesList: View {
     var body: some View {
         if rows.isEmpty {
             Text("No services listed yet. Add them in your barber dashboard or backend.")
-                .font(.subheadline)
+                .font(InteraFont.subheadline)
                 .foregroundStyle(.secondary)
                 .padding(.vertical, 20)
         } else {
@@ -476,14 +476,14 @@ private struct UserProfileServicesList: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(row.name)
-                            .font(.headlineSmall)
+                            .font(InteraFont.headlineSmall)
                         Text("\(row.durationMinutes) min")
-                            .font(.caption)
+                            .font(InteraFont.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
                     Text("$\(row.priceUsd)")
-                        .font(.bodyLarge.weight(.semibold))
+                        .font(InteraFont.bodyLarge.weight(.semibold))
                         .foregroundStyle(Color.oliveGreen)
                 }
                 .padding(16)
@@ -507,7 +507,7 @@ private struct UserProfileReviewsList: View {
     var body: some View {
         if reviews.isEmpty {
             Text("No reviews yet.")
-                .font(.subheadline)
+                .font(InteraFont.subheadline)
                 .foregroundStyle(.secondary)
                 .padding(.vertical, 20)
         } else {
@@ -516,18 +516,18 @@ private struct UserProfileReviewsList: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text(r.authorName)
-                            .font(.subheadline.weight(.semibold))
+                            .font(InteraFont.subheadline.weight(.semibold))
                         Spacer()
                         HStack(spacing: 2) {
                             ForEach(0..<5, id: \.self) { i in
                                 Image(systemName: i < r.rating ? "star.fill" : "star")
-                                    .font(.caption2)
+                                    .font(InteraFont.caption2)
                                     .foregroundStyle(i < r.rating ? Color.oliveGreen : Color.secondary.opacity(0.4))
                             }
                         }
                     }
                     Text(r.body)
-                        .font(.bodyMedium)
+                        .font(InteraFont.bodyMedium)
                         .foregroundStyle(.primary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -574,7 +574,7 @@ private struct UserProfileGlassSectionHeader: View {
 
     var body: some View {
         Text(title)
-            .font(.system(.subheadline, design: .serif))
+            .font(InteraFont.system(.subheadline, design: .serif))
             .fontWeight(.semibold)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -674,7 +674,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                     VStack(alignment: .leading, spacing: 18) {
                         if let formError, !formError.isEmpty {
                             Text(formError)
-                                .font(.caption)
+                                .font(InteraFont.caption)
                                 .foregroundStyle(.red)
                         }
                         tabContent
@@ -755,16 +755,16 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Pay with Apple Pay")
-                            .font(.title3.weight(.bold))
+                            .font(InteraFont.title3.weight(.bold))
                         Text("Typical flow after your provider completes the service:")
-                            .font(.subheadline)
+                            .font(InteraFont.subheadline)
                             .foregroundStyle(.secondary)
                             .padding(.bottom, 8)
 
                         ForEach(Array(Self.applePayInstructionSteps.enumerated()), id: \.offset) { index, line in
                             HStack(alignment: .firstTextBaseline, spacing: 12) {
                                 Text("\(index + 1)")
-                                    .font(.caption.weight(.bold))
+                                    .font(InteraFont.caption.weight(.bold))
                                     .foregroundStyle(Color.white)
                                     .frame(width: 26, height: 26)
                                     .background {
@@ -772,7 +772,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                                     }
                                     .accessibilityHidden(true)
                                 Text(line)
-                                    .font(.body)
+                                    .font(InteraFont.body)
                                     .foregroundStyle(.primary)
                                     .fixedSize(horizontal: false, vertical: true)
                                 Spacer(minLength: 0)
@@ -832,19 +832,19 @@ private struct UserProfileSettingsDrawerOverlay: View {
             VStack(alignment: .leading, spacing: 20) {
                 if needsPlatformPasswordForDeletion {
                     Text("This permanently removes your account. Because you use Sign in with Apple without a \(AppBranding.displayName) password, the next step asks for Face ID, Touch ID, or your device passcode to confirm.")
-                        .font(.subheadline)
+                        .font(InteraFont.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
                     Text("This permanently removes your account. Enter your password to confirm.")
-                        .font(.subheadline)
+                        .font(InteraFont.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
                 if let deleteAccountError, !deleteAccountError.isEmpty {
                     Text(deleteAccountError)
-                        .font(.caption)
+                        .font(InteraFont.caption)
                         .foregroundStyle(.red)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -852,7 +852,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 if !needsPlatformPasswordForDeletion {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Password")
-                            .font(.caption.weight(.semibold))
+                            .font(InteraFont.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
 
                         HStack(spacing: 10) {
@@ -875,7 +875,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                                 deletePasswordVisible.toggle()
                             } label: {
                                 Image(systemName: deletePasswordVisible ? "eye.slash.fill" : "eye.fill")
-                                    .font(.body.weight(.medium))
+                                    .font(InteraFont.body.weight(.medium))
                                     .foregroundStyle(.secondary)
                                     .frame(minWidth: 28, minHeight: 28)
                                     .contentShape(Rectangle())
@@ -900,7 +900,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                     Task { await performDeleteAccount() }
                 } label: {
                     Text("Delete account")
-                        .font(.body.weight(.semibold))
+                        .font(InteraFont.body.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
@@ -952,9 +952,9 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 } label: {
                     VStack(spacing: 6) {
                         Image(systemName: t.symbol)
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(InteraFont.system(size: 18, weight: .semibold))
                         Text(t.title)
-                            .font(.caption2.weight(.semibold))
+                            .font(InteraFont.caption2.weight(.semibold))
                             .multilineTextAlignment(.center)
                     }
                     .foregroundStyle(tab == t ? Color.oliveGreen : Color.secondary)
@@ -996,7 +996,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 UserProfileGlassTile {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("First Name")
-                            .font(.caption.weight(.semibold))
+                            .font(InteraFont.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                             .onTapGesture { dismissProfileNameKeyboard() }
                         TextField("First name", text: $firstName)
@@ -1009,7 +1009,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 UserProfileGlassTile {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Last Name")
-                            .font(.caption.weight(.semibold))
+                            .font(InteraFont.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                             .onTapGesture { dismissProfileNameKeyboard() }
                         TextField("Last name", text: $lastName)
@@ -1036,25 +1036,25 @@ private struct UserProfileSettingsDrawerOverlay: View {
             UserProfileGlassTile {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("First Name")
-                        .font(.caption.weight(.semibold))
+                        .font(InteraFont.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text(signInWithAppleReadOnlyFirstLine)
-                        .font(.body)
+                        .font(InteraFont.body)
                         .foregroundStyle(.primary)
                 }
             }
             UserProfileGlassTile {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Last Name")
-                        .font(.caption.weight(.semibold))
+                        .font(InteraFont.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text(signInWithAppleReadOnlyLastLine)
-                        .font(.body)
+                        .font(InteraFont.body)
                         .foregroundStyle(.primary)
                 }
             }
             Text("Your name comes from Sign in with Apple. To change it, update your Apple ID in Settings.")
-                .font(.caption)
+                .font(InteraFont.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -1097,7 +1097,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                     showSignOutConfirm = true
                 } label: {
                     Text("Sign Out")
-                        .font(.body.weight(.semibold))
+                        .font(InteraFont.body.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
@@ -1105,14 +1105,14 @@ private struct UserProfileSettingsDrawerOverlay: View {
             }
 
             Text("Deleting your account removes your profile and associated data from \(AppBranding.displayName) where supported by the server.")
-                .font(.caption)
+                .font(InteraFont.caption)
                 .foregroundStyle(.secondary)
             Button(role: .destructive) {
                 deleteAccountError = nil
                 showDeleteConfirm = true
             } label: {
                 Text("Delete Account")
-                    .font(.body.weight(.semibold))
+                    .font(InteraFont.body.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
             }
@@ -1208,21 +1208,21 @@ private struct UserProfileSettingsDrawerOverlay: View {
         let accent = emphasizeSignOut ? Color.red : Color.oliveGreen
         return HStack(spacing: 12) {
             Image(systemName: systemImage)
-                .font(.body.weight(.semibold))
+                .font(InteraFont.body.weight(.semibold))
                 .foregroundStyle(accent)
                 .frame(width: 26, alignment: .center)
             Text(title)
-                .font(.body)
+                .font(InteraFont.body)
                 .foregroundStyle(emphasizeSignOut ? Color.red : Color.primary)
             Spacer(minLength: 8)
             switch trailing {
             case .chevron:
                 Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
+                    .font(InteraFont.caption.weight(.semibold))
                     .foregroundStyle(.tertiary)
             case .external:
                 Image(systemName: "arrow.up.forward")
-                    .font(.caption.weight(.semibold))
+                    .font(InteraFont.caption.weight(.semibold))
                     .foregroundStyle(.tertiary)
             case .none:
                 EmptyView()

@@ -1063,13 +1063,14 @@ const minutesToTime = (minutes: number): string => {
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 };
 
-// Generate available time slots in 15-minute increments
+// Generate available time slots at `slotDuration` granularity (1 = every minute).
 // currentTimeMinutes: if > 0, exclude slots before this time (for same-day bookings)
 const generateTimeSlotsWithCurrentTime = (
   intervals: TimeInterval[],
   bookedSlots: { start: string; end: string }[],
-  slotDuration: number = 15, // minutes
-  currentTimeMinutes: number = 0 // Current time in minutes (0 = don't filter past times)
+  slotDuration: number = 1, // minutes between selectable start times
+  currentTimeMinutes: number = 0, // Current time in minutes (0 = don't filter past times)
+  appointmentDurationMinutes: number = 60 // how long a new booking blocks the calendar
 ): { time: string; available: boolean }[] => {
   const slots: { time: string; available: boolean }[] = [];
   
@@ -1091,8 +1092,8 @@ const generateTimeSlotsWithCurrentTime = (
         const bookedStart = timeToMinutes(booked.start);
         const bookedEnd = timeToMinutes(booked.end);
         
-        // Check for overlap
-        if (mins < bookedEnd && (mins + slotDuration) > bookedStart) {
+        // Block start times whose appointment would overlap an existing booking/block.
+        if (mins < bookedEnd && (mins + appointmentDurationMinutes) > bookedStart) {
           isBooked = true;
           break;
         }
@@ -1301,7 +1302,7 @@ export const getBarberAvailability = async (req: AuthRequest, res: Response, nex
       const currentTimeMinutes = isToday ? (currentHour * 60 + currentMinute + 15) : 0; // 15 min buffer
 
       // Generate available time slots (filter past times if booking for today)
-      const slots = generateTimeSlotsWithCurrentTime(intervals, bookedSlots, 15, currentTimeMinutes);
+      const slots = generateTimeSlotsWithCurrentTime(intervals, bookedSlots, 1, currentTimeMinutes);
       
       console.log(`[Availability] Generated ${slots.length} slots, ${slots.filter(s => s.available).length} available`);
 

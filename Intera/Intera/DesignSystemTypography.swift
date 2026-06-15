@@ -2,7 +2,7 @@
 //  DesignSystem+Typography.swift
 //  Intera
 //
-//  CampusCuts typography system based on Source Serif 4
+//  Intera typography — Clarendon (Superclarendon).
 //
 
 import SwiftUI
@@ -11,32 +11,32 @@ extension Font {
     
     // MARK: - Display (Largest headlines)
     
-    static let displayLarge = Font.system(size: 36, weight: .bold, design: .serif)
-    static let displayMedium = Font.system(size: 30, weight: .bold, design: .serif)
-    static let displaySmall = Font.system(size: 24, weight: .semibold, design: .serif)
+    static let displayLarge = InteraFont.displayLarge
+    static let displayMedium = InteraFont.displayMedium
+    static let displaySmall = InteraFont.displaySmall
     
     // MARK: - Headlines
     
-    static let headlineLarge = Font.system(size: 22, weight: .semibold, design: .serif)
-    static let headlineMedium = Font.system(size: 20, weight: .semibold, design: .serif)
-    static let headlineSmall = Font.system(size: 18, weight: .semibold, design: .serif)
+    static let headlineLarge = InteraFont.headlineLarge
+    static let headlineMedium = InteraFont.headlineMedium
+    static let headlineSmall = InteraFont.headlineSmall
     
     // MARK: - Body Text
     
-    static let bodyLarge = Font.system(size: 16, weight: .medium, design: .serif)
-    static let bodyMedium = Font.system(size: 14, weight: .regular, design: .serif)
-    static let bodySmall = Font.system(size: 12, weight: .regular, design: .serif)
+    static let bodyLarge = InteraFont.bodyLarge
+    static let bodyMedium = InteraFont.bodyMedium
+    static let bodySmall = InteraFont.bodySmall
     
     // MARK: - Labels (UI elements)
     
-    static let labelLarge = Font.system(size: 14, weight: .medium, design: .serif)
-    static let labelMedium = Font.system(size: 12, weight: .medium, design: .serif)
-    static let labelSmall = Font.system(size: 10, weight: .medium, design: .serif)
+    static let labelLarge = InteraFont.labelLarge
+    static let labelMedium = InteraFont.labelMedium
+    static let labelSmall = InteraFont.labelSmall
     
     // MARK: - Captions
     
-    static let caption = Font.system(size: 12, weight: .regular, design: .serif)
-    static let captionSmall = Font.system(size: 10, weight: .regular, design: .serif)
+    static let caption = InteraFont.caption
+    static let captionSmall = InteraFont.captionSmall
 }
 
 // MARK: - Text Styles (Custom ViewModifier)

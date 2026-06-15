@@ -88,7 +88,7 @@ struct PrimaryButton: View {
                 }
                 
                 Text(title)
-                    .font(.system(size: size.fontSize, weight: .medium, design: .serif))
+                    .font(InteraFont.system(size: size.fontSize, weight: .medium, design: .serif))
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, size.horizontalPadding)

@@ -386,16 +386,18 @@ struct ConsumerBookingsHubView: View {
         Task { await reloadBookingsList() }
     }
 
-    private static let displayDF: DateFormatter = {
+    private static let displayDateDF: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .medium
-        f.timeStyle = .short
+        f.timeStyle = .none
         return f
     }()
 
     private func formattedSchedule(_ row: ConsumerBookingSimpleRow) -> String {
         guard let d = row.scheduledAtDate else { return "—" }
-        return Self.displayDF.string(from: d)
+        let datePart = Self.displayDateDF.string(from: d)
+        let timePart = BookingPacificSchedule.displayTimeWithMinutes(from: d)
+        return "\(datePart), \(timePart)"
     }
 
     /// Push notification asked for a specific booking — prefer a fresh `GET /bookings-simple/:id` row so status

@@ -232,10 +232,10 @@ struct OAuthProviderSignInSheet: View {
             Spacer(minLength: 0)
             HStack(spacing: 14) {
                 Image(systemName: "apple.logo")
-                    .font(.title3.weight(.semibold))
+                    .font(InteraFont.title3.weight(.semibold))
                     .foregroundStyle(Self.applePillText)
                 Text("Sign in with Apple")
-                    .font(.body.weight(.semibold))
+                    .font(InteraFont.body.weight(.semibold))
                     .foregroundStyle(Self.applePillText)
             }
             Spacer(minLength: 0)
@@ -354,7 +354,7 @@ struct OAuthProviderSignInSheet: View {
                 HStack(spacing: 14) {
                     GoogleFourColorRingGlyph(size: 22)
                     Text("Sign in with Google")
-                        .font(.body.weight(.semibold))
+                        .font(InteraFont.body.weight(.semibold))
                         .foregroundStyle(Self.googleButtonText)
                 }
                 Spacer(minLength: 0)
@@ -382,7 +382,7 @@ struct OAuthProviderSignInSheet: View {
             path.append(.email)
         } label: {
             Text("Continue with Email")
-                .font(.body.weight(.semibold))
+                .font(InteraFont.body.weight(.semibold))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)

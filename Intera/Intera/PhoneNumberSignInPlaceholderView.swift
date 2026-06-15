@@ -16,7 +16,7 @@ struct PhoneNumberSignInPlaceholderView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Enter your mobile number. We’ll text you a code to sign in.")
-                    .font(.subheadline)
+                    .font(InteraFont.subheadline)
                     .foregroundStyle(.secondary)
 
                 TextField("Phone number", text: $phoneDigits)
@@ -34,7 +34,7 @@ struct PhoneNumberSignInPlaceholderView: View {
                     infoMessage = "Phone number sign-in isn’t available in this build yet. Please use email or Google."
                 } label: {
                     Text("Send verification code")
-                        .font(.body.weight(.semibold))
+                        .font(InteraFont.body.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
@@ -44,7 +44,7 @@ struct PhoneNumberSignInPlaceholderView: View {
 
                 if let infoMessage {
                     Text(infoMessage)
-                        .font(.caption)
+                        .font(InteraFont.caption)
                         .foregroundStyle(Color.secondary)
                 }
             }

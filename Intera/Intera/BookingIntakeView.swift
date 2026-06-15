@@ -50,7 +50,7 @@ private struct SoftFieldErrorText: View {
     var body: some View {
         if let message, !message.isEmpty {
             Text(message)
-                .font(.caption)
+                .font(InteraFont.caption)
                 .foregroundStyle(Color.red.opacity(0.95))
                 .shadow(color: Color.red.opacity(0.5), radius: 4, x: 0, y: 0)
                 .shadow(color: Color.red.opacity(0.35), radius: 10, x: 0, y: 0)
@@ -78,7 +78,7 @@ struct BookingIntakeView: View {
     @State private var selectedServiceId: String?
     @State private var customServiceName: String = ""
     @State private var selectedDate: Date = Date()
-    @State private var selectedTime: String?
+    @State private var selectedAppointmentTime = Date()
     @State private var locationText: String = ""
     /// Menu `Picker` with `tag("")` often fails to update a `String` binding on iOS; index-backed selection stays in sync with the chosen row.
     @State private var selectedLocationIndex: Int = 0
@@ -104,8 +104,8 @@ struct BookingIntakeView: View {
         !services.isEmpty
     }
 
-    private var availableTimeStrings: [String] {
-        slots.filter(\.available).map(\.time)
+    private var availableTimeKeys: Set<String> {
+        Set(slots.filter(\.available).map(\.time))
     }
 
     private var bookingDateRange: ClosedRange<Date> {
@@ -158,7 +158,7 @@ struct BookingIntakeView: View {
                                 }
                             } else {
                                 TextField("Service type", text: $customServiceName)
-                                    .font(.body)
+                                    .font(InteraFont.body)
                                     .textInputAutocapitalization(.words)
                                     .glassFormField()
                             }
@@ -174,49 +174,19 @@ struct BookingIntakeView: View {
                             .datePickerStyle(.graphical)
                             .glassFormField()
                             .onChange(of: selectedDate) { _, _ in
-                                selectedTime = nil
                                 Task { await loadSlots() }
                             }
                             SoftFieldErrorText(message: dateError)
 
                             sectionTitle("Time")
-                            Group {
-                                if isLoadingSlots {
-                                    HStack {
-                                        ProgressView()
-                                            .tint(Color.oliveGreen)
-                                        Text("Loading times…")
-                                            .font(.body)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .glassFormField()
-                                } else if let err = slotsLoadError {
-                                    Text(err)
-                                        .font(.body)
-                                        .foregroundStyle(.secondary)
-                                        .glassFormField()
-                                } else if availableTimeStrings.isEmpty {
-                                    Text("No open times for this day. Try another date.")
-                                        .font(.body)
-                                        .foregroundStyle(.secondary)
-                                        .glassFormField()
-                                } else {
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 10) {
-                                            ForEach(availableTimeStrings, id: \.self) { t in
-                                                timeChip(time: t, isSelected: selectedTime == t) {
-                                                    selectedTime = t
-                                                    #if os(iOS)
-                                                    InteraLiquidGlassHaptics.selectionChanged()
-                                                    #endif
-                                                }
-                                            }
-                                        }
-                                        .padding(.vertical, 2)
-                                    }
-                                }
-                            }
+                            BookingMinuteTimePicker(
+                                calendarDay: BookingPacificSchedule.pacificStartOfDay(for: selectedDate),
+                                availableTimeKeys: availableTimeKeys,
+                                selectedTime: $selectedAppointmentTime,
+                                isLoading: isLoadingSlots,
+                                loadError: slotsLoadError
+                            )
+                            .glassFormField()
                             SoftFieldErrorText(message: timeError)
 
                             sectionTitle("Location")
@@ -330,9 +300,9 @@ struct BookingIntakeView: View {
                     Link(destination: igURL) {
                         HStack(spacing: 6) {
                             Image(systemName: "camera.fill")
-                                .font(.caption.weight(.semibold))
+                                .font(InteraFont.caption.weight(.semibold))
                             Text("Instagram")
-                                .font(.subheadline.weight(.medium))
+                                .font(InteraFont.subheadline.weight(.medium))
                         }
                         .foregroundStyle(Color.oliveGreen)
                     }
@@ -352,7 +322,7 @@ struct BookingIntakeView: View {
 
     private var placeholderInitials: some View {
         Text(provider.businessName.prefix(2).uppercased())
-            .font(.headline)
+            .font(InteraFont.headline)
             .foregroundStyle(Color.brand)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.brand.opacity(0.15))
@@ -378,7 +348,7 @@ struct BookingIntakeView: View {
             }
         } else if let one = locs.first {
             Text(one)
-                .font(.bodyMedium)
+                .font(InteraFont.bodyMedium)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .glassFormField()
                 .onAppear { if locationText.isEmpty { locationText = one } }
@@ -391,33 +361,14 @@ struct BookingIntakeView: View {
 
     private func sectionTitle(_ s: String) -> some View {
         Text(s)
-            .font(.headlineSmall)
+            .font(InteraFont.headlineSmall)
             .foregroundStyle(.primary)
     }
 
     private func serviceChip(service: ServiceProvider.Service, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text("\(service.name)  $\(service.price)")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(isSelected ? Color.white : Color.primary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(isSelected ? Color.oliveGreen.opacity(0.55) : Color.primary.opacity(0.08))
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func timeChip(time: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(displayTimeLabel(time))
-                .font(.body.weight(.semibold))
+                .font(InteraFont.body.weight(.semibold))
                 .foregroundStyle(isSelected ? Color.white : Color.primary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -436,14 +387,14 @@ struct BookingIntakeView: View {
     private var locationAmberCallout: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "mappin.and.ellipse")
-                .font(.body.weight(.semibold))
+                .font(InteraFont.body.weight(.semibold))
                 #if canImport(UIKit)
                 .foregroundStyle(Color(UIColor.systemYellow))
                 #else
                 .foregroundStyle(.yellow)
                 #endif
             Text("Add a meeting location so your barber knows where to find you.")
-                .font(.body)
+                .font(InteraFont.body)
                 .foregroundStyle(.primary)
         }
         .padding(16)
@@ -465,24 +416,6 @@ struct BookingIntakeView: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(Color.white.opacity(0.2), lineWidth: 1)
         }
-    }
-
-    private func displayTimeLabel(_ hhmm: String) -> String {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = BookingPacificSchedule.pacificTimeZone
-        let parts = hhmm.split(separator: ":")
-        guard parts.count >= 2,
-              let h = Int(parts[0]),
-              let m = Int(parts[1]) else { return hhmm }
-        var dc = DateComponents()
-        dc.hour = h
-        dc.minute = m
-        guard let ref = cal.date(from: dc) else { return hhmm }
-        let f = DateFormatter()
-        f.timeZone = BookingPacificSchedule.pacificTimeZone
-        f.dateStyle = .none
-        f.timeStyle = .short
-        return f.string(from: ref)
     }
 
     private func prefillLocation() {
@@ -525,6 +458,11 @@ struct BookingIntakeView: View {
                 bearerToken: sessionManager.currentSession?.token
             )
             slots = rows
+            BookingPacificSchedule.reconcileAppointmentTime(
+                &selectedAppointmentTime,
+                calendarDay: BookingPacificSchedule.pacificStartOfDay(for: selectedDate),
+                availableKeys: availableTimeKeys
+            )
         } catch {
             if InteraRefreshCancellation.isBenignCancellation(error) { return }
             slots = []
@@ -566,10 +504,8 @@ struct BookingIntakeView: View {
             messages.append("Pick a valid date.")
         }
 
-        let timeValid: Bool = {
-            guard let t = selectedTime else { return false }
-            return availableTimeStrings.contains(t)
-        }()
+        let timeKey = BookingPacificSchedule.pacificHHmmKey(from: selectedAppointmentTime)
+        let timeValid = availableTimeKeys.contains(timeKey)
         if !timeValid {
             timeError = "Choose an available time."
             messages.append("Choose a time.")
@@ -590,8 +526,8 @@ struct BookingIntakeView: View {
         }
 
         guard let sp = servicePick,
-              let time = selectedTime,
-              let iso = BookingPacificSchedule.scheduledAtISO(selectedDate: selectedDate, timeHHmm: time) else {
+              availableTimeKeys.contains(timeKey),
+              let iso = BookingPacificSchedule.scheduledAtISO(selectedDate: selectedDate, timeHHmm: timeKey) else {
             timeError = "Couldn’t read the selected time."
             AlertManager.shared.presentErrorToast("Couldn’t build the appointment time. Try again.")
             return

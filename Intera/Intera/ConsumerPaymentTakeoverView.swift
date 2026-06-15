@@ -18,8 +18,8 @@ import UIKit
 private let paymentServiceTitleKerning: CGFloat = 2.2 * 1.15
 
 /// Primary online payment CTAs (Apple Pay + Card).
-private let paymentPrimaryActionLabelFont = Font.system(size: 19, weight: .bold, design: .default)
-private let paymentCashActionLabelFont = Font.system(size: 16, weight: .semibold, design: .default)
+private let paymentPrimaryActionLabelFont = InteraFont.system(size: 19, weight: .bold, design: .default)
+private let paymentCashActionLabelFont = InteraFont.system(size: 16, weight: .semibold, design: .default)
 
 private enum PaymentMethodButtonMetrics {
     static let primaryHeight: CGFloat = 58
@@ -164,7 +164,7 @@ struct ConsumerPaymentTakeoverView: View {
                     Button("Pay later") {
                         chatViewModel.dismissPaymentTakeoverForLater()
                     }
-                    .font(.body.weight(.semibold))
+                    .font(InteraFont.body.weight(.semibold))
                     .foregroundStyle(Color.lavaShellCream)
                 }
             }
@@ -203,7 +203,7 @@ struct ConsumerPaymentTakeoverView: View {
             ProgressView()
                 .tint(Color.lavaShellCream)
             Text("Loading checkout…")
-                .font(.subheadline)
+                .font(InteraFont.subheadline)
                 .foregroundStyle(Color.lavaShellCreamSecondary)
         }
         .frame(maxWidth: .infinity)
@@ -214,7 +214,7 @@ struct ConsumerPaymentTakeoverView: View {
         VStack(spacing: 24) {
             paymentGlassCard {
                 Text(message)
-                    .font(.subheadline)
+                    .font(InteraFont.subheadline)
                     .foregroundStyle(Color.lavaShellCreamSecondary)
                     .multilineTextAlignment(.center)
             }
@@ -261,7 +261,7 @@ struct ConsumerPaymentTakeoverView: View {
                         )
 
                         Text(displayBarberName)
-                            .font(.system(size: 17, weight: .semibold, design: .default))
+                            .font(InteraFont.system(size: 17, weight: .semibold, design: .default))
                             .foregroundStyle(Color.lavaShellCream)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
@@ -269,7 +269,7 @@ struct ConsumerPaymentTakeoverView: View {
                             .frame(maxWidth: 260)
 
                         Text(payload.displayServiceName)
-                            .font(.system(size: 14, weight: .medium, design: .default))
+                            .font(InteraFont.system(size: 14, weight: .medium, design: .default))
                             .foregroundStyle(Color.lavaShellCreamSecondary)
                             .kerning(paymentServiceTitleKerning)
                             .multilineTextAlignment(.center)
@@ -278,13 +278,13 @@ struct ConsumerPaymentTakeoverView: View {
                     }
 
                     Text(payload.priceFormatted)
-                        .font(.system(size: 36, weight: .bold, design: .default))
+                        .font(InteraFont.system(size: 36, weight: .bold, design: .default))
                         .foregroundStyle(Color.lavaShellCream)
                         .multilineTextAlignment(.center)
 
                     VStack(alignment: .center, spacing: 14) {
                         Text("Tip")
-                            .font(.caption.weight(.semibold))
+                            .font(InteraFont.caption.weight(.semibold))
                             .foregroundStyle(Color.lavaShellCreamTertiary)
                             .textCase(.uppercase)
                             .tracking(1.2)
@@ -295,7 +295,7 @@ struct ConsumerPaymentTakeoverView: View {
 
                     VStack(spacing: 20) {
                         Text(isApplePayConfigured ? "Pay online with Apple Pay or your card." : "Pay online with your card.")
-                            .font(.subheadline)
+                            .font(InteraFont.subheadline)
                             .foregroundStyle(Color.lavaShellCreamTertiary)
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
@@ -316,7 +316,7 @@ struct ConsumerPaymentTakeoverView: View {
 
                         if let bannerError {
                             Text(bannerError)
-                                .font(.caption)
+                                .font(InteraFont.caption)
                                 .foregroundStyle(Color.red.opacity(0.92))
                                 .multilineTextAlignment(.center)
                         }
@@ -328,7 +328,7 @@ struct ConsumerPaymentTakeoverView: View {
 
     private var paymentMethodOrDivider: some View {
         Text("or")
-            .font(.subheadline.weight(.semibold))
+            .font(InteraFont.subheadline.weight(.semibold))
             .foregroundStyle(Color.lavaShellCreamTertiary)
             .frame(maxWidth: .infinity)
             .accessibilityLabel("or")
@@ -340,7 +340,7 @@ struct ConsumerPaymentTakeoverView: View {
                 + Text("Cash").fontWeight(.semibold)
                 + Text(" option below.")
         )
-        .font(.footnote)
+        .font(InteraFont.footnote)
         .foregroundStyle(Color.lavaShellCreamTertiary)
         .multilineTextAlignment(.center)
         .fixedSize(horizontal: false, vertical: true)
@@ -379,7 +379,7 @@ struct ConsumerPaymentTakeoverView: View {
                         .tint(Color.paymentFilledButtonLabel)
                 } else {
                     Image(systemName: "creditcard.fill")
-                        .font(.title3.weight(.semibold))
+                        .font(InteraFont.title3.weight(.semibold))
                         .foregroundStyle(Color.paymentFilledButtonLabel)
                 }
                 Text(isPaying ? "Opening…" : "Card")
@@ -406,7 +406,7 @@ struct ConsumerPaymentTakeoverView: View {
                         .tint(Color.paymentOutlineButtonLabel)
                 } else {
                     Image(systemName: "banknote")
-                        .font(.subheadline.weight(.semibold))
+                        .font(InteraFont.subheadline.weight(.semibold))
                 }
                 Text(isConfirmingCash ? "Completing…" : "Cash")
                     .font(paymentCashActionLabelFont)
@@ -452,7 +452,7 @@ struct ConsumerPaymentTakeoverView: View {
             }
         } label: {
             Text(preset.label)
-                .font(.subheadline.weight(selected ? .bold : .semibold))
+                .font(InteraFont.subheadline.weight(selected ? .bold : .semibold))
                 .foregroundStyle(selected ? Color.paymentTipSelectedLabel : Color.paymentOutlineButtonLabel)
                 .padding(.horizontal, selected ? 18 : 16)
                 .padding(.vertical, selected ? 12 : 10)

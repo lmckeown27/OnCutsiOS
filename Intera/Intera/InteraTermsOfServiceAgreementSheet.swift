@@ -21,7 +21,7 @@ struct InteraTermsOfServiceDocumentScrollView: View {
             LazyVStack(alignment: .leading, spacing: 20) {
                 ForEach(Array(InteraTermsOfService.sectionParagraphs.enumerated()), id: \.offset) { _, section in
                     Text(section)
-                        .font(.body)
+                        .font(InteraFont.body)
                         .foregroundStyle(.primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }

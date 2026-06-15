@@ -278,9 +278,9 @@ struct ConsumerHomeScreen: View {
                     } label: {
                         HStack(spacing: .space1) {
                             Image(systemName: "chevron.left")
-                                .font(.body)
+                                .font(InteraFont.body)
                             Text("Services")
-                                .font(.bodyMedium)
+                                .font(InteraFont.bodyMedium)
                         }
                         .foregroundStyle(Color.brand)
                     }
@@ -298,7 +298,7 @@ struct ConsumerHomeScreen: View {
                             showMaxDistanceSheet = true
                         } label: {
                             Image(systemName: "location.circle")
-                                .font(.body.weight(.semibold))
+                                .font(InteraFont.body.weight(.semibold))
                                 .foregroundStyle(Color.brand)
                         }
                         .accessibilityLabel("Maximum search distance")
@@ -814,11 +814,11 @@ struct ConsumerHomeScreen: View {
             Spacer()
             
             Image(systemName: trimmed.isEmpty ? "scissors" : "magnifyingglass")
-                .font(.system(size: 60))
+                .font(InteraFont.system(size: 60))
                 .foregroundStyle(Color.lavaShellCreamTertiary)
             
             Text(trimmed.isEmpty ? "No providers available" : "No matching providers")
-                .font(.headlineMedium)
+                .font(InteraFont.headlineMedium)
                 .foregroundStyle(Color.lavaShellCream)
             
             Text(trimmed.isEmpty ? "Check back later for available service providers" : "Try a different search or category.")
@@ -839,7 +839,7 @@ struct ConsumerHomeScreen: View {
                 if let current = currentBooking {
                     VStack(alignment: .leading, spacing: .space3) {
                         Text("YOUR BOOKING")
-                            .font(.labelSmall)
+                            .font(InteraFont.labelSmall)
                             .foregroundStyle(Color.neutral500)
                             .padding(.horizontal, .space4)
                         
@@ -862,7 +862,7 @@ struct ConsumerHomeScreen: View {
                 if !pastBookings.isEmpty {
                     VStack(alignment: .leading, spacing: .space3) {
                         Text("HISTORY")
-                            .font(.labelSmall)
+                            .font(InteraFont.labelSmall)
                             .foregroundStyle(Color.neutral500)
                             .padding(.horizontal, .space4)
                             .padding(.top, .space6)
@@ -874,7 +874,7 @@ struct ConsumerHomeScreen: View {
                         
                         if pastBookings.count > 3 {
                             Text("+ \(pastBookings.count - 3) more")
-                                .font(.bodySmall)
+                                .font(InteraFont.bodySmall)
                                 .foregroundStyle(Color.neutral500)
                                 .padding(.horizontal, .space4)
                                 .padding(.top, .space2)
@@ -892,11 +892,11 @@ struct ConsumerHomeScreen: View {
     private var emptyBookingsState: some View {
         VStack(spacing: .space4) {
             Image(systemName: "calendar")
-                .font(.system(size: 60))
+                .font(InteraFont.system(size: 60))
                 .foregroundStyle(Color.lavaShellCreamTertiary)
             
             Text("No booking yet")
-                .font(.headlineMedium)
+                .font(InteraFont.headlineMedium)
                 .foregroundStyle(Color.lavaShellCream)
             
             Text("Select a barber to book your appointment")
@@ -1240,7 +1240,7 @@ private struct ServiceProviderDetailPresentationOverlay: View {
 private var serviceProviderBookButtonLabelColor: Color { Color.interaShellBackground }
 
 /// Same as `TimelineSectionHeader` “Today”: 28pt **bold** (system).
-private let serviceProviderReserveTitleFont = Font.system(size: 28, weight: .bold, design: .default)
+private let serviceProviderReserveTitleFont = InteraFont.system(size: 28, weight: .bold, design: .default)
 
 /// Brief delay after finger lifts so the press spring can start before presenting booking (keep small for snappy navigation).
 private let serviceProviderBookButtonSpringSettleSeconds: TimeInterval = 0.16
@@ -1490,7 +1490,7 @@ struct ServiceProviderDetailSheet: View {
                                     .fill(Color.brand.opacity(0.2))
                                     .overlay(
                                         Text(provider.businessName.prefix(2).uppercased())
-                                            .font(.title)
+                                            .font(InteraFont.title)
                                             .foregroundStyle(Color.brand)
                                     )
                             }
@@ -1502,7 +1502,7 @@ struct ServiceProviderDetailSheet: View {
                                 .frame(width: 120, height: 120)
                                 .overlay(
                                     Text(provider.businessName.prefix(2).uppercased())
-                                        .font(.title)
+                                        .font(InteraFont.title)
                                         .foregroundStyle(Color.brand)
                                 )
                         }
@@ -1510,16 +1510,16 @@ struct ServiceProviderDetailSheet: View {
                         // Name & availability only — rating lives in its own section below (not stacked on the hero).
                         VStack(spacing: 12) {
                             Text(provider.businessName)
-                                .font(.headlineLarge)
+                                .font(InteraFont.headlineLarge)
                                 .foregroundStyle(detailHeadlineColor)
 
                             if let distanceLabel = provider.formattedDistanceFromUser {
                                 HStack(spacing: 6) {
                                     Image(systemName: "location.circle.fill")
-                                        .font(.body.weight(.semibold))
+                                        .font(InteraFont.body.weight(.semibold))
                                         .accessibilityHidden(true)
                                     Text(distanceLabel)
-                                        .font(.subheadline.weight(.semibold))
+                                        .font(InteraFont.subheadline.weight(.semibold))
                                 }
                                 .foregroundStyle(detailSubtleColor)
                                 .accessibilityElement(children: .combine)
@@ -1532,7 +1532,7 @@ struct ServiceProviderDetailSheet: View {
                                         .fill(Color.success)
                                         .frame(width: 8, height: 8)
                                     Text("Available Now")
-                                        .font(.labelSmall)
+                                        .font(InteraFont.labelSmall)
                                 }
                                 .foregroundStyle(Color.success)
                                 .padding(.horizontal, 16)
@@ -1548,11 +1548,11 @@ struct ServiceProviderDetailSheet: View {
                     if let bio = provider.bio {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("About")
-                                .font(.headlineSmall)
+                                .font(InteraFont.headlineSmall)
                                 .foregroundStyle(detailHeadlineColor)
                             
                             Text(bio)
-                                .font(.bodyMedium)
+                                .font(InteraFont.bodyMedium)
                                 .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary : Color.white.opacity(0.85))
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -1571,29 +1571,29 @@ struct ServiceProviderDetailSheet: View {
                     if let instagramURL = provider.instagramProfileURL {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Social")
-                                .font(.headlineSmall)
+                                .font(InteraFont.headlineSmall)
                                 .foregroundStyle(detailHeadlineColor)
                             
                             Link(destination: instagramURL) {
                                 HStack(spacing: 12) {
                                     Image(systemName: "camera.fill")
-                                        .font(.body)
+                                        .font(InteraFont.body)
                                         .foregroundStyle(detailEmphasisColor)
                                         .accessibilityHidden(true)
                                     
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text("Instagram")
-                                            .font(.caption)
+                                            .font(InteraFont.caption)
                                             .foregroundStyle(detailCaptionColor)
                                         Text(provider.instagramDisplayHandle)
-                                            .font(.bodyMedium)
+                                            .font(InteraFont.bodyMedium)
                                             .foregroundStyle(detailHeadlineColor)
                                     }
                                     
                                     Spacer(minLength: 8)
                                     
                                     Image(systemName: "arrow.up.right.circle.fill")
-                                        .font(.title3)
+                                        .font(InteraFont.title3)
                                         .symbolRenderingMode(.hierarchical)
                                         .foregroundStyle(detailBodyColor)
                                         .accessibilityHidden(true)
@@ -1628,7 +1628,7 @@ struct ServiceProviderDetailSheet: View {
                     if let services = provider.services, !services.isEmpty {
                         VStack(alignment: .center, spacing: 16) {
                             Text("Services")
-                                .font(.headlineSmall)
+                                .font(InteraFont.headlineSmall)
                                 .foregroundStyle(detailHeadlineColor)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             
@@ -1636,7 +1636,7 @@ struct ServiceProviderDetailSheet: View {
                                 ForEach(services) { service in
                                     HStack(spacing: 4) {
                                         Text(service.name)
-                                            .font(.bodyMedium)
+                                            .font(InteraFont.bodyMedium)
                                             .foregroundStyle(detailEmphasisColor)
                                         
                                         Text("•")
@@ -1644,7 +1644,7 @@ struct ServiceProviderDetailSheet: View {
                                             .padding(.leading, 4)
                                         
                                         Text(service.formattedPrice)
-                                            .font(.bodyMedium)
+                                            .font(InteraFont.bodyMedium)
                                             .fontWeight(.medium)
                                             .foregroundStyle(detailEmphasisColor)
                                     }
@@ -1658,7 +1658,7 @@ struct ServiceProviderDetailSheet: View {
                     if let availability = provider.availability, !availability.isEmpty {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Availability")
-                                .font(.headlineSmall)
+                                .font(InteraFont.headlineSmall)
                                 .foregroundStyle(detailHeadlineColor)
                             
                             // First row: Days 0-3 (Mon-Thu)
@@ -1667,7 +1667,7 @@ struct ServiceProviderDetailSheet: View {
                                 HStack(spacing: 8) {
                                     ForEach(availability.prefix(4)) { day in
                                         Text(day.dayOfWeek)
-                                            .font(.caption)
+                                            .font(InteraFont.caption)
                                             .fontWeight(.medium)
                                             .foregroundStyle(detailEmphasisColor)
                                             .frame(maxWidth: .infinity)
@@ -1681,7 +1681,7 @@ struct ServiceProviderDetailSheet: View {
                                         ForEach(availability.prefix(4)) { day in
                                             if slotIndex < day.timeSlots.count {
                                                 Text(day.timeSlots[slotIndex])
-                                                    .font(.caption2)
+                                                    .font(InteraFont.caption2)
                                                     .foregroundStyle(detailBodyColor)
                                                     .frame(maxWidth: .infinity)
                                                     .multilineTextAlignment(.center)
@@ -1701,7 +1701,7 @@ struct ServiceProviderDetailSheet: View {
                                     HStack(spacing: 8) {
                                         ForEach(availability.suffix(from: 4)) { day in
                                             Text(day.dayOfWeek)
-                                                .font(.caption)
+                                                .font(InteraFont.caption)
                                                 .fontWeight(.medium)
                                                 .foregroundStyle(detailEmphasisColor)
                                                 .frame(maxWidth: .infinity)
@@ -1722,7 +1722,7 @@ struct ServiceProviderDetailSheet: View {
                                             ForEach(availability.suffix(from: 4)) { day in
                                                 if slotIndex < day.timeSlots.count {
                                                     Text(day.timeSlots[slotIndex])
-                                                        .font(.caption2)
+                                                        .font(InteraFont.caption2)
                                                         .foregroundStyle(detailBodyColor)
                                                         .frame(maxWidth: .infinity)
                                                         .multilineTextAlignment(.center)
@@ -1749,13 +1749,13 @@ struct ServiceProviderDetailSheet: View {
                     if let locations = provider.locations, !locations.isEmpty {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Locations")
-                                .font(.headlineSmall)
+                                .font(InteraFont.headlineSmall)
                                 .foregroundStyle(detailHeadlineColor)
                             
                             VStack(alignment: .leading, spacing: 12) {
                                 ForEach(locations, id: \.self) { location in
                                     Text(location)
-                                        .font(.bodyMedium)
+                                        .font(InteraFont.bodyMedium)
                                         .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary : Color.white.opacity(0.9))
                                 }
                             }
@@ -1850,7 +1850,7 @@ struct ServiceProviderDetailSheet: View {
             onDismiss()
         } label: {
             Image(systemName: "xmark")
-                .font(.system(size: 16, weight: .semibold))
+                .font(InteraFont.system(size: 16, weight: .semibold))
                 .foregroundStyle(useVibrantLiquidGlassStyling ? Color.primary : Color.white.opacity(0.92))
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
@@ -1893,10 +1893,10 @@ private struct ProviderDetailRatingSummaryRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "star.fill")
-                .font(.title3.weight(.semibold))
+                .font(InteraFont.title3.weight(.semibold))
                 .foregroundStyle(Color.yellow)
             Text(String(format: "%.1f", averageRating))
-                .font(.title3.weight(.semibold))
+                .font(InteraFont.title3.weight(.semibold))
                 .foregroundStyle(detailHeadlineColor)
             Spacer(minLength: 0)
         }
@@ -1925,31 +1925,31 @@ private struct ProviderDetailReviewsPreviewSection: View {
         VStack(alignment: .leading, spacing: 12) {
             if isLoadingReviews && reviews.isEmpty {
                 Text("Reviews")
-                    .font(.headlineSmall)
+                    .font(InteraFont.headlineSmall)
                     .foregroundStyle(detailHeadlineColor)
                 HStack(spacing: 10) {
                     ProgressView()
                     Text("Loading reviews…")
-                        .font(.bodyMedium)
+                        .font(InteraFont.bodyMedium)
                         .foregroundStyle(detailSubtleColor)
                 }
             } else if reviews.isEmpty {
                 Text("Reviews")
-                    .font(.headlineSmall)
+                    .font(InteraFont.headlineSmall)
                     .foregroundStyle(detailHeadlineColor)
                 Text("No reviews yet")
-                    .font(.bodyMedium)
+                    .font(InteraFont.bodyMedium)
                     .foregroundStyle(detailSubtleColor)
             } else {
                 Button(action: onShowAll) {
                     VStack(alignment: .leading, spacing: 14) {
                         HStack {
                             Text("Reviews")
-                                .font(.headlineSmall)
+                                .font(InteraFont.headlineSmall)
                                 .foregroundStyle(detailHeadlineColor)
                             Spacer(minLength: 8)
                             Image(systemName: "chevron.right")
-                                .font(.subheadline.weight(.semibold))
+                                .font(InteraFont.subheadline.weight(.semibold))
                                 .foregroundStyle(detailSubtleColor)
                         }
 
@@ -1969,7 +1969,7 @@ private struct ProviderDetailReviewsPreviewSection: View {
 
                         if reviews.count > 2 {
                             Text("See all reviews")
-                                .font(.subheadline.weight(.semibold))
+                                .font(InteraFont.subheadline.weight(.semibold))
                                 .foregroundStyle(useVibrantLiquidGlassStyling ? Color.oliveGreen : Color.white.opacity(0.95))
                         }
                     }
@@ -1998,7 +1998,7 @@ private struct ProviderReviewRowContent: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Text(review.authorDisplayName)
-                    .font(.bodyMedium.weight(.semibold))
+                    .font(InteraFont.bodyMedium.weight(.semibold))
                     .foregroundStyle(detailEmphasisColor)
                 Spacer(minLength: 8)
                 if let stars = review.rating {
@@ -2007,12 +2007,12 @@ private struct ProviderReviewRowContent: View {
             }
             HStack(spacing: 6) {
                 Text(review.relativeDate)
-                    .font(.caption)
+                    .font(InteraFont.caption)
                     .foregroundStyle(detailCaptionColor)
             }
             if let text = review.comment, !text.isEmpty {
                 Text(text)
-                    .font(.bodySmall)
+                    .font(InteraFont.bodySmall)
                     .foregroundStyle(detailBodyColor)
                     .lineLimit(multilineComment ? nil : 3)
                     .multilineTextAlignment(.leading)
@@ -2028,7 +2028,7 @@ private struct ProviderReviewStarsRow: View {
         HStack(spacing: 2) {
             ForEach(0 ..< 5, id: \.self) { i in
                 Image(systemName: i < rating ? "star.fill" : "star")
-                    .font(.caption.weight(.semibold))
+                    .font(InteraFont.caption.weight(.semibold))
                     .foregroundStyle(i < rating ? Color.yellow : Color.gray.opacity(0.45))
             }
         }
@@ -2132,12 +2132,12 @@ private struct StatItem: View {
     var body: some View {
         VStack(spacing: 4) {
             Text(value)
-                .font(.bodyMedium)
+                .font(InteraFont.bodyMedium)
                 .fontWeight(.semibold)
                 .foregroundStyle(useVibrantLiquidGlassStyling ? Color.primary : Color.white)
             
             Text(label)
-                .font(.labelSmall)
+                .font(InteraFont.labelSmall)
                 .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary : Color.white.opacity(0.7))
         }
         .frame(maxWidth: .infinity)
@@ -2704,7 +2704,7 @@ struct UnifiedProviderHomeScreen: View {
                             showMaxDistanceSheet = true
                         } label: {
                             Image(systemName: "location.circle")
-                                .font(.body.weight(.semibold))
+                                .font(InteraFont.body.weight(.semibold))
                                 .foregroundStyle(Color.brand)
                         }
                         .accessibilityLabel("Maximum search distance")
@@ -3354,10 +3354,10 @@ struct UnifiedProviderHomeScreen: View {
         return VStack(spacing: .space4) {
             Spacer()
             Image(systemName: trimmed.isEmpty ? "person.2" : "magnifyingglass")
-                .font(.system(size: 60))
+                .font(InteraFont.system(size: 60))
                 .foregroundStyle(Color.lavaShellCreamTertiary)
             Text(trimmed.isEmpty ? "No providers available" : "No matching providers")
-                .font(.headlineMedium)
+                .font(InteraFont.headlineMedium)
                 .foregroundStyle(Color.lavaShellCream)
             Text(trimmed.isEmpty ? "Check back later" : "Try a different search or category.")
                 .campusCutsStyle(.bodyMedium)
@@ -3509,7 +3509,7 @@ struct CategoryChip: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.bodySmall)
+                .font(InteraFont.bodySmall)
             .fontWeight(isSelected ? .semibold : .medium)
             .foregroundStyle(
                 isEnabled

@@ -164,15 +164,15 @@ struct HomeView: View {
     private var welcomeHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Welcome back,")
-                .font(.title3)
+                .font(InteraFont.title3)
                 .foregroundStyle(.secondary)
             
             Text(sessionManager.currentSession?.displayName ?? "User")
-                .font(.system(size: 32, weight: .bold))
+                .font(InteraFont.system(size: 32, weight: .bold))
             
             if let role = sessionManager.currentSession?.role {
                 Text(role.displayName)
-                    .font(.subheadline)
+                    .font(InteraFont.subheadline)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 4)
                     .background(Color.blue.opacity(0.2))
@@ -186,7 +186,7 @@ struct HomeView: View {
     private var quickActionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Quick Actions")
-                .font(.headline)
+                .font(InteraFont.headline)
             
             LazyVGrid(columns: [
                 GridItem(.flexible()),
@@ -230,7 +230,7 @@ struct HomeView: View {
     private var recentActivitySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Recent Activity")
-                .font(.headline)
+                .font(InteraFont.headline)
             
             VStack(spacing: 12) {
                 ActivityRow(
@@ -270,11 +270,11 @@ struct QuickActionCard: View {
         Button(action: action) {
             VStack(spacing: 12) {
                 Image(systemName: icon)
-                    .font(.system(size: 32))
+                    .font(InteraFont.system(size: 32))
                     .foregroundStyle(color)
                 
                 Text(title)
-                    .font(.subheadline)
+                    .font(InteraFont.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(.primary)
             }
@@ -303,15 +303,15 @@ struct ActivityRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .foregroundStyle(color)
-                .font(.title3)
+                .font(InteraFont.title3)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.subheadline)
+                    .font(InteraFont.subheadline)
                     .fontWeight(.medium)
                 
                 Text(subtitle)
-                    .font(.caption)
+                    .font(InteraFont.caption)
                     .foregroundStyle(.secondary)
             }
             

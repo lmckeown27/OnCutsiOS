@@ -207,14 +207,14 @@ struct MessagingInboxRowLabel: View {
     var unreadCount: Int? = nil
 
     /// Matches `TimelineSectionHeader` “Today” (`size: 28`, bold, default design) + bookings brand color.
-    private static let senderNameFont = Font.system(size: 28, weight: .bold, design: .default)
+    private static let senderNameFont = InteraFont.system(size: 28, weight: .bold, design: .default)
     /// Larger than thread header tile so the row reads **provider-first**; width leaves room for a capped preview chip.
     private static let inboxRowAvatarSize: CGFloat = 128
     private static let inboxRowAvatarCornerRadius: CGFloat = 18
     private static let inboxRowAvatarInitialFont: CGFloat = 44
 
     /// Occupation · service under the preview (same face as prior trailing line).
-    private static let occupationServiceFont = Font.system(size: 14, weight: .medium, design: .default)
+    private static let occupationServiceFont = InteraFont.system(size: 14, weight: .medium, design: .default)
     private static let occupationServiceKerning: CGFloat = 2.2
     /// Caps preview bubble width so the column sits further **right** of the enlarged avatar.
     private static let messagePreviewMaxWidth: CGFloat = 300
@@ -284,7 +284,7 @@ struct MessagingInboxRowLabel: View {
 
                     if let line = booking?.inboxBookingContextSubtitle, !line.isEmpty {
                         Text(line)
-                            .font(.subheadline.weight(.medium))
+                            .font(InteraFont.subheadline.weight(.medium))
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                             .opacity(rowTerminalDim ? 0.72 : 1)
@@ -292,11 +292,11 @@ struct MessagingInboxRowLabel: View {
                     if let loc = booking?.inboxLocationDisplayLine, !loc.isEmpty {
                         HStack(alignment: .top, spacing: 6) {
                             Image(systemName: "mappin.and.ellipse")
-                                .font(.caption.weight(.semibold))
+                                .font(InteraFont.caption.weight(.semibold))
                                 .foregroundStyle(Color.oliveGreen)
                                 .frame(width: 14, alignment: .leading)
                             Text(loc)
-                                .font(.caption)
+                                .font(InteraFont.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -308,7 +308,7 @@ struct MessagingInboxRowLabel: View {
 
                     HStack(alignment: .top, spacing: 8) {
                         Text(messageBoxDisplayText)
-                            .font(.headlineSmall)
+                            .font(InteraFont.headlineSmall)
                             .foregroundStyle(messageBoxForeground)
                             .lineSpacing(Self.previewLineSpacing)
                             .lineLimit(3)
@@ -1331,7 +1331,7 @@ struct MessagingConversationView: View {
             instagramStickyHeader
             if let moderationBanner, !moderationBanner.isEmpty {
                 Text(moderationBanner)
-                    .font(.caption.weight(.semibold))
+                    .font(InteraFont.caption.weight(.semibold))
                     .foregroundStyle(Color.lavaShellCream)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -1474,9 +1474,9 @@ struct MessagingConversationView: View {
     }
 
     /// `TimelineSectionHeader` “Today” — provider name in the sticky bar.
-    private static let headerNameFont = Font.system(size: 28, weight: .bold, design: .default)
+    private static let headerNameFont = InteraFont.system(size: 28, weight: .bold, design: .default)
     /// `TimelineSectionHeader` “Past” — tracked status line.
-    private static let headerStatusFont = Font.system(size: 14, weight: .medium, design: .default)
+    private static let headerStatusFont = InteraFont.system(size: 14, weight: .medium, design: .default)
     private static let headerStatusKerning: CGFloat = 2.2
     /// Square provider photo on top, then status, then name — matches inbox row size for morph from list.
     private static let stickyHeaderAvatarSize: CGFloat = 104
@@ -1619,7 +1619,7 @@ struct MessagingConversationView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 26, weight: .medium))
+                        .font(InteraFont.system(size: 26, weight: .medium))
                         .foregroundStyle(Color.lavaShellCream)
                         .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
@@ -1733,7 +1733,7 @@ struct MessagingConversationView: View {
             Image(systemName: "hourglass")
                 .foregroundStyle(Color.lavaShellCream.opacity(0.9))
             Text(waitingForProviderChromeHeadline)
-                .font(.subheadline.weight(.semibold))
+                .font(InteraFont.subheadline.weight(.semibold))
                 .foregroundStyle(Color.lavaShellCream)
             Spacer()
         }
@@ -1751,7 +1751,7 @@ struct MessagingConversationView: View {
         HStack(alignment: .bottom, spacing: 10) {
             PhotosPicker(selection: $pickerItem, matching: .images) {
                 Image(systemName: "photo.on.rectangle.angled")
-                    .font(.title3)
+                    .font(InteraFont.title3)
                     .foregroundStyle(Color.oliveGreen)
                     .frame(width: 36, height: 36)
             }
@@ -1781,7 +1781,7 @@ struct MessagingConversationView: View {
                 #endif
             } label: {
                 Image(systemName: "plus")
-                    .font(.title3.weight(.semibold))
+                    .font(InteraFont.title3.weight(.semibold))
                     .foregroundStyle(Color.oliveGreen)
                     .frame(width: 36, height: 36)
             }
@@ -1803,7 +1803,7 @@ struct MessagingConversationView: View {
                 Task { await vm.sendText() }
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 32))
+                    .font(InteraFont.system(size: 32))
                     .foregroundStyle(Color.oliveGreen)
             }
             .disabled(vm.draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -1848,10 +1848,10 @@ struct MessagingConversationView: View {
                             case .failure:
                                 VStack(spacing: 8) {
                                     Image(systemName: "photo.badge.exclamationmark")
-                                        .font(.title2)
+                                        .font(InteraFont.title2)
                                         .foregroundStyle(Color.lavaShellCream.opacity(0.85))
                                     Text("Couldn’t load this image.")
-                                        .font(.caption.weight(.semibold))
+                                        .font(InteraFont.caption.weight(.semibold))
                                         .foregroundStyle(Color.lavaShellCream.opacity(0.9))
                                         .multilineTextAlignment(.center)
                                 }
@@ -1871,7 +1871,7 @@ struct MessagingConversationView: View {
                 if !msg.text.isEmpty {
                     messagingLiquidTextBubble(isOutgoing: outgoing) {
                         Text(msg.text)
-                            .font(.bodyMedium)
+                            .font(InteraFont.bodyMedium)
                             .foregroundStyle(outgoing ? MessagingOutgoingBubbleStyle.labelColor : Color.lavaShellCream)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
@@ -1882,7 +1882,7 @@ struct MessagingConversationView: View {
                           msg.serverMessageIdForReport != nil {
                     messagingLiquidTextBubble(isOutgoing: false) {
                         Text("This message couldn’t be shown.")
-                            .font(.caption.weight(.semibold))
+                            .font(InteraFont.caption.weight(.semibold))
                             .foregroundStyle(Color.lavaShellCream.opacity(0.88))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
@@ -1953,14 +1953,14 @@ struct MessagingUGCTermsGateView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Before you message")
-                        .font(.title3.weight(.bold))
+                        .font(InteraFont.title3.weight(.bold))
                     Text("Messages & community safety")
-                        .font(.subheadline.weight(.semibold))
+                        .font(InteraFont.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text(
                         "\(AppBranding.displayName) lets you message providers about bookings. By continuing, you agree to our Terms of Service and acknowledge that messages are user-generated content: some text may be filtered automatically, you can report objectionable messages or conversations, and you can block abusive users (we are notified when you block). Our team reviews serious reports as soon as possible and aims to act within 24 hours, including removing content or restricting accounts when appropriate."
                     )
-                    .font(.subheadline)
+                    .font(InteraFont.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -1972,7 +1972,7 @@ struct MessagingUGCTermsGateView: View {
                             Label("Privacy Policy", systemImage: "hand.raised")
                         }
                     }
-                    .font(.subheadline.weight(.semibold))
+                    .font(InteraFont.subheadline.weight(.semibold))
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
@@ -1987,7 +1987,7 @@ struct MessagingUGCTermsGateView: View {
                     Button("I agree") {
                         onAccept()
                     }
-                    .font(.body.weight(.semibold))
+                    .font(InteraFont.body.weight(.semibold))
                 }
             }
         }
@@ -2027,7 +2027,7 @@ private struct MessagingThreadBookingDetailsView: View {
                     onClose()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 24))
+                        .font(InteraFont.system(size: 24))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(Color.lavaShellCream.opacity(0.85))
                 }
@@ -2077,11 +2077,11 @@ private struct MessagingThreadBookingDetailsView: View {
     private func bookingDetailRow(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title.uppercased())
-                .font(.system(size: 14, weight: .medium, design: .default))
+                .font(InteraFont.system(size: 14, weight: .medium, design: .default))
                 .foregroundStyle(Color.lavaShellCreamSecondary)
                 .kerning(2.0)
             Text(value)
-                .font(.system(size: 17, weight: .regular, design: .serif))
+                .font(InteraFont.system(size: 17, weight: .regular, design: .serif))
                 .foregroundStyle(Color.lavaShellCream)
                 .fixedSize(horizontal: false, vertical: true)
         }

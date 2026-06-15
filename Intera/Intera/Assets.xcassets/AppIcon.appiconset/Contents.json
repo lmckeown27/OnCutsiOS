@@ -1,112 +1,97 @@
 {
   "images" : [
     {
-      "filename" : "Tab_Chair copy 8.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "2x",
       "size" : "20x20"
     },
     {
-      "filename" : "Tab_Chair copy 9.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "3x",
       "size" : "20x20"
     },
     {
-      "filename" : "Tab_Chair copy 10.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "2x",
       "size" : "29x29"
     },
     {
-      "filename" : "Tab_Chair copy 11.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "3x",
       "size" : "29x29"
     },
     {
-      "filename" : "Tab_Chair copy 12.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "2x",
       "size" : "38x38"
     },
     {
-      "filename" : "Tab_Chair copy 13.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "3x",
       "size" : "38x38"
     },
     {
-      "filename" : "Tab_Chair copy 14.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "2x",
       "size" : "40x40"
     },
     {
-      "filename" : "Tab_Chair copy 15.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "3x",
       "size" : "40x40"
     },
     {
-      "filename" : "Tab_Chair copy 16.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "2x",
       "size" : "60x60"
     },
     {
-      "filename" : "Tab_Chair copy 17.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "3x",
       "size" : "60x60"
     },
     {
-      "filename" : "Tab_Chair copy 18.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "2x",
       "size" : "64x64"
     },
     {
-      "filename" : "Tab_Chair copy 19.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "3x",
       "size" : "64x64"
     },
     {
-      "filename" : "Tab_Chair copy 20.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "2x",
       "size" : "68x68"
     },
     {
-      "filename" : "Tab_Chair copy 21.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "2x",
       "size" : "76x76"
     },
     {
-      "filename" : "Tab_Chair copy 22.png",
       "idiom" : "universal",
       "platform" : "ios",
       "scale" : "2x",
       "size" : "83.5x83.5"
     },
     {
-      "filename" : "Tab_Chair copy.png",
+      "filename" : "New CampusCuts Logo.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -298,7 +283,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "Tab_Chair copy 1.png",
+      "filename" : "New CampusCuts Logo 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -490,43 +475,37 @@
           "value" : "tinted"
         }
       ],
-      "filename" : "Tab_Chair copy 23.png",
+      "filename" : "New CampusCuts Logo 2.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
     },
     {
-      "filename" : "Tab_Chair copy 2.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "16x16"
     },
     {
-      "filename" : "Tab_Chair copy 3.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "16x16"
     },
     {
-      "filename" : "Tab_Chair copy 7.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "32x32"
     },
     {
-      "filename" : "Tab_Chair copy 4.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "32x32"
     },
     {
-      "filename" : "Tab_Chair copy 5.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "128x128"
     },
     {
-      "filename" : "Tab_Chair copy 6.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "128x128"
@@ -547,6 +526,7 @@
       "size" : "512x512"
     },
     {
+      "filename" : "New CampusCuts Logo 3.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "512x512"

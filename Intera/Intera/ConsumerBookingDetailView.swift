@@ -59,8 +59,8 @@ struct ConsumerBookingDetailView: View {
 
     @State private var scheduleEditSlotsError: String?
     @State private var scheduleEditSlotRows: [BookingRibbonSlot] = []
+    @State private var scheduleEditAvailableTimeKeys: Set<String> = []
     @State private var scheduleEditSlotsLoading = false
-    @State private var editTimePickerKey: String?
 
     @State private var alternativeServiceNames: [String] = []
     @State private var alternativeLocationNames: [String] = []
@@ -91,13 +91,6 @@ struct ConsumerBookingDetailView: View {
         let f = DateFormatter()
         f.dateStyle = .full
         f.timeStyle = .none
-        return f
-    }()
-
-    private static let timeOnlyDF: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .none
-        f.timeStyle = .short
         return f
     }()
 
@@ -145,8 +138,12 @@ struct ConsumerBookingDetailView: View {
     }
 
     private var hasRescheduleDraftChanges: Bool {
-        let scheduleDelta = abs(draftScheduledAt.timeIntervalSince(rescheduleDraftBaselineDate))
-        if scheduleDelta > 60 { return true }
+        var pacificCal = Calendar(identifier: .gregorian)
+        pacificCal.timeZone = BookingPacificSchedule.pacificTimeZone
+        let baseline = rescheduleDraftBaselineDate
+        if pacificCal.startOfDay(for: draftScheduledAt) != pacificCal.startOfDay(for: baseline) { return true }
+        if BookingPacificSchedule.pacificHHmmKey(from: draftScheduledAt)
+            != BookingPacificSchedule.pacificHHmmKey(from: baseline) { return true }
         let locDraft = draftLocation.trimmingCharacters(in: .whitespacesAndNewlines)
         if locDraft != rescheduleDraftBaselineLocation.trimmingCharacters(in: .whitespacesAndNewlines) { return true }
         let notesDraft = draftNotes.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -240,7 +237,7 @@ struct ConsumerBookingDetailView: View {
                 if showsPayForServiceCTA {
                     VStack(spacing: 12) {
                         Text(payForServiceSubtitle)
-                            .font(.subheadline)
+                            .font(InteraFont.subheadline)
                             .foregroundStyle(BookingSelectorTheme.cream.opacity(0.88))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 8)
@@ -468,7 +465,7 @@ struct ConsumerBookingDetailView: View {
                         .tint(BookingSelectorTheme.cream)
                 }
                 Image(systemName: "message.fill")
-                    .font(.body.weight(.semibold))
+                    .font(InteraFont.body.weight(.semibold))
                 Text("Messages")
                     .font(BookingSelectorTheme.todayBoldFont)
             }
@@ -624,7 +621,7 @@ struct ConsumerBookingDetailView: View {
             RoundedRectangle(cornerRadius: BookingSelectorTheme.cornerRadius, style: .continuous)
                 .fill(BookingSelectorTheme.cream.opacity(0.12))
             Text(bookingRow.barberDisplayName.prefix(1).uppercased())
-                .font(.system(size: 44, weight: .bold, design: .rounded))
+                .font(InteraFont.system(size: 44, weight: .bold, design: .rounded))
                 .foregroundStyle(BookingSelectorTheme.cream)
         }
     }
@@ -634,25 +631,25 @@ struct ConsumerBookingDetailView: View {
     private var pendingRescheduleBanner: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Schedule change pending approval", systemImage: "clock.badge.questionmark")
-                .font(.subheadline.weight(.semibold))
+                .font(InteraFont.subheadline.weight(.semibold))
                 .foregroundStyle(BookingSelectorTheme.cream)
 
             if let pending = bookingRow.pendingRescheduleRequest,
                let proposed = pending.proposedScheduledAtDate {
-                Text("Requested: \(Self.dateOnlyDF.string(from: proposed)) at \(Self.timeOnlyDF.string(from: proposed))")
-                    .font(.subheadline)
+                Text("Requested: \(Self.dateOnlyDF.string(from: proposed)) at \(BookingPacificSchedule.displayTimeWithMinutes(from: proposed))")
+                    .font(InteraFont.subheadline)
                     .foregroundStyle(BookingSelectorTheme.cream.opacity(0.88))
             }
 
             if let loc = bookingRow.pendingRescheduleRequest?.location?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
                !Self.isCoordinateLocationPlaceholder(loc) {
                 Text("Location: \(loc)")
-                    .font(.caption)
+                    .font(InteraFont.caption)
                     .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
             }
 
             Text("Your confirmed appointment stays as shown below until your provider approves.")
-                .font(.caption)
+                .font(InteraFont.caption)
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.65))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -674,7 +671,7 @@ struct ConsumerBookingDetailView: View {
                     .bookingCalendarWeekdayLabelStyle()
                     .foregroundStyle(BookingSelectorTheme.cream.opacity(0.75))
                 Text(bookingRow.displayStatus)
-                    .font(.body.weight(.semibold))
+                    .font(InteraFont.body.weight(.semibold))
                     .foregroundStyle(BookingSelectorTheme.cream)
             }
             Spacer(minLength: 0)
@@ -701,7 +698,7 @@ struct ConsumerBookingDetailView: View {
         VStack(alignment: .leading, spacing: (allowsBookingEdit && isEditing) ? 16 : 0) {
             if allowsBookingEdit && isEditing {
                 Text("Propose a new date, time, or location. Your provider must approve before your appointment changes.")
-                    .font(.caption)
+                    .font(InteraFont.caption)
                     .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -783,13 +780,13 @@ struct ConsumerBookingDetailView: View {
                     HStack(alignment: .center, spacing: 6) {
                         Spacer(minLength: 0)
                         Text(draftServiceName)
-                            .font(.body.weight(.medium))
+                            .font(InteraFont.body.weight(.medium))
                             .foregroundStyle(BookingSelectorTheme.cream)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
                             .minimumScaleFactor(0.82)
                         Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(InteraFont.system(size: 11, weight: .bold))
                             .foregroundStyle(BookingSelectorTheme.cream.opacity(0.85))
                         Spacer(minLength: 0)
                     }
@@ -819,7 +816,7 @@ struct ConsumerBookingDetailView: View {
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
             TextField("Add a note for your provider", text: $draftNotes, axis: .vertical)
                 .lineLimit(2 ... 4)
-                .font(.body.weight(.medium))
+                .font(InteraFont.body.weight(.medium))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .textFieldStyle(.plain)
         }
@@ -852,12 +849,12 @@ struct ConsumerBookingDetailView: View {
                 } label: {
                     HStack(alignment: .center, spacing: 10) {
                         Text(draftLocation)
-                            .font(.body.weight(.medium))
+                            .font(InteraFont.body.weight(.medium))
                             .foregroundStyle(BookingSelectorTheme.cream)
                             .multilineTextAlignment(.leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(InteraFont.system(size: 11, weight: .bold))
                             .foregroundStyle(BookingSelectorTheme.cream.opacity(0.85))
                     }
                 }
@@ -888,7 +885,7 @@ struct ConsumerBookingDetailView: View {
                     .bookingCalendarWeekdayLabelStyle()
                     .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
                 Text(formattedDraftDateLine)
-                    .font(.body.weight(.medium))
+                    .font(InteraFont.body.weight(.medium))
                     .foregroundStyle(BookingSelectorTheme.cream)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -916,7 +913,7 @@ struct ConsumerBookingDetailView: View {
                     .bookingCalendarWeekdayLabelStyle()
                     .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
                 Text(formattedDraftTimeLine)
-                    .font(.body.weight(.medium))
+                    .font(InteraFont.body.weight(.medium))
                     .foregroundStyle(BookingSelectorTheme.cream)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -936,7 +933,7 @@ struct ConsumerBookingDetailView: View {
     }
 
     private var formattedDraftTimeLine: String {
-        Self.timeOnlyDF.string(from: draftScheduledAt)
+        BookingPacificSchedule.displayTimeWithMinutes(from: draftScheduledAt)
     }
 
     private func locationTimelineRow(isLast: Bool, locationText: String) -> some View {
@@ -945,7 +942,7 @@ struct ConsumerBookingDetailView: View {
                 .bookingCalendarWeekdayLabelStyle()
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
             Text(locationText)
-                .font(.body.weight(.medium))
+                .font(InteraFont.body.weight(.medium))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -965,7 +962,7 @@ struct ConsumerBookingDetailView: View {
                 .bookingCalendarWeekdayLabelStyle()
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
             Text(value)
-                .font(.body.weight(.medium))
+                .font(InteraFont.body.weight(.medium))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -991,7 +988,7 @@ struct ConsumerBookingDetailView: View {
                         .bookingCalendarWeekdayLabelStyle()
                         .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
                     Text(price)
-                        .font(.body.weight(.medium))
+                        .font(InteraFont.body.weight(.medium))
                         .foregroundStyle(BookingSelectorTheme.cream)
                 }
             }
@@ -1001,7 +998,7 @@ struct ConsumerBookingDetailView: View {
                         .bookingCalendarWeekdayLabelStyle()
                         .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
                     Text(n)
-                        .font(.body)
+                        .font(InteraFont.body)
                         .foregroundStyle(BookingSelectorTheme.cream)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -1024,7 +1021,7 @@ struct ConsumerBookingDetailView: View {
     }
 
     private var formattedTimeLine: String {
-        Self.timeOnlyDF.string(from: scheduledAtForDisplay)
+        BookingPacificSchedule.displayTimeWithMinutes(from: scheduledAtForDisplay)
     }
 
     private var formattedPrice: String? {
@@ -1250,10 +1247,9 @@ struct ConsumerBookingDetailView: View {
         scheduleEditSlotsError = nil
         defer { scheduleEditSlotsLoading = false }
 
-        let cal = Calendar.current
-        let dayStart = cal.startOfDay(for: draftScheduledAt)
-        var slots = await fetchRibbonSlotsForEditDay(dayStart)
-        let currentKey = pacificHHmmKey(from: draftScheduledAt)
+        let pacificDay = BookingPacificSchedule.pacificStartOfDay(for: draftScheduledAt)
+        var slots = await fetchRibbonSlotsForEditDay(pacificDay)
+        let currentKey = BookingPacificSchedule.pacificHHmmKey(from: draftScheduledAt)
 
         if let idx = slots.firstIndex(where: { $0.timeKey == currentKey }) {
             let s = slots[idx]
@@ -1270,13 +1266,16 @@ struct ConsumerBookingDetailView: View {
         }
 
         scheduleEditSlotRows = dedupeEditRibbonSlots(slots).availableOnly
+        scheduleEditAvailableTimeKeys = Set(scheduleEditSlotRows.map(\.timeKey))
+        if !currentKey.isEmpty {
+            scheduleEditAvailableTimeKeys.insert(currentKey)
+        }
 
-        if scheduleEditSlotRows.isEmpty {
+        if scheduleEditSlotRows.isEmpty && currentKey.isEmpty {
             scheduleEditSlotsError = "No open times for this day."
         } else {
             scheduleEditSlotsError = nil
         }
-        editTimePickerKey = currentKey.isEmpty ? scheduleEditSlotRows.first?.timeKey : currentKey
     }
 
     private func fetchRibbonSlotsForEditDay(_ day: Date) async -> [BookingRibbonSlot] {
@@ -1344,45 +1343,13 @@ struct ConsumerBookingDetailView: View {
         full.minute = m
         full.second = 0
         guard let instant = cal.date(from: full) else { return hhmm }
-        let f = DateFormatter()
-        f.locale = .current
-        f.timeZone = .current
-        f.dateStyle = .none
-        f.timeStyle = .short
-        return f.string(from: instant)
+        return BookingPacificSchedule.displayTimeWithMinutes(from: instant)
     }
 
     private func dedupeEditRibbonSlots(_ rows: [BookingRibbonSlot]) -> [BookingRibbonSlot] {
         var seen = Set<String>()
         let sorted = rows.sorted { $0.timeKey < $1.timeKey }
         return sorted.filter { seen.insert($0.timeKey).inserted }
-    }
-
-    private func pacificHHmmKey(from date: Date) -> String {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = BookingPacificSchedule.pacificTimeZone
-        let h = cal.component(.hour, from: date)
-        let m = cal.component(.minute, from: date)
-        return String(format: "%02d:%02d", h, m)
-    }
-
-    private func applyPacificTimeKey(_ key: String, keepingScheduledDate scheduled: Date) {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = BookingPacificSchedule.pacificTimeZone
-        let dcDay = cal.dateComponents([.year, .month, .day], from: scheduled)
-        let parts = key.split(separator: ":")
-        guard let h = Int(parts[0]), let m = Int(parts[1]) else { return }
-        var full = DateComponents()
-        full.timeZone = BookingPacificSchedule.pacificTimeZone
-        full.year = dcDay.year
-        full.month = dcDay.month
-        full.day = dcDay.day
-        full.hour = h
-        full.minute = m
-        full.second = 0
-        if let d = cal.date(from: full) {
-            draftScheduledAt = d
-        }
     }
 
     // MARK: - Edit chrome (toolbar + CTA + schedule sheet)
@@ -1397,29 +1364,17 @@ struct ConsumerBookingDetailView: View {
     }
 
     private var scheduleEditTimeSlotBlock: some View {
-        Group {
-            if scheduleEditSlotsLoading || (scheduleEditSlotRows.isEmpty && scheduleEditSlotsError == nil) {
-                ProgressView()
-                    .tint(BookingSelectorTheme.cream)
-                    .padding(.vertical, 36)
-            } else if scheduleEditSlotRows.isEmpty {
-                Text(scheduleEditSlotsError ?? "No open times for this day.")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.85))
-                    .multilineTextAlignment(.center)
-                    .padding(.vertical, 16)
-            } else {
-                BookingTimeSlotGrid(
-                    slots: scheduleEditSlotRows,
-                    selectedTimeKey: $editTimePickerKey,
-                    selectedCalendarDay: draftScheduledAt
-                )
-                    .onChange(of: editTimePickerKey) { _, newKey in
-                        guard let newKey else { return }
-                        applyPacificTimeKey(newKey, keepingScheduledDate: draftScheduledAt)
-                    }
-            }
-        }
+        let preservedKey = BookingPacificSchedule.pacificHHmmKey(from: draftScheduledAt)
+        return BookingMinuteTimePicker(
+            calendarDay: draftScheduledAt,
+            availableTimeKeys: scheduleEditAvailableTimeKeys,
+            selectedTime: $draftScheduledAt,
+            isLoading: scheduleEditSlotsLoading,
+            loadError: scheduleEditSlotsError,
+            emptyMessage: scheduleEditSlotsError ?? "No open times for this day.",
+            snapUnavailableToNearestOpen: false,
+            alwaysAllowedTimeKeys: preservedKey.isEmpty ? [] : [preservedKey]
+        )
     }
 
     private var confirmChangesInset: some View {
@@ -1514,7 +1469,7 @@ struct ConsumerBookingDetailView: View {
                     Button("Done") {
                         showScheduleEditSheet = false
                     }
-                    .font(.body.weight(.semibold))
+                    .font(InteraFont.body.weight(.semibold))
                     .foregroundStyle(BookingSelectorTheme.cream)
                 }
             }
@@ -1533,14 +1488,14 @@ struct ConsumerBookingDetailView: View {
 
     private func bookingDetailGlassEditOrb(title: String) -> some View {
         Text(title)
-            .font(.system(size: 17, weight: .semibold, design: .rounded))
+            .font(InteraFont.system(size: 17, weight: .semibold, design: .rounded))
             .foregroundStyle(BookingSelectorTheme.cream)
             .accessibilityLabel("Edit booking details")
     }
 
     private func bookingDetailGlassIconOrb(systemName: String, accessibilityLabel: String) -> some View {
         Image(systemName: systemName)
-            .font(.system(size: 17, weight: .semibold))
+            .font(InteraFont.system(size: 17, weight: .semibold))
             .foregroundStyle(BookingSelectorTheme.cream)
             .accessibilityLabel(accessibilityLabel)
     }

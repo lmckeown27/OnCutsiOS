@@ -11,7 +11,7 @@ import UIKit
 #endif
 
 /// Timeline **Today** bold — shared by service name and price for matching typography.
-private let serviceSelectionTitleFont = Font.system(size: 28, weight: .bold, design: .default)
+private let serviceSelectionTitleFont = InteraFont.system(size: 28, weight: .bold, design: .default)
 
 struct ServiceSelectionRow: View {
     let title: String
@@ -48,7 +48,7 @@ struct ServiceSelectionRow: View {
 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.title2)
+                        .font(InteraFont.title2)
                         .foregroundStyle(BookingSelectorTheme.deepCharcoal)
                         .accessibilityHidden(true)
                 }

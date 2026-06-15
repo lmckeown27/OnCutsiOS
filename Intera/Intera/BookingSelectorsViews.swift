@@ -87,7 +87,7 @@ struct BookingCalendarGridSelector: View {
                 }
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.body.weight(.semibold))
+                    .font(InteraFont.body.weight(.semibold))
                     .foregroundStyle(BookingSelectorTheme.cream)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -114,7 +114,7 @@ struct BookingCalendarGridSelector: View {
                 }
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(.body.weight(.semibold))
+                    .font(InteraFont.body.weight(.semibold))
                     .foregroundStyle(BookingSelectorTheme.cream)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -204,7 +204,7 @@ struct BookingCalendarGridSelector: View {
                     .animation(BookingSelectorTheme.selectionSpring, value: selected)
 
                 Text("\(calendar.component(.day, from: day))")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .font(InteraFont.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(selected ? BookingSelectorTheme.deepCharcoal : BookingSelectorTheme.cream)
                     .opacity(labelOpacity)
             }
@@ -258,7 +258,7 @@ private struct BookingTimeSlotChip: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.subheadline.weight(.semibold))
+                .font(InteraFont.subheadline.weight(.semibold))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(
                     isSelected && !isDisabled
@@ -330,7 +330,7 @@ struct BookingTimeSlotGrid: View {
             ForEach(periodSections, id: \.period.id) { section in
                 VStack(alignment: .leading, spacing: 10) {
                     Text(section.period.rawValue)
-                        .font(.caption.weight(.bold))
+                        .font(InteraFont.caption.weight(.bold))
                         .foregroundStyle(Color.lavaShellCreamTertiary)
 
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -357,5 +357,98 @@ struct BookingTimeSlotGrid: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Minute-level time picker (hour + minute wheel)
+
+struct BookingMinuteTimePicker: View {
+    let calendarDay: Date
+    let availableTimeKeys: Set<String>
+    @Binding var selectedTime: Date
+    var isLoading: Bool = false
+    var loadError: String? = nil
+    var emptyMessage: String = "No open times for this day. Try another date."
+    /// When false, keep the wheel on the chosen minute even if it is not in `availableTimeKeys` (e.g. editing an existing booking).
+    var snapUnavailableToNearestOpen: Bool = true
+    /// Minutes always treated as selectable (typically the appointment currently being edited).
+    var alwaysAllowedTimeKeys: Set<String> = []
+
+    @State private var wheelDate = Date()
+    @State private var isSyncingWheel = false
+
+    private var pacificDay: Date {
+        BookingPacificSchedule.pacificStartOfDay(for: calendarDay)
+    }
+
+    private var allowedKeys: Set<String> {
+        availableTimeKeys.union(alwaysAllowedTimeKeys)
+    }
+
+    private var hasOpenTimes: Bool {
+        snapUnavailableToNearestOpen ? !availableTimeKeys.isEmpty : !allowedKeys.isEmpty
+    }
+
+    var body: some View {
+        Group {
+            if isLoading {
+                HStack {
+                    ProgressView()
+                        .tint(Color.oliveGreen)
+                    Text("Loading times…")
+                        .font(InteraFont.body)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else if let err = loadError {
+                Text(err)
+                    .font(InteraFont.body)
+                    .foregroundStyle(.secondary)
+            } else if !hasOpenTimes {
+                Text(emptyMessage)
+                    .font(InteraFont.body)
+                    .foregroundStyle(.secondary)
+            } else {
+                DatePicker(
+                    "Time",
+                    selection: $wheelDate,
+                    displayedComponents: [.hourAndMinute]
+                )
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+                .frame(maxWidth: .infinity)
+                .onAppear { syncWheelFromBinding() }
+                .onChange(of: selectedTime) { _, _ in syncWheelFromBinding() }
+                .onChange(of: availableTimeKeys) { _, _ in syncWheelFromBinding() }
+                .onChange(of: alwaysAllowedTimeKeys) { _, _ in syncWheelFromBinding() }
+                .onChange(of: wheelDate) { _, newWheel in
+                    guard !isSyncingWheel else { return }
+                    applyWheelChange(newWheel)
+                }
+            }
+        }
+    }
+
+    private func syncWheelFromBinding() {
+        isSyncingWheel = true
+        wheelDate = BookingPacificSchedule.localWheelDate(forPacificInstant: selectedTime)
+        isSyncingWheel = false
+    }
+
+    private func applyWheelChange(_ newWheel: Date) {
+        guard let merged = BookingPacificSchedule.pacificInstant(calendarDay: pacificDay, localWheelDate: newWheel) else { return }
+        let key = BookingPacificSchedule.pacificHHmmKey(from: merged)
+        if allowedKeys.contains(key) || !snapUnavailableToNearestOpen {
+            selectedTime = merged
+            return
+        }
+        var adjusted = merged
+        BookingPacificSchedule.reconcileAppointmentTime(
+            &adjusted,
+            calendarDay: pacificDay,
+            availableKeys: allowedKeys
+        )
+        selectedTime = adjusted
+        syncWheelFromBinding()
     }
 }

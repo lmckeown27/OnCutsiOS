@@ -54,6 +54,37 @@ enum BookingNavigationDestination: Hashable {
 enum BookingPacificSchedule {
     static let pacificTimeZone = TimeZone(identifier: "America/Los_Angeles")!
 
+    static var pacificCalendar: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = pacificTimeZone
+        return cal
+    }
+
+    /// Start of the Pacific calendar day containing `date`.
+    static func pacificStartOfDay(for date: Date) -> Date {
+        pacificCalendar.startOfDay(for: date)
+    }
+
+    /// Maps a Pacific wall-clock instant to a local `Date` whose hour/minute match Pacific (for `DatePicker` wheels).
+    static func localWheelDate(forPacificInstant instant: Date) -> Date {
+        var local = Calendar.current
+        var dc = DateComponents()
+        dc.year = local.component(.year, from: Date())
+        dc.month = local.component(.month, from: Date())
+        dc.day = local.component(.day, from: Date())
+        dc.hour = pacificCalendar.component(.hour, from: instant)
+        dc.minute = pacificCalendar.component(.minute, from: instant)
+        dc.second = 0
+        return local.date(from: dc) ?? instant
+    }
+
+    /// Combines a Pacific calendar day with hour/minute taken from a wheel `Date` (local components = Pacific wall clock).
+    static func pacificInstant(calendarDay: Date, localWheelDate wheel: Date) -> Date? {
+        let hour = Calendar.current.component(.hour, from: wheel)
+        let minute = Calendar.current.component(.minute, from: wheel)
+        return pacificInstant(selectedDay: calendarDay, timeHHmm: String(format: "%02d:%02d", hour, minute))
+    }
+
     /// Calendar day in Pacific as `yyyy-MM-dd` for the availability API.
     static func apiDateString(from date: Date) -> String {
         var cal = Calendar(identifier: .gregorian)
@@ -105,7 +136,7 @@ enum BookingPacificSchedule {
         let out = DateFormatter()
         out.locale = Locale(identifier: "en_US_POSIX")
         out.timeZone = pacificTimeZone
-        out.dateFormat = "EEEE, MMM d 'at' h:mma"
+        out.dateFormat = "EEEE, MMM d 'at' h:mm a"
         var s = out.string(from: instant)
         s = s.replacingOccurrences(of: "AM", with: "am")
         s = s.replacingOccurrences(of: "PM", with: "pm")
@@ -139,5 +170,38 @@ enum BookingPacificSchedule {
         pacificFull.formatOptions = [.withFullDate, .withTime, .withColonSeparatorInTime]
         pacificFull.timeZone = pacificTimeZone
         return pacificFull.date(from: trimmed)
+    }
+
+    /// Pacific `HH:mm` key for availability matching and validation.
+    static func pacificHHmmKey(from date: Date) -> String {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = pacificTimeZone
+        let h = cal.component(.hour, from: date)
+        let m = cal.component(.minute, from: date)
+        return String(format: "%02d:%02d", h, m)
+    }
+
+    /// Wall-clock label that always includes minutes (e.g. `9:07 am`), for booking detail and lists.
+    static func displayTimeWithMinutes(from date: Date, timeZone: TimeZone = pacificTimeZone) -> String {
+        let out = DateFormatter()
+        out.locale = Locale.current
+        out.timeZone = timeZone
+        out.dateFormat = "h:mm a"
+        var s = out.string(from: date)
+        s = s.replacingOccurrences(of: "AM", with: "am")
+        s = s.replacingOccurrences(of: "PM", with: "pm")
+        return s.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// After availability reload, keep the user's minute when still open; otherwise snap to the first open minute.
+    static func reconcileAppointmentTime(_ selected: inout Date, calendarDay: Date, availableKeys: Set<String>) {
+        guard !availableKeys.isEmpty else { return }
+        if availableKeys.contains(pacificHHmmKey(from: selected)) { return }
+        guard let first = availableKeys.sorted().first,
+              let instant = pacificInstant(
+                  selectedDay: pacificStartOfDay(for: calendarDay),
+                  timeHHmm: first
+              ) else { return }
+        selected = instant
     }
 }

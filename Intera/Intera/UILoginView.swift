@@ -163,11 +163,11 @@ struct LoginView: View {
     private var logoSection: some View {
         VStack(spacing: .space4) {
             Image(systemName: "scissors.circle.fill")
-                .font(.system(size: 80))
+                .font(InteraFont.system(size: 80))
                 .foregroundStyle(Color.brand.gradient)
 
             Text("Sign in")
-                .font(.displayLarge)
+                .font(InteraFont.displayLarge)
                 .foregroundStyle(Color.lavaShellCream)
 
             Text("Book when you're ready")
@@ -230,7 +230,7 @@ struct LoginView: View {
                             isPasswordVisible.toggle()
                         } label: {
                             Image(systemName: isPasswordVisible ? "eye.slash.fill" : "eye.fill")
-                                .font(.body.weight(.medium))
+                                .font(InteraFont.body.weight(.medium))
                                 .foregroundStyle(Color.neutral600)
                                 .frame(minWidth: 28, minHeight: 28)
                                 .contentShape(Rectangle())
@@ -279,7 +279,7 @@ struct LoginView: View {
                 .frame(height: 1)
 
             Text("OR")
-                .font(.caption)
+                .font(InteraFont.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)
 
@@ -349,7 +349,7 @@ struct LoginView: View {
             }
             .buttonStyle(.plain)
         }
-        .font(.subheadline)
+        .font(InteraFont.subheadline)
     }
 
     // MARK: - Account not found overlay
@@ -362,7 +362,7 @@ struct LoginView: View {
 
             VStack(spacing: 22) {
                 Text("No account found for this email.")
-                    .font(.subheadline.weight(.semibold))
+                    .font(InteraFont.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
@@ -378,7 +378,7 @@ struct LoginView: View {
                     }
 
                 Text("We couldn't find an account with that email. Would you like to create one now?")
-                    .font(.subheadline)
+                    .font(InteraFont.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 8)
@@ -392,7 +392,7 @@ struct LoginView: View {
                     }
                 } label: {
                     Text("Start Registration")
-                        .font(.body.weight(.semibold))
+                        .font(InteraFont.body.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .foregroundStyle(.white)
@@ -419,7 +419,7 @@ struct LoginView: View {
                         showCreateAccountPrompt = false
                     }
                 }
-                .font(.subheadline.weight(.medium))
+                .font(InteraFont.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
             }
             .padding(28)

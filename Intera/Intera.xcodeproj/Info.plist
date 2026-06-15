@@ -4,6 +4,11 @@
 <dict>
 	<key>StripePublishableKey</key>
 	<string>$(STRIPE_PUBLISHABLE_KEY)</string>
+
+	<key>UIAppFonts</key>
+	<array>
+		<string>Fonts/SuperClarendon.ttc</string>
+	</array>
 	
 	<key>CFBundleURLTypes</key>
 	<array>

@@ -12,7 +12,7 @@ struct StatusBadge: View {
     
     var body: some View {
         Text(status.displayName)
-            .font(.labelSmall)
+            .font(InteraFont.labelSmall)
             .fontWeight(.medium)
             .padding(.horizontal, .space2)
             .padding(.vertical, .space1)

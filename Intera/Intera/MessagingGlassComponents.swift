@@ -191,26 +191,26 @@ struct PinnedBookingHeader: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 6) {
                         Image(systemName: "calendar.badge.clock")
-                            .font(.caption.weight(.semibold))
+                            .font(InteraFont.caption.weight(.semibold))
                             .foregroundStyle(Color.oliveGreen)
                         Text("Latest booking")
-                            .font(.caption.weight(.semibold))
+                            .font(InteraFont.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                     }
                     Text(row.displayServiceName)
-                        .font(.headlineSmall)
+                        .font(InteraFont.headlineSmall)
                         .foregroundStyle(.primary)
                     Text(row.displayStatus)
-                        .font(.caption.weight(.semibold))
+                        .font(InteraFont.caption.weight(.semibold))
                         .foregroundStyle(Color.oliveGreen.opacity(0.95))
                     if let when = formattedSchedule(row) {
                         Text(when)
-                            .font(.subheadline)
+                            .font(InteraFont.subheadline)
                             .foregroundStyle(.secondary)
                     }
                     if let loc = row.location?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty {
                         Label(loc, systemImage: "mappin.and.ellipse")
-                            .font(.caption)
+                            .font(InteraFont.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                     }
@@ -223,7 +223,7 @@ struct PinnedBookingHeader: View {
                 }
             } else if loadFailed {
                 Text("Couldn’t refresh booking details")
-                    .font(.caption)
+                    .font(InteraFont.caption)
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 4)

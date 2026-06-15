@@ -80,7 +80,7 @@ struct LiquidProfileUpload: View {
                     showChangePhotoOptions = true
                 } label: {
                     Text("Try Again")
-                        .font(.subheadline.weight(.semibold))
+                        .font(InteraFont.subheadline.weight(.semibold))
                         .padding(.horizontal, 18)
                         .padding(.vertical, 10)
                         .background {
@@ -101,7 +101,7 @@ struct LiquidProfileUpload: View {
                 showChangePhotoOptions = true
             } label: {
                 Text(isUploading ? "Uploading…" : "Change Profile Picture")
-                    .font(.subheadline.weight(.semibold))
+                    .font(InteraFont.subheadline.weight(.semibold))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background {

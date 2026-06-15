@@ -53,12 +53,12 @@ struct MessagesEmptyState: View {
 
             VStack(spacing: 10) {
                 Text("Find your next service")
-                    .font(.title3.weight(.semibold))
+                    .font(InteraFont.title3.weight(.semibold))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Color.lavaShellCream)
 
                 Text("Book with a service provider to start a private conversation here. Explore people and services near you.")
-                    .font(.subheadline)
+                    .font(InteraFont.subheadline)
                     .foregroundStyle(Color.lavaShellCreamSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -67,7 +67,7 @@ struct MessagesEmptyState: View {
 
             Button(action: onBrowseServiceProviders) {
                 Text("Browse service providers")
-                    .font(.headline.weight(.semibold))
+                    .font(InteraFont.headline.weight(.semibold))
                     .foregroundStyle(Color.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
@@ -112,24 +112,24 @@ struct MessagesEmptyState: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(name)
-                    .font(.title3.weight(.semibold))
+                    .font(InteraFont.title3.weight(.semibold))
                     .foregroundStyle(Color.lavaShellCream)
                     .multilineTextAlignment(.leading)
 
                 Text(service)
-                    .font(.subheadline.weight(.medium))
+                    .font(InteraFont.subheadline.weight(.medium))
                     .foregroundStyle(Color.lavaShellCreamSecondary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
 
                 Text(timeLine)
-                    .font(.footnote.weight(.medium))
+                    .font(InteraFont.footnote.weight(.medium))
                     .foregroundStyle(Color.lavaShellCreamTertiary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Image(systemName: "chevron.right")
-                .font(.body.weight(.semibold))
+                .font(InteraFont.body.weight(.semibold))
                 .foregroundStyle(Color.lavaShellCream.opacity(0.55))
         }
         .padding(18)

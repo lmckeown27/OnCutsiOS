@@ -46,11 +46,11 @@ struct IntegratedSignUpSheet: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(flow.title)
-                                        .font(.headline)
+                                        .font(InteraFont.headline)
                                         .foregroundStyle(Color.lavaShellCream)
                                     if let subtitle = flow.subtitle, !subtitle.isEmpty {
                                         Text(subtitle)
-                                            .font(.caption)
+                                            .font(InteraFont.caption)
                                             .foregroundStyle(Color.lavaShellCreamSecondary)
                                     }
                                 }

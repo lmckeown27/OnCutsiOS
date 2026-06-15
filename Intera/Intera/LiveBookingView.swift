@@ -80,10 +80,9 @@ struct LiveBookingView: View {
     @State private var packageServiceRows: [CampusCutsBarberServiceRow] = []
     @State private var selectedChipId: String?
     @State private var selectedDate: Date = Date()
-    @State private var selectedTimeKey: String?
+    @State private var selectedAppointmentTime = Date()
 
     @State private var ribbonSlots: [BookingRibbonSlot] = []
-    @State private var ribbonVisible: Bool = true
     /// Time slots stay hidden / dimmed until the user taps a day on the calendar.
     @State private var calendarSelectionCommitted = false
     @State private var isLoadingSlots = false
@@ -129,7 +128,7 @@ struct LiveBookingView: View {
     private var bookingExitOrbButton: some View {
         Button(role: .cancel, action: onDismiss) {
             Image(systemName: "xmark")
-                .font(.system(size: 16, weight: .bold))
+                .font(InteraFont.system(size: 16, weight: .bold))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .symbolRenderingMode(.monochrome)
                 .frame(width: 48, height: 48)
@@ -284,7 +283,7 @@ struct LiveBookingView: View {
             .clipShape(RoundedRectangle(cornerRadius: BookingSelectorTheme.cornerRadius, style: .continuous))
 
             Text(provider.businessName)
-                .font(.headlineSmall)
+                .font(InteraFont.headlineSmall)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
@@ -292,7 +291,7 @@ struct LiveBookingView: View {
             if let igURL = provider.instagramProfileURL {
                 Link(destination: igURL) {
                     Label("Instagram", systemImage: "camera.fill")
-                        .font(.subheadline.weight(.medium))
+                        .font(InteraFont.subheadline.weight(.medium))
                         .labelStyle(.iconOnly)
                         .foregroundStyle(Color.oliveGreen)
                         .frame(width: 36, height: 36)
@@ -308,7 +307,7 @@ struct LiveBookingView: View {
 
     private var heroPlaceholder: some View {
         Text(provider.businessName.prefix(2).uppercased())
-            .font(.headline)
+            .font(InteraFont.headline)
             .foregroundStyle(Color.brand)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.brand.opacity(0.2))
@@ -337,7 +336,7 @@ struct LiveBookingView: View {
 
             if serviceChips.isEmpty {
                 Text("No services listed yet.")
-                    .font(.bodySmall)
+                    .font(InteraFont.bodySmall)
                     .foregroundStyle(.secondary)
             } else {
                 VStack(spacing: 8) {
@@ -348,7 +347,7 @@ struct LiveBookingView: View {
             }
             if let serviceError, !serviceError.isEmpty {
                 Text(serviceError)
-                    .font(.caption)
+                    .font(InteraFont.caption)
                     .foregroundStyle(Color.red.opacity(0.9))
             }
         }
@@ -378,82 +377,49 @@ struct LiveBookingView: View {
         }
     }
 
+    private var availableTimeKeys: Set<String> {
+        Set(ribbonSlots.map(\.timeKey))
+    }
+
     private func scheduleSlotReloadForPickedDay() {
-        selectedTimeKey = nil
-        withAnimation(BookingSelectorTheme.selectionSpring) {
-            ribbonVisible = false
-        }
-        Task {
-            await loadSlots()
-            await MainActor.run {
-                withAnimation(BookingSelectorTheme.selectionSpring) {
-                    ribbonVisible = true
-                }
-            }
-        }
+        timeError = nil
+        Task { await loadSlots() }
     }
 
     private var timeSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            bookingSectionHeader("Choose a Time Slot")
+            bookingSectionHeader("Choose a Time")
 
-            timeRibbonStrip
+            timePickerBlock
 
             if let timeError, !timeError.isEmpty {
                 Text(timeError)
-                    .font(.caption)
+                    .font(InteraFont.caption)
                     .foregroundStyle(Color.red.opacity(0.9))
             }
         }
     }
 
-    private var timeRibbonStrip: some View {
+    private var timePickerBlock: some View {
         Group {
             if !calendarSelectionCommitted {
                 Text("Pick a day on the calendar to see available times.")
-                    .font(.subheadline.weight(.medium))
+                    .font(InteraFont.subheadline.weight(.medium))
                     .foregroundStyle(BookingSelectorTheme.cream.opacity(0.42))
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 8)
-            } else if isLoadingSlots {
-                HStack(spacing: 10) {
-                    ProgressView()
-                        .tint(Color.oliveGreen)
-                    Text("Loading times…")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-            } else if slotsLoadError != nil {
-                Text(slotsLoadError ?? "")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 8)
-            } else if ribbonSlots.isEmpty {
-                Text("No open times for this day. Try another date.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
             } else {
-                BookingTimeSlotGrid(
-                    slots: ribbonSlots,
-                    selectedTimeKey: $selectedTimeKey,
-                    selectedCalendarDay: selectedDate
+                BookingMinuteTimePicker(
+                    calendarDay: BookingPacificSchedule.pacificStartOfDay(for: selectedDate),
+                    availableTimeKeys: availableTimeKeys,
+                    selectedTime: $selectedAppointmentTime,
+                    isLoading: isLoadingSlots,
+                    loadError: slotsLoadError
                 )
-                    .opacity(ribbonVisible ? 1 : 0)
-                    .offset(x: ribbonVisible ? 0 : 20)
             }
         }
-        .animation(BookingSelectorTheme.selectionSpring, value: ribbonVisible)
-        .animation(BookingSelectorTheme.selectionSpring, value: calendarSelectionCommitted)
-        .onChange(of: selectedTimeKey) { _, _ in
+        .onChange(of: selectedAppointmentTime) { _, _ in
             timeError = nil
         }
     }
@@ -543,11 +509,11 @@ struct LiveBookingView: View {
     }
 
     private func reconcileSelectedTimeAfterLoad() {
-        guard let t = selectedTimeKey else { return }
-        if ribbonSlots.contains(where: { $0.timeKey == t }) {
-            return
-        }
-        selectedTimeKey = nil
+        BookingPacificSchedule.reconcileAppointmentTime(
+            &selectedAppointmentTime,
+            calendarDay: BookingPacificSchedule.pacificStartOfDay(for: selectedDate),
+            availableKeys: availableTimeKeys
+        )
     }
 
     /// Collides on same `timeKey`; keeps first occurrence (stable order).
@@ -612,9 +578,8 @@ struct LiveBookingView: View {
             firstInvalid = .date
         }
 
-        let timeValid = selectedTimeKey.map { t in
-            ribbonSlots.contains(where: { $0.timeKey == t })
-        } ?? false
+        let timeKey = BookingPacificSchedule.pacificHHmmKey(from: selectedAppointmentTime)
+        let timeValid = availableTimeKeys.contains(timeKey)
         if !timeValid {
             let msg = "Choose an available time."
             timeError = msg
@@ -627,7 +592,7 @@ struct LiveBookingView: View {
             return
         }
 
-        guard let timeKey = selectedTimeKey,
+        guard availableTimeKeys.contains(timeKey),
               let iso = BookingPacificSchedule.scheduledAtISO(selectedDate: selectedDate, timeHHmm: timeKey) else {
             let msg = "Couldn’t read the selected time."
             timeError = msg

@@ -22,10 +22,10 @@ struct SearchBar: View {
         let row = HStack(spacing: .space3) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(iconColor)
-                .font(.body)
+                .font(InteraFont.body)
             
             TextField(placeholder, text: $text)
-                .font(.bodyMedium)
+                .font(InteraFont.bodyMedium)
                 .foregroundStyle(textColor)
                 .focused($isSearchFieldFocused)
                 .autocorrectionDisabled()

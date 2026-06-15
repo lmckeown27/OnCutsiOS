@@ -25,19 +25,19 @@ struct HubGuestAuthPrompt: View {
         ScrollView {
             VStack(spacing: 22) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 44, weight: .medium))
+                    .font(InteraFont.system(size: 44, weight: .medium))
                     .foregroundStyle(Color.oliveGreen)
                     .symbolRenderingMode(.hierarchical)
                     .accessibilityHidden(true)
 
                 Text(title)
-                    .font(.title2.weight(.bold))
+                    .font(InteraFont.title2.weight(.bold))
                     .foregroundStyle(Color.lavaShellCream)
                     .multilineTextAlignment(.center)
 
                 if let message, !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text(message)
-                        .font(.body)
+                        .font(InteraFont.body)
                         .foregroundStyle(Color.lavaShellCreamSecondary)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)

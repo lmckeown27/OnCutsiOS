@@ -31,7 +31,7 @@ struct GlassErrorToastOverlay: View {
                 VStack {
                     Spacer()
                     Text(text)
-                        .font(.body)
+                        .font(InteraFont.body)
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.primary)
                         .shadow(color: errorGlow ? toastErrorColor.opacity(0.55) : .clear, radius: 8, x: 0, y: 0)

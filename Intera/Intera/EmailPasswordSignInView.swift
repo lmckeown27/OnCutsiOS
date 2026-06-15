@@ -32,7 +32,7 @@ struct EmailPasswordSignInView: View {
             VStack(alignment: .leading, spacing: 16) {
                 if didCompleteEmailHandshake {
                     Text("Enter your password to sign in.")
-                        .font(.subheadline)
+                        .font(InteraFont.subheadline)
                         .foregroundStyle(.secondary)
 
                     HStack(spacing: 10) {
@@ -53,7 +53,7 @@ struct EmailPasswordSignInView: View {
                             isPasswordVisible.toggle()
                         } label: {
                             Image(systemName: isPasswordVisible ? "eye.slash.fill" : "eye.fill")
-                                .font(.body.weight(.medium))
+                                .font(InteraFont.body.weight(.medium))
                                 .foregroundStyle(.secondary)
                                 .frame(minWidth: 28, minHeight: 28)
                                 .contentShape(Rectangle())
@@ -76,7 +76,7 @@ struct EmailPasswordSignInView: View {
                     }
                 } else {
                     Text("Enter your email address. We’ll check if you already have an account.")
-                        .font(.subheadline)
+                        .font(InteraFont.subheadline)
                         .foregroundStyle(.secondary)
 
                     TextField("Email", text: $email)
@@ -128,7 +128,7 @@ struct EmailPasswordSignInView: View {
                         .tint(.white)
                 }
                 Text(title)
-                    .font(.body.weight(.semibold))
+                    .font(InteraFont.body.weight(.semibold))
                     .opacity(isBusy ? 0 : 1)
             }
             .frame(maxWidth: .infinity)

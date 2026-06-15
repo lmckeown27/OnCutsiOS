@@ -80,7 +80,7 @@ struct PastProviderBookingsGroupView: View {
                                 .scaledToFill()
                         default:
                             Image(systemName: "person.crop.square.fill")
-                                .font(.title2)
+                                .font(InteraFont.title2)
                                 .foregroundStyle(Color.lavaShellCreamTertiary)
                         }
                     }
@@ -88,7 +88,7 @@ struct PastProviderBookingsGroupView: View {
                     .clipShape(avatarRect)
                 } else {
                     Image(systemName: "person.crop.square.fill")
-                        .font(.title2)
+                        .font(InteraFont.title2)
                         .foregroundStyle(Color.lavaShellCreamTertiary)
                 }
             }
@@ -97,10 +97,10 @@ struct PastProviderBookingsGroupView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(group.providerDisplayName)
-                    .font(.headlineSmall)
+                    .font(InteraFont.headlineSmall)
                     .foregroundStyle(Color.lavaShellCream)
                 Text(visitSubtitle)
-                    .font(.caption.weight(.semibold))
+                    .font(InteraFont.caption.weight(.semibold))
                     .foregroundStyle(Color.lavaShellCreamTertiary)
             }
             Spacer(minLength: 8)
@@ -113,22 +113,22 @@ struct PastProviderBookingsGroupView: View {
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(row.displayServiceName)
-                        .font(.subheadline.weight(.semibold))
+                        .font(InteraFont.subheadline.weight(.semibold))
                         .foregroundStyle(Color.lavaShellCream)
                     HStack(spacing: 6) {
                         Text(scheduleLine(row))
-                            .font(.caption)
+                            .font(InteraFont.caption)
                             .foregroundStyle(Color.lavaShellCream.opacity(0.88))
                         Spacer(minLength: 0)
                         Text(row.displayStatus)
-                            .font(.caption2.weight(.semibold))
+                            .font(InteraFont.caption2.weight(.semibold))
                             .foregroundStyle(Color.lavaShellCreamTertiary)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
+                    .font(InteraFont.caption.weight(.bold))
                     .foregroundStyle(Color.oliveGreen)
                     .accessibilityHidden(true)
             }

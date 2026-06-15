@@ -118,7 +118,7 @@ struct ServiceProviderCard: View {
                             .fill(Color.brand.opacity(0.2))
                             .overlay(
                                 Text(provider.businessName.prefix(2).uppercased())
-                                    .font(.headline)
+                                    .font(InteraFont.headline)
                                     .foregroundStyle(Color.brand)
                             )
                     }
@@ -131,7 +131,7 @@ struct ServiceProviderCard: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(
                             Text(provider.businessName.prefix(2).uppercased())
-                                .font(.headline)
+                                .font(InteraFont.headline)
                                 .foregroundStyle(Color.brand)
                         )
                 }
@@ -140,7 +140,7 @@ struct ServiceProviderCard: View {
                 VStack(alignment: .leading, spacing: .space2) {
                     // Name
                     Text(provider.businessName)
-                        .font(.headlineSmall)
+                        .font(InteraFont.headlineSmall)
                         .foregroundStyle(cardPrimaryTextColor)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
@@ -149,14 +149,14 @@ struct ServiceProviderCard: View {
                     if shouldShowStarRatingOnCard, let rating = provider.rating {
                         HStack(spacing: 5) {
                             Image(systemName: "star.fill")
-                                .font(.subheadline.weight(.semibold))
+                                .font(InteraFont.subheadline.weight(.semibold))
                                 .foregroundStyle(.yellow)
                             Text(String(format: "%.1f", rating))
-                                .font(.subheadline.weight(.semibold))
+                                .font(InteraFont.subheadline.weight(.semibold))
                                 .foregroundStyle(cardPrimaryTextColor)
                             if let count = provider.reviewCount, count > 0 {
                                 Text("(\(count))")
-                                    .font(.caption.weight(.medium))
+                                    .font(InteraFont.caption.weight(.medium))
                                     .foregroundStyle(cardSecondaryTextColor)
                             }
                         }
@@ -169,7 +169,7 @@ struct ServiceProviderCard: View {
                     
                     // Provider kind (Barber, Makeup, Nails, …) — not individual services / haircut names
                     Text(provider.providerKindDisplayName)
-                        .font(.caption)
+                        .font(InteraFont.caption)
                         .fontWeight(.medium)
                         .foregroundStyle(kindPillForegroundColor)
                         .padding(.horizontal, 8)
@@ -180,7 +180,7 @@ struct ServiceProviderCard: View {
                     // Instagram handle (visible only; open profile from detail sheet to visit)
                     if !provider.instagramDisplayHandle.isEmpty {
                         Text(provider.instagramDisplayHandle)
-                            .font(.bodySmall)
+                            .font(InteraFont.bodySmall)
                             .foregroundStyle(cardSecondaryTextColor)
                             .multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
@@ -195,7 +195,7 @@ struct ServiceProviderCard: View {
                     VStack(alignment: .trailing, spacing: .space1) {
                         if let priceRange = provider.priceRange {
                             Text(priceRange.displayLabel)
-                                .font(.bodyMedium)
+                                .font(InteraFont.bodyMedium)
                                 .fontWeight(.semibold)
                                 .multilineTextAlignment(.trailing)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -204,10 +204,10 @@ struct ServiceProviderCard: View {
                         if let distanceLabel = provider.formattedDistanceFromUser {
                             HStack(spacing: 4) {
                                 Image(systemName: "location.fill")
-                                    .font(.caption.weight(.semibold))
+                                    .font(InteraFont.caption.weight(.semibold))
                                     .accessibilityHidden(true)
                                 Text(distanceLabel)
-                                    .font(.caption.weight(.semibold))
+                                    .font(InteraFont.caption.weight(.semibold))
                             }
                             .foregroundStyle(cardSecondaryTextColor)
                             .accessibilityElement(children: .combine)
@@ -874,7 +874,7 @@ extension ServiceProvider {
     ScrollView {
         VStack(spacing: .space4) {
             Text("HAIRCUTS")
-                .font(.labelSmall)
+                .font(InteraFont.labelSmall)
                 .foregroundStyle(Color.neutral500)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
@@ -883,7 +883,7 @@ extension ServiceProvider {
             }
             
             Text("BEAUTY")
-                .font(.labelSmall)
+                .font(InteraFont.labelSmall)
                 .foregroundStyle(Color.neutral500)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, .space4)

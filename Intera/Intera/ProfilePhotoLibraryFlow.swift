@@ -168,7 +168,7 @@ struct ProfileCircularCropSheet: View {
         NavigationStack {
             VStack(spacing: 16) {
                 Text("The frame matches your profile picture. Drag to choose what appears in your avatar.")
-                    .font(.subheadline)
+                    .font(InteraFont.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
@@ -244,7 +244,7 @@ struct ProfileCircularCropSheet: View {
                         }
                     } label: {
                         Text("Use This Photo")
-                            .font(.body.weight(.semibold))
+                            .font(InteraFont.body.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                     }
@@ -252,7 +252,7 @@ struct ProfileCircularCropSheet: View {
                     .tint(Color.oliveGreen)
 
                     Button("Choose Different Photo", action: onChooseDifferent)
-                        .font(.body.weight(.medium))
+                        .font(InteraFont.body.weight(.medium))
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 8)

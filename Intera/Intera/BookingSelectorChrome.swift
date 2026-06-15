@@ -18,7 +18,7 @@ enum BookingSelectorTheme {
     static let selectionSpring = Animation.spring(response: 0.3, dampingFraction: 0.7)
 
     /// Timeline **Today** bold (service title / shop name / day number).
-    static let todayBoldFont = Font.system(size: 28, weight: .bold, design: .default)
+    static let todayBoldFont = InteraFont.font(size: 28, weight: .bold)
 
     static func triggerSelectionChangedIfNewSelection(wasSelected: Bool) {
         guard !wasSelected else { return }
@@ -33,7 +33,7 @@ enum BookingSelectorTheme {
 private struct PastLabelModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .font(.system(size: 14, weight: .medium, design: .default))
+            .font(InteraFont.font(size: 14, weight: .medium))
             .textCase(.uppercase)
             .kerning(2.2)
     }
@@ -45,7 +45,7 @@ private struct CalendarWeekdayLabelModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .font(.system(size: fontSize, weight: .medium, design: .default))
+            .font(InteraFont.font(size: fontSize, weight: .medium))
             .textCase(.uppercase)
             .kerning(fontSize * 0.15)
     }

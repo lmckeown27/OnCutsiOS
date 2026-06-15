@@ -87,17 +87,17 @@ struct TimelineSectionHeader: View {
         switch position {
         case .past:
             Text("Past")
-                .font(.system(size: 14, weight: .medium, design: .default))
+                .font(InteraFont.system(size: 14, weight: .medium, design: .default))
                 .foregroundStyle(Color.lavaShellCreamSecondary)
                 .textCase(.uppercase)
                 .kerning(2.2)
         case .today:
             Text("Today")
-                .font(.system(size: 28, weight: .bold, design: .default))
+                .font(InteraFont.system(size: 28, weight: .bold, design: .default))
                 .foregroundStyle(Color.lavaShellCream)
         case .upcoming:
             Text("Upcoming")
-                .font(.system(size: 20, weight: .semibold, design: .default))
+                .font(InteraFont.system(size: 20, weight: .semibold, design: .default))
                 .foregroundStyle(Color.lavaShellCream)
         }
     }

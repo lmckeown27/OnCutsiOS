@@ -63,6 +63,7 @@ struct InteraApp: App {
         #if os(iOS) || os(visionOS)
         StripeService.applyPublishableKeyAlignedWithAPIHost(apiRootTrimmed: AppConfiguration.messagingAPIRootTrimmed)
         #endif
+        InteraFont.installGlobalAppearanceIfNeeded()
     }
 
     // MARK: - App Scene

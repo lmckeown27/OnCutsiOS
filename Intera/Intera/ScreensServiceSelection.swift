@@ -92,18 +92,18 @@ struct ServiceCard: View {
                         .frame(width: 64, height: 64)
                     
                     Image(systemName: service.icon)
-                        .font(.system(size: 28))
+                        .font(InteraFont.system(size: 28))
                         .foregroundStyle(service.color)
                 }
                 
                 // Info
                 VStack(alignment: .leading, spacing: .space1) {
                     Text(service.name)
-                        .font(.headlineMedium)
+                        .font(InteraFont.headlineMedium)
                         .foregroundStyle(Color.neutral800)
                     
                     Text(service.description)
-                        .font(.bodySmall)
+                        .font(InteraFont.bodySmall)
                         .foregroundStyle(Color.neutral500)
                         .lineLimit(2)
                 }
@@ -112,7 +112,7 @@ struct ServiceCard: View {
                 
                 // Arrow
                 Image(systemName: "chevron.right")
-                    .font(.body)
+                    .font(InteraFont.body)
                     .foregroundStyle(Color.neutral400)
             }
             .padding(.space5)

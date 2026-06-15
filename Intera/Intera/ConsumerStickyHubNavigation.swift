@@ -428,7 +428,7 @@ struct ConsumerStickyHubBar: View {
                 handleTabTap(index: index)
             } label: {
                 Image(systemName: systemName)
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(InteraFont.system(size: 22, weight: .semibold))
                     .foregroundStyle(
                         tabActive
                             ? Color.interaHubDeepCharcoal

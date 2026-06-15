@@ -29,18 +29,16 @@ enum InteraLiquidGlassHaptics {
     #endif
 }
 
-// MARK: - Typography (Source Serif 4 style via `.serif` design; body uses SF)
+// MARK: - Typography (Clarendon / Superclarendon)
 
 enum InteraLiquidGlassTypography {
-    /// Titles & prices: serif design (embed Source Serif 4 in the target for an exact match).
     static func title(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight, design: .serif)
+        InteraFont.font(size: size, weight: weight)
     }
 
     static var navigationTitle: Font { title(17, weight: .semibold) }
 
-    /// Body copy: standard San Francisco.
-    static var body: Font { .body }
+    static var body: Font { InteraFont.body }
 }
 
 // MARK: - Mesh backdrop (Midnight → Deep Indigo)

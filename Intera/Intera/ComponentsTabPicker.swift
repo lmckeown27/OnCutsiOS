@@ -36,7 +36,7 @@ struct TabPicker<T: Hashable>: View {
                     
                     if let badgeCount = badgeFor?(tab), badgeCount > 0 {
                         Text("\(badgeCount)")
-                            .font(.captionSmall)
+                            .font(InteraFont.captionSmall)
                             .fontWeight(.bold)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -45,7 +45,7 @@ struct TabPicker<T: Hashable>: View {
                             .clipShape(Capsule())
                     }
                 }
-                .font(.labelMedium)
+                .font(InteraFont.labelMedium)
                 .fontWeight(selectedTab == tab ? .semibold : .regular)
                 .foregroundStyle(selectedTab == tab ? Color.brand : Color.neutral500)
                 

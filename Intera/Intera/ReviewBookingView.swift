@@ -88,9 +88,9 @@ struct ReviewBookingView: View {
                     Link(destination: igURL) {
                         HStack(spacing: 6) {
                             Image(systemName: "camera.fill")
-                                .font(.caption.weight(.semibold))
+                                .font(InteraFont.caption.weight(.semibold))
                             Text("Instagram")
-                                .font(.subheadline.weight(.medium))
+                                .font(InteraFont.subheadline.weight(.medium))
                         }
                         .foregroundStyle(Color.oliveGreen)
                     }
@@ -104,7 +104,7 @@ struct ReviewBookingView: View {
 
     private var heroPlaceholder: some View {
         Text(booking.barberDisplayName.prefix(2).uppercased())
-            .font(.headline)
+            .font(InteraFont.headline)
             .foregroundStyle(Color.brand)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.brand.opacity(0.15))
@@ -116,7 +116,7 @@ struct ReviewBookingView: View {
                 .font(InteraLiquidGlassTypography.title(12, weight: .semibold))
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(.body)
+                .font(InteraFont.body)
                 .foregroundStyle(.primary)
         }
     }

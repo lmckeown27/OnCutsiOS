@@ -63,7 +63,7 @@ struct YourFeatureRootView: View {
         NavigationStack {
             VStack {
                 Text("Your Feature Module")
-                    .font(.largeTitle)
+                    .font(InteraFont.largeTitle)
                 
                 Text("Logged in as: \(session.displayName)")
                     .foregroundStyle(.secondary)

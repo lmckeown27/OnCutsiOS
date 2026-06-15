@@ -253,7 +253,7 @@ extension View {
     /// Reserves a hook for app-wide shell styling; follows the user’s light/dark setting (no forced scheme).
     @ViewBuilder
     func interaConsumerShellAppearance() -> some View {
-        self
+        interaClarendonTypography()
     }
 
     #if os(iOS)

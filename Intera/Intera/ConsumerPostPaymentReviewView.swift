@@ -29,7 +29,7 @@ struct ConsumerPostPaymentReviewView: View {
                     reviewGlassCard {
                         VStack(spacing: 28) {
                             Text("How was your service?")
-                                .font(.system(size: 22, weight: .bold, design: .default))
+                                .font(InteraFont.system(size: 22, weight: .bold, design: .default))
                                 .foregroundStyle(Color.lavaShellCream)
                                 .multilineTextAlignment(.center)
 
@@ -39,13 +39,13 @@ struct ConsumerPostPaymentReviewView: View {
 
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Written review (optional)")
-                                    .font(.subheadline.weight(.semibold))
+                                    .font(InteraFont.subheadline.weight(.semibold))
                                     .foregroundStyle(Color.lavaShellCreamSecondary)
 
                                 ZStack(alignment: .topLeading) {
                                     if comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                         Text("Share feedback about your service…")
-                                            .font(.body)
+                                            .font(InteraFont.body)
                                             .foregroundStyle(Color.paymentFieldPlaceholder)
                                             .padding(.horizontal, 18)
                                             .padding(.vertical, 18)
@@ -53,7 +53,7 @@ struct ConsumerPostPaymentReviewView: View {
                                     }
                                     TextEditor(text: $comment)
                                         .scrollContentBackground(.hidden)
-                                        .font(.body)
+                                        .font(InteraFont.body)
                                         .interaAdaptiveTextEditorForeground()
                                         .frame(minHeight: 120)
                                         .padding(10)
@@ -70,7 +70,7 @@ struct ConsumerPostPaymentReviewView: View {
 
                             if let bannerError {
                                 Text(bannerError)
-                                    .font(.footnote)
+                                    .font(InteraFont.footnote)
                                     .foregroundStyle(.orange)
                                     .multilineTextAlignment(.center)
                             }
@@ -85,7 +85,7 @@ struct ConsumerPostPaymentReviewView: View {
                                                 .tint(Color.paymentFilledButtonLabel)
                                         }
                                         Text("Submit")
-                                            .font(.system(size: 18, weight: .bold))
+                                            .font(InteraFont.system(size: 18, weight: .bold))
                                     }
                                     .frame(maxWidth: .infinity)
                                     .frame(minHeight: 52)
@@ -101,7 +101,7 @@ struct ConsumerPostPaymentReviewView: View {
                                 Button("Not now") {
                                     Task { await skipWithoutSubmitting() }
                                 }
-                                .font(.subheadline.weight(.semibold))
+                                .font(InteraFont.subheadline.weight(.semibold))
                                 .foregroundStyle(Color.paymentOutlineButtonLabel)
                             }
                         }
@@ -127,7 +127,7 @@ struct ConsumerPostPaymentReviewView: View {
                     }
                 } label: {
                     Image(systemName: index <= starRating ? "star.fill" : "star")
-                        .font(.system(size: 36, weight: .medium))
+                        .font(InteraFont.system(size: 36, weight: .medium))
                         .foregroundStyle(
                             index <= starRating
                                 ? Color(red: 1, green: 0.84, blue: 0.35)

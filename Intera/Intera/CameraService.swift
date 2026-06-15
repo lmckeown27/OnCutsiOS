@@ -330,7 +330,7 @@ struct ProfileCameraCaptureView: View {
                     isPresented = false
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 28))
+                        .font(InteraFont.system(size: 28))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.white)
                 }
@@ -345,7 +345,7 @@ struct ProfileCameraCaptureView: View {
                     }
                 } label: {
                     Image(systemName: flashOn ? "bolt.fill" : "bolt.slash.fill")
-                        .font(.system(size: 22))
+                        .font(InteraFont.system(size: 22))
                         .foregroundStyle(.white)
                 }
                 .padding(.trailing, 20)
@@ -365,7 +365,7 @@ struct ProfileCameraCaptureView: View {
                         camera.flipCamera()
                     } label: {
                         Image(systemName: "camera.rotate.fill")
-                            .font(.system(size: 26))
+                            .font(InteraFont.system(size: 26))
                             .foregroundStyle(.white)
                     }
 
@@ -407,7 +407,7 @@ struct ProfileCameraCaptureView: View {
                             camera.configureAndStart()
                         } label: {
                             Image(systemName: "xmark")
-                                .font(.system(size: 20, weight: .semibold))
+                                .font(InteraFont.system(size: 20, weight: .semibold))
                                 .foregroundStyle(.primary)
                                 .frame(width: 56, height: 56)
                                 .background {
@@ -431,7 +431,7 @@ struct ProfileCameraCaptureView: View {
                             }
                         } label: {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 22, weight: .semibold))
+                                .font(InteraFont.system(size: 22, weight: .semibold))
                                 .foregroundStyle(.primary)
                                 .frame(width: 56, height: 56)
                                 .background {

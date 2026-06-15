@@ -62,7 +62,7 @@ struct InteraDefaultProfileAvatarGlyph: View {
         ZStack {
             Color.oliveGreen.opacity(0.08)
             Image(systemName: "person")
-                .font(.system(size: iconFontSize, weight: .semibold))
+                .font(InteraFont.system(size: iconFontSize, weight: .semibold))
                 .foregroundStyle(Color.oliveGreen)
         }
         .accessibilityHidden(true)
