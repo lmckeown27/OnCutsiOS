@@ -491,14 +491,31 @@ extension ConsumerBookingSimpleRow {
         )
     }
 
+    /// Provider kind tag (e.g. `Barber`) for CTAs and inbox copy — matches conversation thread occupation.
+    var providerKindTag: String {
+        MessagingProviderRoleLine.occupationTitle(booking: messagingBookingSnapshot)
+    }
+
     var displayServiceName: String {
         if let n = serviceName?.trimmingCharacters(in: .whitespacesAndNewlines), !n.isEmpty {
-            return Self.humanizeShoutingCapsServiceNameIfNeeded(n)
+            return Self.displayableServiceLabel(n)
         }
         if let t = serviceType?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty {
-            return Self.titleCaseServiceTypeForDisplay(t)
+            return Self.displayableServiceLabel(t)
         }
         return "Service"
+    }
+
+    /// Human-readable service label (e.g. backend `HAIRCUT` → `Haircut`).
+    static func displayableServiceLabel(_ raw: String) -> String {
+        let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return "Service" }
+        let humanized = humanizeShoutingCapsServiceNameIfNeeded(t)
+        if humanized != t { return humanized }
+        if t == t.uppercased() || t.contains("_") {
+            return titleCaseServiceTypeForDisplay(t)
+        }
+        return t
     }
 
     /// Backend often stores `serviceName` in ALL CAPS; present like the rest of consumer UI (“Haircut”).

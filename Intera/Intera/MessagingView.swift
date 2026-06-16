@@ -98,36 +98,31 @@ struct MessagingView: View {
                         description: Text("When you book with a service provider, your conversation will show up here.")
                     )
                 } else {
-                    List(conversations) { row in
-                        NavigationLink {
-                            MessagingConversationView(
-                                conversationId: row.id,
-                                sessionManager: sessionManager,
-                                coordinator: coordinator,
-                                initialBooking: row.booking,
-                                counterpartyAvatarURLString: row.inboxCounterpartyAvatarURLString,
-                                counterpartyFallbackDisplayName: row.otherUser?.resolvedDisplayName(),
-                                counterpartyUserId: row.otherUser?.id
-                            )
-                        } label: {
-                            MessagingConversationTile {
-                                MessagingInboxRowLabel(
-                                    providerTitle: row.inboxResolvedProviderTitle,
-                                    booking: row.booking,
-                                    counterpartyAvatarURLString: row.inboxCounterpartyAvatarURLString,
-                                    lastMessagePreview: row.lastMessagePreview,
-                                    lastMessageSenderId: row.lastMessageSenderId,
-                                    currentUserId: sessionManager.currentSession?.userId ?? "",
-                                    unreadCount: row.unreadCount
-                                )
-                                .padding(.vertical, 4)
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(conversations) { row in
+                                NavigationLink {
+                                    MessagingConversationView(
+                                        conversationId: row.id,
+                                        sessionManager: sessionManager,
+                                        coordinator: coordinator,
+                                        initialBooking: row.booking,
+                                        counterpartyAvatarURLString: row.inboxCounterpartyAvatarURLString,
+                                        counterpartyFallbackDisplayName: row.otherUser?.resolvedDisplayName(),
+                                        counterpartyUserId: row.otherUser?.id
+                                    )
+                                } label: {
+                                    ConversationInboxThreadCard(
+                                        model: MessageThreadDisplayModel(dto: row),
+                                        currentUserId: sessionManager.currentSession?.userId ?? ""
+                                    )
+                                }
+                                .buttonStyle(ConversationCardPressStyle())
                             }
                         }
-                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
                     }
-                    .listStyle(.plain)
                     #if os(iOS)
                     .scrollContentBackground(.hidden)
                     #endif
@@ -192,7 +187,7 @@ struct MessagingView: View {
     }
 }
 
-// MARK: - Inbox row (shared with `ConversationListView`)
+// MARK: - Inbox row (legacy flat layout; hub inbox uses `ConversationInboxThreadCard`)
 
 /// Provider avatar (leading), then **name → last message → occupation/service** (tighter preview width than full row).
 /// Typography mirrors `TimelineSectionHeader` (Today / Past) and `BookingTimelineRow.compactLabels` service line.
@@ -929,6 +924,9 @@ struct MessagingConversationView: View {
     var onResyncSharedHubInboxSilently: (() async -> Void)?
     /// Other participant’s messaging user id when known (inbox / booking handoff). Thread load fills this when omitted.
     var counterpartyUserId: String?
+    /// Rebook gating on pushed `ConsumerBookingDetailView` (matches Bookings / Home detail).
+    var hasActiveConsumerBooking: Bool = false
+    var onShowLogin: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
@@ -955,6 +953,9 @@ struct MessagingConversationView: View {
     /// Cancelled on disappear so a deferred hub inbox resync never runs during the pop transition.
     @State private var hubInboxResyncTasks: [Task<Void, Never>] = []
     @State private var deferredRealtimeTeardownTask: Task<Void, Never>?
+    @State private var pushedBookingDetailRoute: MessagingThreadPushedBookingDetail?
+    @State private var isOpeningBookingDetailFromDrawer = false
+    @State private var bookingDetailOpenError: String?
 
     /// Snap / cancel physics aligned with hub tab paging (not a single-flick commit).
     private static let edgeGestureSnapSpring = Animation.spring(response: 0.33, dampingFraction: 0.86, blendDuration: 0.12)
@@ -972,7 +973,9 @@ struct MessagingConversationView: View {
         onNavigationVisibilityChanged: ((Bool, String) -> Void)? = nil,
         onInitialThreadHydrationComplete: (() -> Void)? = nil,
         onResyncSharedHubInboxSilently: (() async -> Void)? = nil,
-        counterpartyUserId: String? = nil
+        counterpartyUserId: String? = nil,
+        hasActiveConsumerBooking: Bool = false,
+        onShowLogin: (() -> Void)? = nil
     ) {
         self.conversationId = conversationId
         self.sessionManager = sessionManager
@@ -983,6 +986,8 @@ struct MessagingConversationView: View {
         self.onNavigationVisibilityChanged = onNavigationVisibilityChanged
         self.onInitialThreadHydrationComplete = onInitialThreadHydrationComplete
         self.onResyncSharedHubInboxSilently = onResyncSharedHubInboxSilently
+        self.hasActiveConsumerBooking = hasActiveConsumerBooking
+        self.onShowLogin = onShowLogin
         let trimmedCp = counterpartyUserId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         self.counterpartyUserId = trimmedCp.isEmpty ? nil : trimmedCp
         let trimmedFallback = counterpartyFallbackDisplayName?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1160,6 +1165,14 @@ struct MessagingConversationView: View {
             } message: {
                 Text("This conversation will be permanently deleted.")
             }
+            .alert("Couldn’t open booking", isPresented: Binding(
+                get: { bookingDetailOpenError != nil },
+                set: { if !$0 { bookingDetailOpenError = nil } }
+            )) {
+                Button("OK") { bookingDetailOpenError = nil }
+            } message: {
+                Text(bookingDetailOpenError ?? "")
+            }
             .task(id: conversationId) {
                 if sessionManager.isAuthenticated, !MessagingCommunitySafety.hasAcceptedMessagingTerms {
                     showThreadMessagingTermsGate = true
@@ -1305,6 +1318,24 @@ struct MessagingConversationView: View {
                     // awaiting `loadThreadAndMarkRead()`, letting Socket append rows that the REST assign then wipes.
                     // Realtime is wired after the first successful load in `startThreadAfterTermsIfNeeded()`.
                 }
+            }
+            .navigationDestination(item: $pushedBookingDetailRoute) { presentation in
+                ConsumerBookingDetailView(
+                    row: presentation.row,
+                    sessionManager: sessionManager,
+                    coordinator: coordinator,
+                    bookingDetailPresentationID: presentation.id,
+                    hasActiveConsumerBooking: hasActiveConsumerBooking,
+                    onShowLogin: { onShowLogin?() },
+                    bookingMessagingMode: .bookingsTab,
+                    presentBookingMessagingThread: { _ in
+                        pushedBookingDetailRoute = nil
+                    }
+                )
+                .id(presentation.id)
+                #if os(iOS)
+                .interaNavigationShellBackgroundClear()
+                #endif
             }
     }
 
@@ -1509,7 +1540,46 @@ struct MessagingConversationView: View {
 
     private var formattedContextHeaderScheduledTime: String {
         guard let raw = vm.bookingContext?.scheduledTimeRaw else { return "Time TBD" }
-        return BookingPacificSchedule.formattedDisplayScheduledTime(raw)
+        return BookingPacificSchedule.formattedDisplayScheduledTime(raw, fullMonthName: true)
+    }
+
+    private var resolvedThreadBookingId: String? {
+        func trimmed(_ raw: String?) -> String? {
+            let t = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return t.isEmpty ? nil : t
+        }
+        if let id = trimmed(vm.bookingContext?.bookingId) { return id }
+        if let id = trimmed(initialBooking?.id) { return id }
+        if let id = trimmed(threadHeaderBookingSnapshot?.id) { return id }
+        return nil
+    }
+
+    @MainActor
+    private func openBookingDetailFromDrawer() async {
+        guard let bookingId = resolvedThreadBookingId else {
+            bookingDetailOpenError = "We couldn't find this booking yet. Try again after refresh."
+            return
+        }
+        guard !isOpeningBookingDetailFromDrawer else { return }
+        isOpeningBookingDetailFromDrawer = true
+        defer { isOpeningBookingDetailFromDrawer = false }
+        do {
+            let row = try await ConsumerBookingsSimpleAPI.fetchConsumerBookingById(
+                bookingId: bookingId,
+                bearerToken: sessionManager.currentSession?.token
+            )
+            withAnimation(MessagingFlowMotion.messageAppearSpring) {
+                showBookingDetails = false
+            }
+            bookingDetailsPanelDragOffset = 0
+            pushedBookingDetailRoute = MessagingThreadPushedBookingDetail(row: row)
+        } catch {
+            if ConsumerBookingsSimpleAPI.isUnauthorizedHTTPError(error) {
+                await sessionManager.recoverSessionAfterUnauthorized()
+            } else {
+                bookingDetailOpenError = "We couldn't open this booking. Try again from the Bookings tab."
+            }
+        }
     }
 
     /// Trailing drawer over chat: follows finger when pulling from the right edge; full open uses the same drag-to-dismiss affordance.
@@ -1553,7 +1623,12 @@ struct MessagingConversationView: View {
                     },
                     serviceName: MessagingProviderRoleLine.presentableServiceName(vm.bookingContext?.serviceName),
                     schedule: formattedContextHeaderScheduledTime,
-                    status: headerBookingStatusPresentable
+                    status: headerBookingStatusPresentable,
+                    canOpenFullBookingDetail: resolvedThreadBookingId != nil,
+                    isOpeningBookingDetail: isOpeningBookingDetailFromDrawer,
+                    onEditBooking: {
+                        Task { await openBookingDetailFromDrawer() }
+                    }
                 )
                 .frame(width: panelW)
                 .frame(height: panelH)
@@ -1589,20 +1664,20 @@ struct MessagingConversationView: View {
                                 showBookingDetails = true
                             }
                         } label: {
-                            Label("Details", systemImage: "calendar.badge.clock")
+                            Text("Details")
                         }
                     }
                     if vm.bookingContext?.consumerMayCancelActiveBooking == true {
                         Button(role: .destructive) {
                             showCancelBookingConfirm = true
                         } label: {
-                            Label("Cancel booking", systemImage: "calendar.badge.minus")
+                            Text("Cancel booking")
                         }
                     } else {
                         Button(role: .destructive) {
                             showDeleteConversationConfirm = true
                         } label: {
-                            Label("Delete conversation", systemImage: "trash")
+                            Text("Delete conversation")
                         }
                     }
                     Divider()
@@ -1610,12 +1685,12 @@ struct MessagingConversationView: View {
                         messagePendingReport = nil
                         showReportMessageDialog = true
                     } label: {
-                        Label("Report conversation", systemImage: "flag")
+                        Text("Report conversation")
                     }
                     Button(role: .destructive) {
                         showBlockUserConfirm = true
                     } label: {
-                        Label("Block user", systemImage: "hand.raised.fill")
+                        Text("Block user")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -2000,12 +2075,25 @@ struct MessagingUGCTermsGateView: View {
 
 // MARK: - Thread booking details (trailing drawer over chat)
 
+private struct MessagingThreadPushedBookingDetail: Hashable, Identifiable {
+    let id: UUID
+    let row: ConsumerBookingSimpleRow
+
+    init(row: ConsumerBookingSimpleRow) {
+        self.row = row
+        id = ConsumerHomeBookingStackRoute.stablePresentationID(forBookingId: row.id)
+    }
+}
+
 private struct MessagingThreadBookingDetailsView: View {
     let onClose: () -> Void
 
     let serviceName: String
     let schedule: String
     let status: String
+    let canOpenFullBookingDetail: Bool
+    let isOpeningBookingDetail: Bool
+    let onEditBooking: () -> Void
 
     private static let cardCorner: CGFloat = 18
 
@@ -2021,8 +2109,37 @@ private struct MessagingThreadBookingDetailsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            HStack(alignment: .center, spacing: 10) {
+                Button(action: onEditBooking) {
+                    HStack(spacing: 6) {
+                        if isOpeningBookingDetail {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(Color.lavaShellCreamSecondary)
+                        }
+                        Text("Edit Booking")
+                            .font(InteraFont.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(Color.lavaShellCreamSecondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Color.oliveGreen.opacity(0.55), lineWidth: 1)
+                            .background {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(Color.white.opacity(0.08))
+                            }
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(!canOpenFullBookingDetail || isOpeningBookingDetail)
+                .opacity(canOpenFullBookingDetail ? 1 : 0.5)
+                .accessibilityHint("Opens the full booking details screen.")
+
                 Spacer(minLength: 0)
+
                 Button {
                     onClose()
                 } label: {
@@ -2076,10 +2193,8 @@ private struct MessagingThreadBookingDetailsView: View {
 
     private func bookingDetailRow(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title.uppercased())
-                .font(InteraFont.system(size: 14, weight: .medium, design: .default))
-                .foregroundStyle(Color.lavaShellCreamSecondary)
-                .kerning(2.0)
+            Text(title)
+                .bookingDetailFieldTitleStyle()
             Text(value)
                 .font(InteraFont.system(size: 17, weight: .regular, design: .serif))
                 .foregroundStyle(Color.lavaShellCream)

@@ -51,6 +51,16 @@ private struct CalendarWeekdayLabelModifier: ViewModifier {
     }
 }
 
+/// Field titles on booking detail surfaces (full-screen and conversation drawer).
+private struct BookingDetailFieldTitleModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(InteraFont.system(size: 14, weight: .semibold, design: .default))
+            .foregroundStyle(Color.lavaShellCreamSecondary)
+            .underline()
+    }
+}
+
 extension View {
     func bookingPastLabelStyle() -> some View {
         modifier(PastLabelModifier())
@@ -58,6 +68,10 @@ extension View {
 
     func bookingCalendarWeekdayLabelStyle() -> some View {
         modifier(CalendarWeekdayLabelModifier())
+    }
+
+    func bookingDetailFieldTitleStyle() -> some View {
+        modifier(BookingDetailFieldTitleModifier())
     }
 }
 

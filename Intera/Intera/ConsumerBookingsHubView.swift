@@ -17,7 +17,6 @@ struct ConsumerBookingsHubView: View {
     var onNavigationDepthChange: ((Int) -> Void)? = nil
 
     @EnvironmentObject private var chatViewModel: ChatViewModel
-    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
 
     @State private var detailNavigationPath = NavigationPath()
     @State private var rows: [ConsumerBookingSimpleRow] = []
@@ -78,7 +77,6 @@ struct ConsumerBookingsHubView: View {
                         .interaHubBarScrollContentBottomInset()
                     }
                     .scrollBounceBehavior(.always, axes: .vertical)
-                    .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
                     .refreshable { await reloadBookingsListForPullToRefresh() }
                 } else if !hasAnyBooking {
                     ScrollView {
@@ -92,7 +90,6 @@ struct ConsumerBookingsHubView: View {
                         .interaHubBarScrollContentBottomInset()
                     }
                     .scrollBounceBehavior(.always, axes: .vertical)
-                    .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
                     .refreshable { await reloadBookingsListForPullToRefresh() }
                 } else {
                     UnifiedTimelineView(
@@ -215,7 +212,9 @@ struct ConsumerBookingsHubView: View {
             onResyncSharedHubInboxSilently: {
                 await chatViewModel.reloadInboxSilently(sessionManager: sessionManager)
             },
-            counterpartyUserId: handoff.counterpartyMessagingUserId
+            counterpartyUserId: handoff.counterpartyMessagingUserId,
+            hasActiveConsumerBooking: hasActiveConsumerBooking,
+            onShowLogin: onShowLogin
         )
         #if os(iOS)
         .interaNavigationShellBackgroundClear()
@@ -250,7 +249,9 @@ struct ConsumerBookingsHubView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .tint(Color.oliveGreen)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        #if os(iOS)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        #endif
         .task {
             await reloadBookingsList()
         }

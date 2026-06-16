@@ -129,14 +129,14 @@ enum BookingPacificSchedule {
     }
 
     /// Formats API `scheduledTime` strings (UTC with `Z`, Pacific without offset, etc.) for UI — **America/Los_Angeles**, same as booking intake.
-    static func formattedDisplayScheduledTime(_ raw: String) -> String {
+    static func formattedDisplayScheduledTime(_ raw: String, fullMonthName: Bool = false) -> String {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "Time TBD" }
         guard let instant = parseScheduledInstantForDisplay(trimmed) else { return trimmed }
         let out = DateFormatter()
         out.locale = Locale(identifier: "en_US_POSIX")
         out.timeZone = pacificTimeZone
-        out.dateFormat = "EEEE, MMM d 'at' h:mm a"
+        out.dateFormat = fullMonthName ? "EEEE, MMMM d 'at' h:mm a" : "EEEE, MMM d 'at' h:mm a"
         var s = out.string(from: instant)
         s = s.replacingOccurrences(of: "AM", with: "am")
         s = s.replacingOccurrences(of: "PM", with: "pm")

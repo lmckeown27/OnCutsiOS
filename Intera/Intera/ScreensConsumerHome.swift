@@ -2408,7 +2408,9 @@ struct UnifiedProviderHomeScreen: View {
                     onThreadPresentationChanged: { visible, _ in messagesThreadPresentedForHubPaging = visible },
                     onResetMessagesNavigationStackBeforePush: {
                         messagesHubNavigationStackEpoch += 1
-                    }
+                    },
+                    hasActiveConsumerBooking: hasActiveConsumerBooking,
+                    onShowLogin: { showOAuthSignInSheet = true }
                 )
                 #if os(iOS)
                 .interaNavigationShellBackgroundClear()
@@ -2572,13 +2574,25 @@ struct UnifiedProviderHomeScreen: View {
     }
     
     @MainActor
-    private func handleHubPageVerticalScrollOffset(_ offsetY: CGFloat) {
+    private func handleHubPageVerticalScrollOffset(_ offsetY: CGFloat, resyncLastSample: Bool = false) {
+        guard hubPageIndex == 0 else { return }
         #if os(iOS)
-        if hubPagingCoordinator.isUserScrolling { return }
+        if !resyncLastSample, hubPagingCoordinator.isUserScrolling {
+            let w = max(1, hubPagingCoordinator.pageWidth)
+            let pageProgress = hubPagingCoordinator.scrollOffsetX / w
+            guard abs(pageProgress - CGFloat(hubPageIndex)) < 0.02 else { return }
+        }
         #endif
         guard unifiedShowsConsumerStickyHubBar else {
             hubBarCollapseProgress = 0
             hubBarLastScrollOffsetY = 0
+            return
+        }
+        if resyncLastSample {
+            InteraHubBarCollapseController.resyncLastOffsetY(
+                lastOffsetY: &hubBarLastScrollOffsetY,
+                offsetY: offsetY
+            )
             return
         }
         InteraHubBarCollapseController.update(
@@ -2675,7 +2689,10 @@ struct UnifiedProviderHomeScreen: View {
             }
             #endif
             .environment(\.interaHubBarOverlayBottomInset, hubBarOverlayBottomInset)
-            .environment(\.interaHubBarScrollOffsetHandler, InteraHubBarScrollOffsetHandler(onOffsetChange: handleHubPageVerticalScrollOffset))
+            .environment(\.interaHubBarScrollOffsetHandler, InteraHubBarScrollOffsetHandler(
+                onOffsetChange: { handleHubPageVerticalScrollOffset($0) },
+                onResyncLastSample: { handleHubPageVerticalScrollOffset($0, resyncLastSample: true) }
+            ))
             #if os(iOS)
             .environment(\.interaHubPagingCoordinator, hubPagingCoordinator)
             #endif
@@ -3408,7 +3425,7 @@ struct UnifiedProviderHomeScreen: View {
                 #if os(iOS)
                 .scrollBounceBehavior(.always, axes: .vertical)
                 #endif
-                .interaHubBarScrollOffsetReporting(handleHubPageVerticalScrollOffset)
+                .interaHubBarScrollOffsetReporting { handleHubPageVerticalScrollOffset($0) }
                 .refreshable {
                     await refreshUnifiedHomeSurfaceForPullToRefresh()
                 }

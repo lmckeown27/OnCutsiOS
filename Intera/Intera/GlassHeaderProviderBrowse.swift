@@ -747,7 +747,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     }
 
     private var isHomeHubPageActive: Bool {
-        (hubPagingCoordinator?.hubPageIndex ?? homeHubPageIndex) == 0
+        homeHubPageIndex == 0
     }
 
     private func beginUtilityPillScrollResync() {
@@ -760,7 +760,11 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
 
         let previousOffsetY = contentOffsetY
         contentOffsetY = offsetY
-        hubBarScrollHandler.onOffsetChange?(offsetY)
+        if resyncSample {
+            hubBarScrollHandler.onResyncLastSample?(offsetY)
+        } else {
+            hubBarScrollHandler.onOffsetChange?(offsetY)
+        }
 
         guard shouldTrackUtilityPillScrollCollapse else {
             utilityPillCollapseOffset = 0

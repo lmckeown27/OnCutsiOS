@@ -168,6 +168,7 @@ struct ServiceProviderCard: View {
                     }
                     
                     // Provider kind (Barber, Makeup, Nails, …) — not individual services / haircut names
+                    /*
                     Text(provider.providerKindDisplayName)
                         .font(InteraFont.caption)
                         .fontWeight(.medium)
@@ -176,6 +177,7 @@ struct ServiceProviderCard: View {
                         .padding(.vertical, 4)
                         .background(kindPillBackgroundColor)
                         .clipShape(Capsule())
+                    */
                     
                     // Instagram handle (visible only; open profile from detail sheet to visit)
                     if !provider.instagramDisplayHandle.isEmpty {

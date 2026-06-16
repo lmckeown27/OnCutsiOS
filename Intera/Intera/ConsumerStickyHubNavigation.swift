@@ -114,6 +114,8 @@ extension Color {
 /// Tracks vertical scroll from hub tab content to collapse the floating navigation rail.
 struct InteraHubBarScrollOffsetHandler {
     var onOffsetChange: ((CGFloat) -> Void)? = nil
+    /// UIKit resync after hub tab switches — only realigns the delta baseline (see ``InteraHubBarCollapseController/resyncLastOffsetY``).
+    var onResyncLastSample: ((CGFloat) -> Void)? = nil
 }
 
 private struct InteraHubBarScrollOffsetHandlerKey: EnvironmentKey {
@@ -198,6 +200,12 @@ enum InteraHubBarCollapseController {
         } else if delta < -0.5 {
             progress = max(0, progress + delta / step)
         }
+    }
+
+    /// After hub tab switches, SwiftUI scroll geometry can stay stale — resync the delta baseline without moving progress.
+    @MainActor
+    static func resyncLastOffsetY(lastOffsetY: inout CGFloat, offsetY: CGFloat) {
+        lastOffsetY = offsetY
     }
 }
 

@@ -147,13 +147,19 @@ enum MessagingProviderRoleLine {
 
     /// Title-style line such as `Barber · Haircut` (no backend `SHOUTING_CASE`).
     static func occupationAndServicePresentable(booking: MessagingBookingDTO?) -> String {
-        let occ = defaultOccupationTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let occOut = occ.isEmpty ? defaultOccupationTitle : Self.presentableWordLine(occ)
+        let occOut = occupationTitle(booking: booking)
         let svcRaw = (booking?.serviceName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if svcRaw.isEmpty {
             return occOut
         }
         return "\(occOut) · \(Self.presentableWordLine(svcRaw))"
+    }
+
+    /// Provider kind tag only (e.g. `Barber`) — browse card pill / thread occupation without the booked service.
+    static func occupationTitle(booking: MessagingBookingDTO? = nil) -> String {
+        _ = booking
+        let occ = defaultOccupationTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        return occ.isEmpty ? defaultOccupationTitle : presentableWordLine(occ)
     }
 
     private static func presentableWordLine(_ raw: String) -> String {

@@ -194,7 +194,16 @@ struct BookingCalendarGridSelector: View {
             BookingSelectorTheme.triggerSelectionChangedIfNewSelection(wasSelected: wasSameDaySelected)
             selectionCommitted = true
             withAnimation(BookingSelectorTheme.selectionSpring) {
-                selectedDate = dayStart
+                let preservedTimeKey = BookingPacificSchedule.pacificHHmmKey(from: selectedDate)
+                let pacificDay = BookingPacificSchedule.pacificStartOfDay(for: day)
+                if let merged = BookingPacificSchedule.pacificInstant(
+                    selectedDay: pacificDay,
+                    timeHHmm: preservedTimeKey
+                ) {
+                    selectedDate = merged
+                } else {
+                    selectedDate = pacificDay
+                }
             }
             onDaySelected()
         } label: {

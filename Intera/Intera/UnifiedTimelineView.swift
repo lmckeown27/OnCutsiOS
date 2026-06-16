@@ -26,9 +26,10 @@ struct UnifiedTimelineView: View {
 
     @State private var showJumpToTodayFAB = false
     @State private var timelineContentTop: CGFloat = 0
+    /// True after the user scrolls the timeline down; layout-only reflows (disclosure expand) stay near y≈0 and must not drive chrome.
+    @State private var hasTimelineUserScrolled = false
     @State private var timelineHeaderMinYs: [String: CGFloat] = [:]
     @Environment(\.interaHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
-    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -46,10 +47,11 @@ struct UnifiedTimelineView: View {
                 }
             }
             .onPreferenceChange(TimelineScrollGeometry.ContentTopPreferenceKey.self) { y in
-                timelineContentTop = y
+                absorbTimelineContentTop(y)
             }
             .onPreferenceChange(TimelineScrollGeometry.HeaderMinYPreferenceKey.self) { dict in
                 timelineHeaderMinYs = dict
+                guard hasTimelineUserScrolled else { return }
                 updateJumpFABFromTodayHeader(dict[ConsumerBookingsTimelineProjection.todayHeaderID])
             }
             .onAppear {
@@ -70,7 +72,6 @@ struct UnifiedTimelineView: View {
                 timelineLazyStack
             }
             .scrollBounceBehavior(.always, axes: .vertical)
-            .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
             .refreshable {
                 await onPullToRefresh()
             }
@@ -79,7 +80,21 @@ struct UnifiedTimelineView: View {
                 timelineLazyStack
             }
             .scrollBounceBehavior(.always, axes: .vertical)
-            .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
+        }
+    }
+
+    /// Ignore near-top geometry jitter when disclosure groups expand/collapse without user scrolling.
+    private func absorbTimelineContentTop(_ y: CGFloat) {
+        if y < -8 {
+            hasTimelineUserScrolled = true
+            timelineContentTop = y
+            return
+        }
+        if hasTimelineUserScrolled {
+            timelineContentTop = y
+            if y >= -4 {
+                hasTimelineUserScrolled = false
+            }
         }
     }
 
@@ -114,11 +129,8 @@ struct UnifiedTimelineView: View {
         }
     }
 
-    private func backdropBlur(for headerID: String) -> Bool {
-        let headerY = timelineHeaderMinYs[headerID] ?? .infinity
-        let scrolled = timelineContentTop < -14
-        let pinned = headerY <= 24
-        return scrolled && pinned
+    private var showsPinnedHeaderBackdropBlur: Bool {
+        hasTimelineUserScrolled && timelineContentTop < -14
     }
 
     private func updateJumpFABFromTodayHeader(_ y: CGFloat?) {
@@ -174,7 +186,7 @@ struct UnifiedTimelineView: View {
             TimelineSectionHeader(
                 position: .past,
                 headerID: headerID,
-                showBackdropBlur: backdropBlur(for: headerID)
+                showBackdropBlur: showsPinnedHeaderBackdropBlur
             )
         }
     }
@@ -211,7 +223,7 @@ struct UnifiedTimelineView: View {
             TimelineSectionHeader(
                 position: position,
                 headerID: headerID,
-                showBackdropBlur: backdropBlur(for: headerID)
+                showBackdropBlur: showsPinnedHeaderBackdropBlur
             )
         }
     }

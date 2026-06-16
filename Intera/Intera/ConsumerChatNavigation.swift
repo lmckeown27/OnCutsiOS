@@ -21,6 +21,9 @@ struct ConversationListView: View {
     var onThreadPresentationChanged: ((Bool, String) -> Void)? = nil
     /// Hub Messages tab only: reset the wrapping `NavigationStack` identity before opening a thread from a **push tap** so a fresh stack presents ``ChatViewModel/hubMessagesThreadPresentation`` without stacking a second `MessagingConversationView` after resume from background.
     var onResetMessagesNavigationStackBeforePush: (() -> Void)? = nil
+    /// Passed through to `ConsumerBookingDetailView` when opening booking detail from a thread.
+    var hasActiveConsumerBooking: Bool = false
+    var onShowLogin: (() -> Void)? = nil
 
     @EnvironmentObject private var chatViewModel: ChatViewModel
     @Environment(\.interaHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
@@ -103,7 +106,7 @@ struct ConversationListView: View {
     /// or SwiftUI stacks two `MessagingConversationView`s (split socket/REST state vs visible UI).
     private var inboxConversationRowsScroll: some View {
         ScrollView {
-            LazyVStack(spacing: 0) {
+            LazyVStack(spacing: 16) {
                 ForEach(chatViewModel.rows) { row in
                     Button {
                         let cid = row.id.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -115,11 +118,16 @@ struct ConversationListView: View {
                         chatViewModel.prefetchThreadMessages(conversationId: cid, sessionManager: sessionManager)
                         chatViewModel.presentHubMessagesThread(ChatViewModel.HubMessagesThreadPresentation(row: row))
                     } label: {
-                        ConversationListTimelineRow(row: row, currentUserId: sessionManager.currentSession?.userId ?? "")
+                        ConversationInboxThreadCard(
+                            model: MessageThreadDisplayModel(row: row),
+                            currentUserId: sessionManager.currentSession?.userId ?? ""
+                        )
                     }
-                    .buttonStyle(InboxRowLiquidPressStyle())
+                    .buttonStyle(ConversationCardPressStyle())
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
             .padding(.bottom, hubBarOverlayBottomInset)
         }
         #if os(iOS)
@@ -171,7 +179,9 @@ struct ConversationListView: View {
                     onResyncSharedHubInboxSilently: {
                         await chatViewModel.reloadInboxSilently(sessionManager: sessionManager)
                     },
-                    counterpartyUserId: handoff.counterpartyUserId
+                    counterpartyUserId: handoff.counterpartyUserId,
+                    hasActiveConsumerBooking: hasActiveConsumerBooking,
+                    onShowLogin: onShowLogin
                 )
             }
             .onChange(of: chatViewModel.pendingPushConversationId) { _, new in
@@ -394,194 +404,5 @@ struct ConversationListView: View {
             return a.id > b.id
         }
         .first
-    }
-}
-
-// MARK: - Inbox timeline rows (LazyVStack + booking-style rail)
-
-/// Typography aligned with `TimelineSectionHeader` (Today / Past) and `BookingTimelineRow` upcoming `compactLabels` service line.
-private enum ConversationInboxTimelineTypography {
-    /// `TimelineSectionHeader` “Today”.
-    static let providerName = InteraFont.system(size: 28, weight: .bold, design: .default)
-    /// Same size as `headlineSmall` (18pt) but **regular** weight for preview body over lava.
-    static let messagePreview = InteraFont.system(size: 18, weight: .regular, design: .serif)
-    static let messagePreviewLineSpacing: CGFloat = 4
-    /// Occupation · service under the preview (leading).
-    static let pastHeaderKerning: CGFloat = 2.2
-    static let occupationKerning: CGFloat = pastHeaderKerning * 1.15
-    static let occupationFont = InteraFont.system(size: 14, weight: .medium, design: .default)
-    /// Caps preview width so the stack sits right of the enlarged avatar.
-    static let messagePreviewMaxWidth: CGFloat = 300
-}
-
-private struct InboxRowLiquidPressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 1.02 : 1.0)
-            .animation(.spring(response: 0.34, dampingFraction: 0.72), value: configuration.isPressed)
-    }
-}
-
-private struct ConversationListTimelineRow: View {
-    let row: ChatViewModel.PreviewRow
-    let currentUserId: String
-
-    /// Provider avatar sits **outside** the preview card (same `imageUrl` pipeline as thread header / `AvatarView`).
-    private static let rowAvatarSize: CGFloat = 92
-    private static let rowAvatarCornerRadius: CGFloat = 16
-
-    private var trimmedPreview: String {
-        (row.lastMessagePreview ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    /// Hub **Messages** row: latest line from you or your provider (`ChatViewModel` + REST merge).
-    private var messageBoxDisplayText: String {
-        trimmedPreview.isEmpty ? "No messages yet" : trimmedPreview
-    }
-
-    private var messageBoxIsPlaceholder: Bool {
-        trimmedPreview.isEmpty
-    }
-
-    private var rowTerminalDim: Bool {
-        row.booking?.inboxRowIsTerminalPastContinuum == true
-    }
-
-    private var lastMessageIsFromCounterparty: Bool {
-        let me = currentUserId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !me.isEmpty else { return (row.unreadCount ?? 0) > 0 }
-        if let sid = row.lastMessageSenderId?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !sid.isEmpty {
-            return sid != me
-        }
-        return (row.unreadCount ?? 0) > 0
-    }
-
-    private var messagePreviewBoxIsLit: Bool {
-        !messageBoxIsPlaceholder && lastMessageIsFromCounterparty
-    }
-
-    private var showsIncomingUnreadDot: Bool {
-        messagePreviewBoxIsLit && (row.unreadCount ?? 0) > 0
-    }
-
-    private var messageBoxTextColor: Color {
-        if messageBoxIsPlaceholder { return Color.lavaShellCreamTertiary }
-        return messagePreviewBoxIsLit ? Color.lavaShellCream : Color.lavaShellCreamTertiary
-    }
-
-    private var messageBoxFill: Color {
-        if messageBoxIsPlaceholder { return Color.white.opacity(0.06) }
-        return messagePreviewBoxIsLit ? Color.white.opacity(0.18) : Color.white.opacity(0.07)
-    }
-
-    private var messageBoxStroke: Color {
-        if messageBoxIsPlaceholder { return Color.lavaShellCream.opacity(0.14) }
-        return messagePreviewBoxIsLit ? Color.lavaShellCream.opacity(0.42) : Color.lavaShellCream.opacity(0.16)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 14) {
-                AvatarView(
-                    imageUrl: row.inboxCounterpartyAvatarURLString,
-                    name: row.inboxResolvedProviderTitle,
-                    size: Self.rowAvatarSize,
-                    fontSize: 34,
-                    clipStyle: .square(cornerRadius: Self.rowAvatarCornerRadius)
-                )
-                .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(row.inboxResolvedProviderTitle)
-                        .font(ConversationInboxTimelineTypography.providerName)
-                        .foregroundStyle(Color.lavaShellCream)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.82)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .opacity(rowTerminalDim ? 0.72 : 1)
-
-                    HStack(alignment: .top, spacing: 10) {
-                        Text(messageBoxDisplayText)
-                            .font(ConversationInboxTimelineTypography.messagePreview)
-                            .foregroundStyle(messageBoxTextColor)
-                            .lineSpacing(ConversationInboxTimelineTypography.messagePreviewLineSpacing)
-                            .lineLimit(5)
-                            .multilineTextAlignment(.leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if showsIncomingUnreadDot {
-                            MessagingInboxIncomingUnreadDot()
-                                .padding(.top, 6)
-                        }
-                    }
-                    .frame(maxWidth: ConversationInboxTimelineTypography.messagePreviewMaxWidth, alignment: .leading)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .background {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(messageBoxFill)
-                    }
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .strokeBorder(messageBoxStroke, lineWidth: 1)
-                    }
-                    .accessibilityLabel(
-                        messageBoxIsPlaceholder
-                            ? "No messages yet"
-                            : showsIncomingUnreadDot
-                                ? "Unread message, \(trimmedPreview)"
-                                : "Latest message, \(trimmedPreview)"
-                    )
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 2)
-            }
-
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(MessagingProviderRoleLine.occupationAndServicePresentable(booking: row.booking))
-                    .font(ConversationInboxTimelineTypography.occupationFont)
-                    .foregroundStyle(Color.lavaShellCreamSecondary)
-                    .kerning(ConversationInboxTimelineTypography.occupationKerning)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
-                    .layoutPriority(1)
-                if let sched = row.booking?.inboxCompactScheduledDisplay, !sched.isEmpty {
-                    Spacer(minLength: 8)
-                    Text(sched)
-                        .font(ConversationInboxTimelineTypography.occupationFont)
-                        .foregroundStyle(Color.lavaShellCreamSecondary)
-                        .multilineTextAlignment(.trailing)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .opacity(rowTerminalDim ? 0.72 : 1)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 18)
-        .padding(.horizontal, 18)
-        .background {
-            ZStack {
-                Color.white.opacity(0.05)
-                Color.black.opacity(0.1)
-            }
-        }
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color.lavaShellCream.opacity(0.28))
-                .frame(height: 1)
-                .frame(maxWidth: .infinity)
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-}
-
-private extension String {
-    var nonEmpty: String? {
-        let t = trimmingCharacters(in: .whitespacesAndNewlines)
-        return t.isEmpty ? nil : t
     }
 }

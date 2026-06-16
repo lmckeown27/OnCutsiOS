@@ -20,24 +20,8 @@ struct BookingTimelineRow: View {
 
     @State private var confirmRemoveFromList = false
 
-    private static let dayLineDF: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "EEE, MMM d"
-        return f
-    }()
-
     private var providerLine: String {
         row.barberName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? "Provider"
-    }
-
-    private var timeEmphasis: String? {
-        guard let d = row.scheduledAtDate else { return nil }
-        return BookingPacificSchedule.displayTimeWithMinutes(from: d)
-    }
-
-    private var dayLine: String? {
-        guard let d = row.scheduledAtDate else { return nil }
-        return Self.dayLineDF.string(from: d)
     }
 
     var body: some View {
@@ -93,51 +77,23 @@ struct BookingTimelineRow: View {
     }
 
     private var upcomingCard: some View {
-        NavigationLink(value: ConsumerHomeBookingStackRoute.bookingsTabDetail(row)) {
-            VStack(alignment: .leading, spacing: 8) {
-                if let t = timeEmphasis {
-                    Text(t)
-                        .font(InteraFont.title3.weight(.bold))
-                        .foregroundStyle(Color.lavaShellCream)
-                }
-                compactLabels
-                if let d = dayLine {
-                    Text(d)
-                        .font(InteraFont.caption.weight(.medium))
-                        .foregroundStyle(Color.lavaShellCreamTertiary)
-                }
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(cardBackground(elevated: false))
-        }
-        .buttonStyle(.plain)
+        UpcomingBookingDetailsCard(
+            booking: UpcomingBooking(row: row),
+            isCollapsible: true,
+            detailRoute: ConsumerHomeBookingStackRoute.bookingsTabDetail(row)
+        )
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBackground(elevated: false))
     }
 
     private var todayCard: some View {
         NavigationLink(value: ConsumerHomeBookingStackRoute.bookingsTabDetail(row)) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(row.displayServiceName)
-                        .font(InteraFont.title3.weight(.bold))
-                        .foregroundStyle(Color.lavaShellCream)
-                    Spacer(minLength: 8)
-                    Text(row.displayStatus)
-                        .font(InteraFont.caption2.weight(.bold))
-                        .foregroundStyle(Color.lavaShellCream)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(Color.lavaShellCream.opacity(0.2)))
-                }
-
-                Text("with \(providerLine)")
-                    .font(InteraFont.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.lavaShellCreamSecondary)
-
-                Text(scheduleLine)
-                    .font(InteraFont.footnote.weight(.semibold))
-                    .foregroundStyle(Color.lavaShellCream.opacity(0.92))
-            }
+            UpcomingBookingDetailsCard(
+                booking: UpcomingBooking(row: row),
+                isCollapsible: false,
+                detailRoute: nil
+            )
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(cardBackground(elevated: true))

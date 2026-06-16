@@ -148,15 +148,15 @@ extension Color {
     /// Pure black - text, icons
     static let appBlack = Color.black
     
-    /// Olive green - brand color, accents, buttons
-    static let oliveGreen = Color(hex: "5A7268")
+    /// Olive green - brand color, accents, buttons (lifted slightly for legibility on dark shell UI)
+    static let oliveGreen = Color(hex: "6E9082")
     
     // MARK: - Olive Green Variations (for hover, pressed, disabled states)
     
     /// Lighter olive for hover
-    static let oliveLight = Color(hex: "708D81")
+    static let oliveLight = Color(hex: "849E92")
     /// Darker olive for pressed/active
-    static let oliveDark = Color(hex: "445750")
+    static let oliveDark = Color(hex: "556860")
     /// Very light olive for subtle backgrounds
     static let oliveTint = Color(hex: "F2F5F4")
     

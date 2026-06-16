@@ -48,6 +48,7 @@ struct ConsumerBookingDetailView: View {
     @State private var draftServiceName = ""
     @State private var draftLocation = ""
     @State private var draftNotes = ""
+    @FocusState private var isRequestChangeNotesFocused: Bool
     @State private var showScheduleEditSheet = false
     /// Which row opened the schedule sheet (drives the navigation title).
     @State private var scheduleEditEntry: ScheduleEditEntry = .date
@@ -68,6 +69,13 @@ struct ConsumerBookingDetailView: View {
     @State private var isConfirmingEdits = false
     @State private var showCancelBookingConfirmation = false
     @State private var isCancellingBooking = false
+
+    /// Snapshotted when Request Change edit chrome finishes loading picker options — Submit stays inert until drafts differ.
+    @State private var requestChangeBaselineScheduledAt = Date()
+    @State private var requestChangeBaselineServiceName = ""
+    @State private var requestChangeBaselineLocation = ""
+    @State private var requestChangeBaselineNotes = ""
+    @State private var requestChangeBaselinesReady = false
 
     /// Server snapshot after pull-to-refresh; navigation `row` is the fallback.
     @State private var refreshedRow: ConsumerBookingSimpleRow?
@@ -137,23 +145,66 @@ struct ConsumerBookingDetailView: View {
             ?? ""
     }
 
-    private var hasRescheduleDraftChanges: Bool {
+    private func normalizedRequestChangeDraft(_ raw: String) -> String {
+        raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasRequestChangeDraftChanges: Bool {
+        guard isEditing, requestChangeBaselinesReady else { return false }
         var pacificCal = Calendar(identifier: .gregorian)
         pacificCal.timeZone = BookingPacificSchedule.pacificTimeZone
-        let baseline = rescheduleDraftBaselineDate
-        if pacificCal.startOfDay(for: draftScheduledAt) != pacificCal.startOfDay(for: baseline) { return true }
+        if pacificCal.startOfDay(for: draftScheduledAt) != pacificCal.startOfDay(for: requestChangeBaselineScheduledAt) {
+            return true
+        }
         if BookingPacificSchedule.pacificHHmmKey(from: draftScheduledAt)
-            != BookingPacificSchedule.pacificHHmmKey(from: baseline) { return true }
-        let locDraft = draftLocation.trimmingCharacters(in: .whitespacesAndNewlines)
-        if locDraft != rescheduleDraftBaselineLocation.trimmingCharacters(in: .whitespacesAndNewlines) { return true }
-        let notesDraft = draftNotes.trimmingCharacters(in: .whitespacesAndNewlines)
-        if notesDraft != rescheduleDraftBaselineNotes.trimmingCharacters(in: .whitespacesAndNewlines) { return true }
+            != BookingPacificSchedule.pacificHHmmKey(from: requestChangeBaselineScheduledAt) {
+            return true
+        }
+        if normalizedRequestChangeDraft(draftLocation) != normalizedRequestChangeDraft(requestChangeBaselineLocation) {
+            return true
+        }
+        if normalizedRequestChangeDraft(draftNotes) != normalizedRequestChangeDraft(requestChangeBaselineNotes) {
+            return true
+        }
+        // Service edits disabled — Request Change is date/time only.
+        // if normalizedRequestChangeDraft(draftServiceName).caseInsensitiveCompare(
+        //     normalizedRequestChangeDraft(requestChangeBaselineServiceName)
+        // ) != .orderedSame {
+        //     return true
+        // }
         return false
     }
 
-    private var hasServiceDraftChange: Bool {
-        draftServiceName.trimmingCharacters(in: .whitespacesAndNewlines)
-            .caseInsensitiveCompare(effectiveServiceName) != .orderedSame
+    private var hasScheduleDraftChangesFromRequestBaseline: Bool {
+        guard requestChangeBaselinesReady else { return false }
+        var pacificCal = Calendar(identifier: .gregorian)
+        pacificCal.timeZone = BookingPacificSchedule.pacificTimeZone
+        if pacificCal.startOfDay(for: draftScheduledAt) != pacificCal.startOfDay(for: requestChangeBaselineScheduledAt) {
+            return true
+        }
+        if BookingPacificSchedule.pacificHHmmKey(from: draftScheduledAt)
+            != BookingPacificSchedule.pacificHHmmKey(from: requestChangeBaselineScheduledAt) {
+            return true
+        }
+        if normalizedRequestChangeDraft(draftLocation) != normalizedRequestChangeDraft(requestChangeBaselineLocation) {
+            return true
+        }
+        if normalizedRequestChangeDraft(draftNotes) != normalizedRequestChangeDraft(requestChangeBaselineNotes) {
+            return true
+        }
+        return false
+    }
+
+    // Service edits disabled — Request Change is date/time only.
+    // private var hasServiceDraftChangeFromRequestBaseline: Bool {
+    //     guard requestChangeBaselinesReady else { return false }
+    //     return normalizedRequestChangeDraft(draftServiceName).caseInsensitiveCompare(
+    //         normalizedRequestChangeDraft(requestChangeBaselineServiceName)
+    //     ) != .orderedSame
+    // }
+
+    private var isRequestChangeEditing: Bool {
+        allowsBookingEdit && isEditing
     }
 
     /// Provider marked the booking **COMPLETED** — consumer owes payment (same gate as `BookingPaymentRequestPayload.from(bookingRow:)`).
@@ -220,87 +271,24 @@ struct ConsumerBookingDetailView: View {
 
     /// Split from `body` so the Swift compiler can type-check the stack (navigation + sheets + thread destination).
     private var bookingDetailScrollRoot: some View {
+        bookingDetailScrollRootCore
+            .bookingDetailRequestChangeKeyboardHandling(
+                isEditing: isEditing,
+                showScheduleEditSheet: $showScheduleEditSheet,
+                dismissNotesKeyboard: dismissRequestChangeNotesKeyboard
+            )
+    }
+
+    private var bookingDetailScrollRootCore: some View {
         ScrollView {
-            VStack(alignment: .center, spacing: 24) {
-                heroSection
-
-                bookingStatusPill
-
-                if bookingRow.hasPendingRescheduleRequest {
-                    pendingRescheduleBanner
-                }
-
-                if showsMessageProviderCTA {
-                    messageProviderButton
-                }
-
-                if showsPayForServiceCTA {
-                    VStack(spacing: 12) {
-                        Text(payForServiceSubtitle)
-                            .font(InteraFont.subheadline)
-                            .foregroundStyle(BookingSelectorTheme.cream.opacity(0.88))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 8)
-                        Button {
-                            chatViewModel.presentPaymentTakeover(forBookingRow: bookingRow)
-                        } label: {
-                            Text("Pay for this service")
-                                .font(BookingSelectorTheme.todayBoldFont)
-                                .foregroundStyle(BookingSelectorTheme.deepCharcoal)
-                                .frame(maxWidth: .infinity)
-                                .frame(minHeight: 54)
-                                .background {
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .fill(BookingSelectorTheme.cream)
-                                }
-                        }
-                        .buttonStyle(BookButtonStyle())
-                        .shadow(color: Color.oliveGreen.opacity(0.28), radius: 7, y: 2)
-                    }
-                    .padding(.top, 4)
-                }
-
-                if showsRebookCTA {
-                    Button {
-                        Task { await startRebookFlow() }
-                    } label: {
-                        HStack(spacing: 10) {
-                            if isLoadingRebook {
-                                ProgressView()
-                                    .controlSize(.small)
-                                    .tint(BookingSelectorTheme.deepCharcoal)
-                            }
-                            Text("Book again")
-                                .font(BookingSelectorTheme.todayBoldFont)
-                                .foregroundStyle(BookingSelectorTheme.deepCharcoal)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: 54)
-                        .background {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(BookingSelectorTheme.cream)
-                        }
-                        .opacity(isLoadingRebook ? 0.55 : 1)
-                    }
-                    .buttonStyle(BookButtonStyle())
-                    .disabled(isLoadingRebook)
-                    .shadow(color: Color.oliveGreen.opacity(0.28), radius: 7, y: 2)
-                    .padding(.top, 4)
-                }
-
-                infoTimelineCard
-
-                if formattedPrice != nil || bookingRow.notes?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty != nil {
-                    supplementaryDetailsCard
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 20)
-            .frame(maxWidth: .infinity, alignment: .center)
+            bookingDetailScrollContent
         }
         .refreshable {
             await refreshBookingDetailFromServer()
         }
+        #if os(iOS)
+        .scrollDismissesKeyboard(isRequestChangeEditing ? .immediately : .automatic)
+        #endif
         #if os(iOS)
         .scrollContentBackground(.hidden)
         #endif
@@ -366,19 +354,25 @@ struct ConsumerBookingDetailView: View {
             if localServiceName == nil { localServiceName = bookingRow.displayServiceName }
         }
         .toolbar {
-            if allowsBookingEdit {
+            if allowsBookingEdit && !isEditing {
                 ToolbarItem(placement: .topBarTrailing) {
-                    if isEditing {
-                        Button(action: cancelEditing) {
-                            bookingDetailGlassIconOrb(systemName: "xmark", accessibilityLabel: "Cancel editing")
-                        }
-                        .buttonStyle(.borderless)
-                    } else {
-                        Button(action: beginEditing) {
-                            bookingDetailGlassEditOrb(title: requestChangeToolbarTitle)
-                        }
-                        .buttonStyle(.borderless)
+                    Button(action: beginEditing) {
+                        bookingDetailToolbarIcon(
+                            systemName: "pencil",
+                            accessibilityLabel: requestChangeToolbarTitle
+                        )
                     }
+                    .buttonStyle(.borderless)
+                }
+            } else if allowsBookingEdit && isEditing {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: cancelEditing) {
+                        bookingDetailToolbarIcon(
+                            systemName: "xmark",
+                            accessibilityLabel: "Cancel editing"
+                        )
+                    }
+                    .buttonStyle(.borderless)
                 }
             }
         }
@@ -403,9 +397,100 @@ struct ConsumerBookingDetailView: View {
             scheduleEditHalfSheet
         }
         .task(id: isEditing) {
-            guard isEditing, allowsBookingEdit else { return }
+            guard isEditing, allowsBookingEdit else {
+                requestChangeBaselinesReady = false
+                return
+            }
+            requestChangeBaselinesReady = false
             await loadEditPickerOptions()
+            captureRequestChangeBaselines()
         }
+    }
+
+    private var bookingDetailScrollContent: some View {
+        VStack(alignment: .center, spacing: isRequestChangeEditing ? 8 : 24) {
+            requestChangeEditingHeroSection
+
+            if !isRequestChangeEditing {
+                bookingStatusAndPriceRow
+            }
+
+            if bookingRow.hasPendingRescheduleRequest {
+                pendingRescheduleBanner
+            }
+
+            if showsPayForServiceCTA {
+                bookingDetailPayForServiceBlock
+            }
+
+            if showsRebookCTA {
+                bookingDetailRebookBlock
+            }
+
+            infoTimelineCard
+
+            if !isRequestChangeEditing,
+               bookingRow.notes?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty != nil {
+                supplementaryDetailsCard
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private var bookingDetailPayForServiceBlock: some View {
+        VStack(spacing: 12) {
+            Text(payForServiceSubtitle)
+                .font(InteraFont.subheadline)
+                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.88))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 8)
+            Button {
+                chatViewModel.presentPaymentTakeover(forBookingRow: bookingRow)
+            } label: {
+                Text("Pay for this service")
+                    .font(BookingSelectorTheme.todayBoldFont)
+                    .foregroundStyle(BookingSelectorTheme.deepCharcoal)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 54)
+                    .background {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(BookingSelectorTheme.cream)
+                    }
+            }
+            .buttonStyle(BookButtonStyle())
+            .shadow(color: Color.oliveGreen.opacity(0.28), radius: 7, y: 2)
+        }
+        .padding(.top, 4)
+    }
+
+    private var bookingDetailRebookBlock: some View {
+        Button {
+            Task { await startRebookFlow() }
+        } label: {
+            HStack(spacing: 10) {
+                if isLoadingRebook {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(BookingSelectorTheme.deepCharcoal)
+                }
+                Text("Book again")
+                    .font(BookingSelectorTheme.todayBoldFont)
+                    .foregroundStyle(BookingSelectorTheme.deepCharcoal)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 54)
+            .background {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(BookingSelectorTheme.cream)
+            }
+            .opacity(isLoadingRebook ? 0.55 : 1)
+        }
+        .buttonStyle(BookButtonStyle())
+        .disabled(isLoadingRebook)
+        .shadow(color: Color.oliveGreen.opacity(0.28), radius: 7, y: 2)
+        .padding(.top, 4)
     }
 
     @MainActor
@@ -452,39 +537,25 @@ struct ConsumerBookingDetailView: View {
             && !showsPayForServiceCTA
     }
 
-    private var messageProviderButton: some View {
+    private static let heroServiceDisplayFont = InteraFont.subheadline.weight(.semibold)
+    private static let editBottomBarButtonFont = InteraFont.footnote.weight(.semibold)
+    private static let bookingDetailCircularActionButtonSize: CGFloat = 44
+
+    private var messageProviderCircularButton: some View {
         Button {
             Task { @MainActor in
                 await openProviderConversation()
             }
         } label: {
-            HStack(spacing: 10) {
-                if isOpeningMessaging {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(BookingSelectorTheme.cream)
-                }
-                Image(systemName: "message.fill")
-                    .font(InteraFont.body.weight(.semibold))
-                Text("Messages")
-                    .font(BookingSelectorTheme.todayBoldFont)
-            }
-            .foregroundStyle(BookingSelectorTheme.cream)
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: 54)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(BookingSelectorTheme.cream.opacity(0.55), lineWidth: 1)
-                    .background {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.white.opacity(0.08))
-                    }
-            }
-            .opacity(isOpeningMessaging ? 0.55 : 1)
+            bookingDetailCircularIconButton(
+                systemName: "message.fill",
+                accessibilityLabel: "Message \(bookingRow.providerKindTag)",
+                showsProgress: isOpeningMessaging
+            )
         }
         .buttonStyle(.plain)
         .disabled(isOpeningMessaging)
-        .accessibilityLabel("Messages with \(bookingRow.barberDisplayName)")
+        .opacity(isOpeningMessaging ? 0.55 : 1)
         .accessibilityHint("Opens your conversation with this provider about this booking.")
     }
 
@@ -566,6 +637,17 @@ struct ConsumerBookingDetailView: View {
 
     // MARK: - Hero
 
+    @ViewBuilder
+    private var requestChangeEditingHeroSection: some View {
+        if isRequestChangeEditing {
+            heroSection
+                .contentShape(Rectangle())
+                .onTapGesture(perform: dismissRequestChangeNotesKeyboard)
+        } else {
+            heroSection
+        }
+    }
+
     private var heroSection: some View {
         VStack(alignment: .center, spacing: 12) {
             barberAvatar
@@ -578,27 +660,36 @@ struct ConsumerBookingDetailView: View {
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.6)
 
-            if allowsBookingEdit && isEditing {
-                serviceEditHeroRow
-            } else {
-                Text(serviceTypePastLine)
-                    .bookingCalendarWeekdayLabelStyle()
+            // Service editing disabled during Request Change — show read-only service label.
+            // if allowsBookingEdit && isEditing {
+            //     serviceEditHeroRow
+            // } else {
+            HStack(alignment: .center, spacing: 10) {
+                Text(displayableServiceLine)
+                    .font(Self.heroServiceDisplayFont)
                     .foregroundStyle(BookingSelectorTheme.cream.opacity(0.92))
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if showsMessageProviderCTA && !isEditing {
+                    messageProviderCircularButton
+                }
             }
+            // }
         }
         .frame(maxWidth: .infinity)
     }
 
-    private var serviceTypePastLine: String {
+    private var displayableServiceLine: String {
         if let local = localServiceName?.trimmingCharacters(in: .whitespacesAndNewlines), !local.isEmpty {
-            return local.uppercased()
+            return ConsumerBookingSimpleRow.displayableServiceLabel(local)
         }
-        if let t = bookingRow.serviceType?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty {
-            return t.replacingOccurrences(of: "_", with: " ").uppercased()
-        }
-        return bookingRow.displayServiceName.uppercased()
+        return bookingRow.displayServiceName
     }
+
+    // private var displayableDraftServiceName: String {
+    //     ConsumerBookingSimpleRow.displayableServiceLabel(draftServiceName)
+    // }
 
     @ViewBuilder
     private var barberAvatar: some View {
@@ -628,29 +719,59 @@ struct ConsumerBookingDetailView: View {
 
     // MARK: - Status
 
+    private var confirmedFormattedDateLine: String {
+        Self.dateOnlyDF.string(from: confirmedScheduledAt)
+    }
+
+    private var confirmedFormattedTimeLine: String {
+        BookingPacificSchedule.displayTimeWithMinutes(from: confirmedScheduledAt)
+    }
+
+    private var proposedFormattedDateLine: String? {
+        bookingRow.pendingRescheduleRequest?.proposedScheduledAtDate.map {
+            Self.dateOnlyDF.string(from: $0)
+        }
+    }
+
+    private var proposedFormattedTimeLine: String? {
+        bookingRow.pendingRescheduleRequest?.proposedScheduledAtDate.map {
+            BookingPacificSchedule.displayTimeWithMinutes(from: $0)
+        }
+    }
+
+    private var confirmedBookingLocationLine: String? {
+        let s = (bookingRow.location ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !s.isEmpty, !Self.isCoordinateLocationPlaceholder(s) else { return nil }
+        return s
+    }
+
+    private var pendingRequestedLocationLine: String? {
+        let pending = bookingRow.pendingRescheduleRequest?.location?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !pending.isEmpty, !Self.isCoordinateLocationPlaceholder(pending) {
+            return pending
+        }
+        return confirmedBookingLocationLine
+    }
+
+    private var pendingLocationDiffersFromConfirmed: Bool {
+        let confirmed = normalizedRequestChangeDraft(confirmedBookingLocationLine ?? "")
+        let requestedRaw = bookingRow.pendingRescheduleRequest?.location?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !requestedRaw.isEmpty, !Self.isCoordinateLocationPlaceholder(requestedRaw) else { return false }
+        return normalizedRequestChangeDraft(requestedRaw) != confirmed
+    }
+
     private var pendingRescheduleBanner: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Schedule change pending approval", systemImage: "clock.badge.questionmark")
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Schedule change pending approval")
                 .font(InteraFont.subheadline.weight(.semibold))
                 .foregroundStyle(BookingSelectorTheme.cream)
 
-            if let pending = bookingRow.pendingRescheduleRequest,
-               let proposed = pending.proposedScheduledAtDate {
-                Text("Requested: \(Self.dateOnlyDF.string(from: proposed)) at \(BookingPacificSchedule.displayTimeWithMinutes(from: proposed))")
-                    .font(InteraFont.subheadline)
-                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.88))
-            }
-
-            if let loc = bookingRow.pendingRescheduleRequest?.location?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
-               !Self.isCoordinateLocationPlaceholder(loc) {
-                Text("Location: \(loc)")
-                    .font(InteraFont.caption)
-                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
-            }
-
-            Text("Your confirmed appointment stays as shown below until your provider approves.")
+            Text("Your provider must approve before your booking updates.")
                 .font(InteraFont.caption)
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.65))
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
@@ -664,32 +785,50 @@ struct ConsumerBookingDetailView: View {
         }
     }
 
+    private var bookingStatusAndPriceRow: some View {
+        HStack(alignment: .top, spacing: 12) {
+            bookingStatusPill
+                .frame(maxWidth: .infinity)
+            if formattedPrice != nil {
+                bookingPricePill
+                    .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
     private var bookingStatusPill: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Status")
-                    .bookingCalendarWeekdayLabelStyle()
-                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.75))
-                Text(bookingRow.displayStatus)
+        VStack(alignment: .center, spacing: 4) {
+            Text("Status")
+                .bookingDetailFieldTitleStyle()
+                .multilineTextAlignment(.center)
+            Text(bookingRow.displayStatus)
+                .font(InteraFont.body.weight(.semibold))
+                .foregroundStyle(BookingSelectorTheme.cream)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .bookingDetailMetricPillChrome()
+    }
+
+    private var bookingPricePill: some View {
+        VStack(alignment: .center, spacing: 4) {
+            Text("Price")
+                .bookingDetailFieldTitleStyle()
+                .multilineTextAlignment(.center)
+            if let price = formattedPrice {
+                Text(price)
                     .font(InteraFont.body.weight(.semibold))
                     .foregroundStyle(BookingSelectorTheme.cream)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
-        .background {
-            ZStack {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white.opacity(0.05))
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(BookingSelectorTheme.cream, lineWidth: 1)
+                    .multilineTextAlignment(.center)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .bookingDetailMetricPillChrome()
     }
 
     // MARK: - Timeline (date / time / location)
@@ -697,10 +836,7 @@ struct ConsumerBookingDetailView: View {
     private var infoTimelineCard: some View {
         VStack(alignment: .leading, spacing: (allowsBookingEdit && isEditing) ? 16 : 0) {
             if allowsBookingEdit && isEditing {
-                Text("Propose a new date, time, or location. Your provider must approve before your appointment changes.")
-                    .font(InteraFont.caption)
-                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
-                    .fixedSize(horizontal: false, vertical: true)
+                requestChangeInstructions
 
                 dateEditTimelineRow()
                 timeEditTimelineRow()
@@ -708,17 +844,19 @@ struct ConsumerBookingDetailView: View {
                     locationPickerEditRow(isLast: false)
                 }
                 notesEditRow(isLast: true)
+            } else if bookingRow.hasPendingRescheduleRequest {
+                pendingScheduleComparisonTimeline(showLocation: showsReadOnlyLocationTimelineBlock)
             } else {
                 let showLocation = showsReadOnlyLocationTimelineBlock
                 timelineRow(
                     isLast: false,
-                    label: "DATE",
+                    label: "Date",
                     value: formattedDateLine,
                     isEditingChrome: false
                 )
                 timelineRow(
                     isLast: !showLocation,
-                    label: "TIME",
+                    label: "Time",
                     value: formattedTimeLine,
                     isEditingChrome: false
                 )
@@ -727,12 +865,98 @@ struct ConsumerBookingDetailView: View {
                 }
             }
         }
-        .padding(20)
+        .padding(.horizontal, 20)
+        .padding(.top, isRequestChangeEditing ? 4 : 20)
+        .padding(.bottom, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             timelineCardBackground
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.82), value: isEditing)
+    }
+
+    private enum PendingScheduleSnapshotStyle {
+        case confirmed
+        case requested
+    }
+
+    @ViewBuilder
+    private func pendingScheduleComparisonTimeline(showLocation: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            pendingScheduleSnapshotSection(
+                title: "Confirmed appointment",
+                subtitle: "Your current booking",
+                dateLine: confirmedFormattedDateLine,
+                timeLine: confirmedFormattedTimeLine,
+                locationLine: showLocation ? confirmedBookingLocationLine : nil,
+                style: .confirmed
+            )
+
+            pendingScheduleSnapshotSection(
+                title: "Requested change",
+                subtitle: "Awaiting provider approval",
+                dateLine: proposedFormattedDateLine ?? confirmedFormattedDateLine,
+                timeLine: proposedFormattedTimeLine ?? confirmedFormattedTimeLine,
+                locationLine: showLocation && pendingLocationDiffersFromConfirmed
+                    ? pendingRequestedLocationLine
+                    : nil,
+                style: .requested
+            )
+        }
+    }
+
+    private func pendingScheduleSnapshotSection(
+        title: String,
+        subtitle: String,
+        dateLine: String,
+        timeLine: String,
+        locationLine: String?,
+        style: PendingScheduleSnapshotStyle
+    ) -> some View {
+        let isRequested = style == .requested
+
+        return VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(InteraFont.caption.weight(.semibold))
+                    .foregroundStyle(isRequested ? Color.oliveGreen : BookingSelectorTheme.cream.opacity(0.88))
+                Text(subtitle)
+                    .font(InteraFont.caption2)
+                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.58))
+            }
+
+            scheduleSnapshotField(label: "Date", value: dateLine, emphasized: isRequested)
+            scheduleSnapshotField(label: "Time", value: timeLine, emphasized: isRequested)
+
+            if let locationLine {
+                scheduleSnapshotField(label: "Location", value: locationLine, emphasized: isRequested)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(isRequested ? Color.oliveGreen.opacity(0.16) : Color.white.opacity(0.04))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(
+                            isRequested ? Color.oliveGreen.opacity(0.55) : BookingSelectorTheme.cream.opacity(0.22),
+                            lineWidth: isRequested ? 1.5 : 1
+                        )
+                }
+        }
+    }
+
+    private func scheduleSnapshotField(label: String, value: String, emphasized: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .bookingDetailFieldTitleStyle()
+            Text(value)
+                .font(InteraFont.body.weight(emphasized ? .semibold : .medium))
+                .foregroundStyle(BookingSelectorTheme.cream.opacity(emphasized ? 1 : 0.82))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -757,7 +981,7 @@ struct ConsumerBookingDetailView: View {
         } else {
             timelineRow(
                 isLast: isLast,
-                label: "LOCATION",
+                label: "Location",
                 value: "—",
                 isEditingChrome: false
             )
@@ -765,6 +989,8 @@ struct ConsumerBookingDetailView: View {
     }
 
     /// Compact centered service menu under the provider name (no "SERVICE" label).
+    // Service editing disabled during Request Change.
+    /*
     private var serviceEditHeroRow: some View {
         Group {
             if isLoadingEditPickerOptions {
@@ -774,20 +1000,22 @@ struct ConsumerBookingDetailView: View {
             } else {
                 Picker(selection: $draftServiceName) {
                     ForEach(alternativeServiceNames, id: \.self) { name in
-                        Text(name).tag(name)
+                        Text(ConsumerBookingSimpleRow.displayableServiceLabel(name))
+                            .font(Self.heroServiceDisplayFont)
+                            .tag(name)
                     }
                 } label: {
                     HStack(alignment: .center, spacing: 6) {
                         Spacer(minLength: 0)
-                        Text(draftServiceName)
-                            .font(InteraFont.body.weight(.medium))
-                            .foregroundStyle(BookingSelectorTheme.cream)
+                        Text(displayableDraftServiceName)
+                            .font(Self.heroServiceDisplayFont)
+                            .foregroundStyle(Self.requestChangeEditableAccentColor)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
                             .minimumScaleFactor(0.82)
                         Image(systemName: "chevron.up.chevron.down")
                             .font(InteraFont.system(size: 11, weight: .bold))
-                            .foregroundStyle(BookingSelectorTheme.cream.opacity(0.85))
+                            .foregroundStyle(Color.interaShellForegroundSecondary)
                         Spacer(minLength: 0)
                     }
                     .frame(maxWidth: .infinity)
@@ -802,40 +1030,97 @@ struct ConsumerBookingDetailView: View {
         .background(Color.clear)
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(BookingSelectorTheme.cream, lineWidth: 1)
+                .stroke(Self.requestChangeEditableAccentColor, lineWidth: 1.5)
         }
         .frame(maxWidth: .infinity)
     }
+    */
 
-    private static let serviceEditHeroMaxWidth: CGFloat = 280
+    private var notesFieldPlaceholder: String {
+        "Add a note for your \(bookingRow.providerKindTag)"
+    }
+
+    private var requestChangeInstructions: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("You can edit your appointment date and time, and add an optional note for your \(bookingRow.providerKindTag).")
+                .font(InteraFont.caption)
+                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                requestChangeInstructionLine("Tap 'Date' or 'Time' to edit either field")
+            }
+
+            Text("When you submit, your changes are sent to your \(bookingRow.providerKindTag) as a request. They must approve before your booking updates.")
+                .font(InteraFont.caption)
+                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.65))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isRequestChangeEditing {
+                dismissRequestChangeNotesKeyboard()
+            }
+        }
+    }
+
+    private func requestChangeInstructionLine(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text("•")
+                .font(InteraFont.caption.weight(.semibold))
+                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
+            Text(text)
+                .font(InteraFont.caption)
+                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // private static let serviceEditHeroMaxWidth: CGFloat = 280
 
     private func notesEditRow(isLast: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("NOTES (OPTIONAL)")
-                .bookingCalendarWeekdayLabelStyle()
-                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
-            TextField("Add a note for your provider", text: $draftNotes, axis: .vertical)
+            Text("Notes (Optional)")
+                .bookingDetailFieldTitleStyle()
+            TextField(notesFieldPlaceholder, text: $draftNotes, axis: .vertical)
                 .lineLimit(2 ... 4)
                 .font(InteraFont.body.weight(.medium))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .textFieldStyle(.plain)
+                .focused($isRequestChangeNotesFocused)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(Color.clear)
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(BookingSelectorTheme.cream, lineWidth: 1)
         }
+        .onTapGesture {
+            isRequestChangeNotesFocused = true
+        }
         .padding(.bottom, isLast ? 0 : 0)
+    }
+
+    private func dismissRequestChangeNotesKeyboard() {
+        isRequestChangeNotesFocused = false
+        #if canImport(UIKit)
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+        #endif
     }
 
     /// Menu-style picker for provider preset locations (only shown when at least one exists).
     private func locationPickerEditRow(isLast: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("LOCATION")
-                .bookingCalendarWeekdayLabelStyle()
-                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
+            Text("Location")
+                .bookingDetailFieldTitleStyle()
             if isLoadingEditPickerOptions {
                 ProgressView()
                     .tint(BookingSelectorTheme.cream)
@@ -870,62 +1155,85 @@ struct ConsumerBookingDetailView: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(BookingSelectorTheme.cream, lineWidth: 1)
         }
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                dismissRequestChangeNotesKeyboard()
+            }
+        )
     }
 
+    private static let requestChangeEditableAccentColor = Color.oliveGreen
+    #if canImport(UIKit)
+    private static let editableScheduleFieldValueUIFont = InteraFont.uiFont(size: 17, weight: .medium)
+    private static let editableScheduleTextFillUIColor = UIColor { traits in
+        traits.userInterfaceStyle == .dark ? .white : .black
+    }
+    private static let editableScheduleTextStrokeUIColor = UIColor(Color.oliveGreen)
+    /// Negative width applies olive stroke around the filled body-medium label text.
+    private static let editableScheduleTextOutlineWidth: CGFloat = -2.5
+    #endif
+
     private func dateEditTimelineRow() -> some View {
-        Button {
+        editableScheduleFieldButton(
+            label: "Date",
+            value: formattedDraftDateLine,
+            accessibilityHint: "Opens date picker to change your appointment date."
+        ) {
+            dismissRequestChangeNotesKeyboard()
             scheduleEditEntry = .date
             showScheduleEditSheet = true
-            #if os(iOS)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            #endif
-        } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("DATE")
-                    .bookingCalendarWeekdayLabelStyle()
-                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
-                Text(formattedDraftDateLine)
-                    .font(InteraFont.body.weight(.medium))
-                    .foregroundStyle(BookingSelectorTheme.cream)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(Color.clear)
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(BookingSelectorTheme.cream, lineWidth: 1)
-            }
         }
-        .buttonStyle(.plain)
     }
 
     private func timeEditTimelineRow() -> some View {
-        Button {
+        editableScheduleFieldButton(
+            label: "Time",
+            value: formattedDraftTimeLine,
+            accessibilityHint: "Opens time picker to change your appointment time."
+        ) {
+            dismissRequestChangeNotesKeyboard()
             scheduleEditEntry = .time
             showScheduleEditSheet = true
+        }
+    }
+
+    private func editableScheduleFieldButton(
+        label: String,
+        value: String,
+        accessibilityHint: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            action()
             #if os(iOS)
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             #endif
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("TIME")
-                    .bookingCalendarWeekdayLabelStyle()
-                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
-                Text(formattedDraftTimeLine)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(label)
+                    .bookingDetailFieldTitleStyle()
+                #if canImport(UIKit)
+                OutlinedScheduleLabelText(
+                    text: value,
+                    font: Self.editableScheduleFieldValueUIFont,
+                    fillColor: Self.editableScheduleTextFillUIColor,
+                    strokeColor: Self.editableScheduleTextStrokeUIColor,
+                    strokeWidth: Self.editableScheduleTextOutlineWidth
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityLabel(value)
+                #else
+                Text(value)
                     .font(InteraFont.body.weight(.medium))
                     .foregroundStyle(BookingSelectorTheme.cream)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                #endif
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(Color.clear)
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(BookingSelectorTheme.cream, lineWidth: 1)
-            }
+            .editableScheduleFieldChrome()
         }
         .buttonStyle(.plain)
+        .accessibilityHint(accessibilityHint)
     }
 
     private var formattedDraftDateLine: String {
@@ -938,9 +1246,8 @@ struct ConsumerBookingDetailView: View {
 
     private func locationTimelineRow(isLast: Bool, locationText: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("LOCATION")
-                .bookingCalendarWeekdayLabelStyle()
-                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
+            Text("Location")
+                .bookingDetailFieldTitleStyle()
             Text(locationText)
                 .font(InteraFont.body.weight(.medium))
                 .foregroundStyle(BookingSelectorTheme.cream)
@@ -959,8 +1266,7 @@ struct ConsumerBookingDetailView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .bookingCalendarWeekdayLabelStyle()
-                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
+                .bookingDetailFieldTitleStyle()
             Text(value)
                 .font(InteraFont.body.weight(.medium))
                 .foregroundStyle(BookingSelectorTheme.cream)
@@ -978,25 +1284,14 @@ struct ConsumerBookingDetailView: View {
         }
     }
 
-    // MARK: - Supplementary (price / notes)
+    // MARK: - Supplementary (notes)
 
     private var supplementaryDetailsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            if let price = formattedPrice {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("PRICE")
-                        .bookingCalendarWeekdayLabelStyle()
-                        .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
-                    Text(price)
-                        .font(InteraFont.body.weight(.medium))
-                        .foregroundStyle(BookingSelectorTheme.cream)
-                }
-            }
             if let n = bookingRow.notes?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("NOTES")
-                        .bookingCalendarWeekdayLabelStyle()
-                        .foregroundStyle(BookingSelectorTheme.cream.opacity(0.78))
+                    Text("Notes")
+                        .bookingDetailFieldTitleStyle()
                     Text(n)
                         .font(InteraFont.body)
                         .foregroundStyle(BookingSelectorTheme.cream)
@@ -1045,7 +1340,7 @@ struct ConsumerBookingDetailView: View {
         } else {
             draftScheduledAt = confirmedScheduledAt
         }
-        draftServiceName = effectiveServiceName
+        // draftServiceName = effectiveServiceName
         let baselineLoc = rescheduleDraftBaselineLocation
         if !baselineLoc.isEmpty, !Self.isCoordinateLocationPlaceholder(baselineLoc) {
             draftLocation = baselineLoc
@@ -1056,6 +1351,7 @@ struct ConsumerBookingDetailView: View {
         }
         draftNotes = rescheduleDraftBaselineNotes
         draftCalendarCommitted = true
+        requestChangeBaselinesReady = false
         withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
             isEditing = true
         }
@@ -1065,9 +1361,19 @@ struct ConsumerBookingDetailView: View {
     }
 
     private func cancelEditing() {
+        dismissRequestChangeNotesKeyboard()
+        requestChangeBaselinesReady = false
         withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
             isEditing = false
         }
+    }
+
+    private func captureRequestChangeBaselines() {
+        requestChangeBaselineScheduledAt = draftScheduledAt
+        // requestChangeBaselineServiceName = draftServiceName
+        requestChangeBaselineLocation = draftLocation
+        requestChangeBaselineNotes = draftNotes
+        requestChangeBaselinesReady = true
     }
 
     private func confirmEdits() {
@@ -1126,10 +1432,13 @@ struct ConsumerBookingDetailView: View {
         isConfirmingEdits = true
         defer { isConfirmingEdits = false }
 
-        guard hasRescheduleDraftChanges || hasServiceDraftChange else {
-            AlertManager.shared.presentErrorToast("Change the date, time, location, notes, or service before submitting.")
+        guard hasRequestChangeDraftChanges else {
+            AlertManager.shared.presentErrorToast("Change the date, time, location, or notes before submitting.")
             return
         }
+
+        let scheduleDraftChanged = hasScheduleDraftChangesFromRequestBaseline
+        // let serviceDraftChanged = hasServiceDraftChangeFromRequestBaseline
 
         let iso = BookingPacificSchedule.scheduledTimeStringForAPI(from: draftScheduledAt)
         let locRaw = draftLocation.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1138,11 +1447,11 @@ struct ConsumerBookingDetailView: View {
             return locRaw
         }()
         let notesForAPI = draftNotes.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
-        let svcRaw = draftServiceName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let svcForAPI = svcRaw.isEmpty ? bookingRow.displayServiceName : svcRaw
+        // let svcRaw = draftServiceName.trimmingCharacters(in: .whitespacesAndNewlines)
+        // let svcForAPI = svcRaw.isEmpty ? bookingRow.displayServiceName : svcRaw
 
         do {
-            if hasRescheduleDraftChanges {
+            if scheduleDraftChanged {
                 _ = try await ConsumerBookingsSimpleAPI.submitRescheduleRequest(
                     bookingId: bookingRow.id,
                     scheduledTimeISO: iso,
@@ -1151,17 +1460,18 @@ struct ConsumerBookingDetailView: View {
                     bearerToken: token
                 )
             }
-            if hasServiceDraftChange {
-                try await ConsumerBookingsSimpleAPI.updateConsumerBookingMetadata(
-                    bookingId: bookingRow.id,
-                    location: hasRescheduleDraftChanges ? nil : locForAPI,
-                    serviceName: svcForAPI,
-                    bearerToken: token
-                )
-            }
-            if hasServiceDraftChange {
-                localServiceName = draftServiceName
-            }
+            // Service metadata updates disabled during Request Change.
+            // if serviceDraftChanged {
+            //     try await ConsumerBookingsSimpleAPI.updateConsumerBookingMetadata(
+            //         bookingId: bookingRow.id,
+            //         location: scheduleDraftChanged ? nil : locForAPI,
+            //         serviceName: svcForAPI,
+            //         bearerToken: token
+            //     )
+            // }
+            // if serviceDraftChanged {
+            //     localServiceName = draftServiceName
+            // }
             await performBookingDetailRefresh()
             withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
                 isEditing = false
@@ -1170,7 +1480,7 @@ struct ConsumerBookingDetailView: View {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             #endif
             AlertManager.shared.present(
-                hasRescheduleDraftChanges
+                scheduleDraftChanged
                     ? "Schedule change requested. Your provider will review it."
                     : "Booking details updated."
             )
@@ -1189,14 +1499,15 @@ struct ConsumerBookingDetailView: View {
         isLoadingEditPickerOptions = true
         defer { isLoadingEditPickerOptions = false }
 
-        func mergeServiceNames(_ apiNames: [String]) -> [String] {
-            let trimmed = apiNames.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-            var merged = trimmed.isEmpty ? [effectiveServiceName] : trimmed
-            if !merged.contains(where: { $0.caseInsensitiveCompare(draftServiceName) == .orderedSame }) {
-                merged.insert(draftServiceName, at: 0)
-            }
-            return merged
-        }
+        // Service picker options disabled during Request Change.
+        // func mergeServiceNames(_ apiNames: [String]) -> [String] {
+        //     let trimmed = apiNames.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        //     var merged = trimmed.isEmpty ? [effectiveServiceName] : trimmed
+        //     if !merged.contains(where: { $0.caseInsensitiveCompare(draftServiceName) == .orderedSame }) {
+        //         merged.insert(draftServiceName, at: 0)
+        //     }
+        //     return merged
+        // }
 
         func mergeLocationNames(_ apiLocs: [String]) -> [String] {
             var set = Set(
@@ -1213,7 +1524,7 @@ struct ConsumerBookingDetailView: View {
         }
 
         guard let bid = bookingRow.barberId?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty else {
-            alternativeServiceNames = mergeServiceNames([])
+            // alternativeServiceNames = mergeServiceNames([])
             alternativeLocationNames = mergeLocationNames([])
             return
         }
@@ -1223,18 +1534,16 @@ struct ConsumerBookingDetailView: View {
                 barberId: bid,
                 bearerToken: sessionManager.currentSession?.token
             )
-            let serviceNames = (provider.services ?? []).map(\.name)
-            alternativeServiceNames = mergeServiceNames(serviceNames)
+            // let serviceNames = (provider.services ?? []).map(\.name)
+            // alternativeServiceNames = mergeServiceNames(serviceNames)
             let locs = provider.locations ?? []
             alternativeLocationNames = mergeLocationNames(locs)
-            if !alternativeLocationNames.isEmpty, !alternativeLocationNames.contains(where: { $0 == draftLocation }) {
-                draftLocation = alternativeLocationNames[0]
-            }
-            if !alternativeServiceNames.contains(where: { $0 == draftServiceName }) {
-                draftServiceName = alternativeServiceNames[0]
+            if normalizedRequestChangeDraft(draftLocation).isEmpty,
+               let firstLocation = alternativeLocationNames.first {
+                draftLocation = firstLocation
             }
         } catch {
-            alternativeServiceNames = mergeServiceNames([])
+            // alternativeServiceNames = mergeServiceNames([])
             alternativeLocationNames = mergeLocationNames([])
         }
     }
@@ -1380,7 +1689,10 @@ struct ConsumerBookingDetailView: View {
     private var confirmChangesInset: some View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
-                Button(action: confirmEdits) {
+                Button {
+                    dismissRequestChangeNotesKeyboard()
+                    confirmEdits()
+                } label: {
                     HStack(spacing: 10) {
                         if isConfirmingEdits {
                             ProgressView()
@@ -1388,7 +1700,7 @@ struct ConsumerBookingDetailView: View {
                                 .tint(BookingSelectorTheme.deepCharcoal)
                         }
                         Text(submitRequestButtonTitle)
-                            .font(BookingSelectorTheme.todayBoldFont)
+                            .font(Self.editBottomBarButtonFont)
                             .foregroundStyle(BookingSelectorTheme.deepCharcoal)
                     }
                     .contentTransition(.interpolate)
@@ -1401,11 +1713,13 @@ struct ConsumerBookingDetailView: View {
                     }
                 }
                 .buttonStyle(BookButtonStyle())
-                .disabled(isConfirmingEdits || isCancellingBooking || (!hasRescheduleDraftChanges && !hasServiceDraftChange))
-                .opacity((isConfirmingEdits || isCancellingBooking || (!hasRescheduleDraftChanges && !hasServiceDraftChange)) ? 0.55 : 1)
+                .disabled(isConfirmingEdits || isCancellingBooking || !hasRequestChangeDraftChanges)
+                .opacity((isConfirmingEdits || isCancellingBooking || !hasRequestChangeDraftChanges) ? 0.55 : 1)
+                .allowsHitTesting(hasRequestChangeDraftChanges && !isConfirmingEdits && !isCancellingBooking)
                 .frame(maxWidth: .infinity)
 
                 Button {
+                    dismissRequestChangeNotesKeyboard()
                     showCancelBookingConfirmation = true
                 } label: {
                     HStack(spacing: 8) {
@@ -1415,7 +1729,7 @@ struct ConsumerBookingDetailView: View {
                                 .tint(Color.red)
                         }
                         Text("Cancel Booking")
-                            .font(BookingSelectorTheme.todayBoldFont)
+                            .font(Self.editBottomBarButtonFont)
                             .foregroundStyle(Color.red)
                             .multilineTextAlignment(.center)
                     }
@@ -1486,18 +1800,135 @@ struct ConsumerBookingDetailView: View {
         }
     }
 
-    private func bookingDetailGlassEditOrb(title: String) -> some View {
-        Text(title)
-            .font(InteraFont.system(size: 17, weight: .semibold, design: .rounded))
-            .foregroundStyle(BookingSelectorTheme.cream)
-            .accessibilityLabel("Edit booking details")
-    }
-
-    private func bookingDetailGlassIconOrb(systemName: String, accessibilityLabel: String) -> some View {
+    private func bookingDetailToolbarIcon(systemName: String, accessibilityLabel: String) -> some View {
         Image(systemName: systemName)
             .font(InteraFont.system(size: 17, weight: .semibold))
             .foregroundStyle(BookingSelectorTheme.cream)
             .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func bookingDetailCircularIconButton(
+        systemName: String,
+        accessibilityLabel: String,
+        showsProgress: Bool = false
+    ) -> some View {
+        ZStack {
+            Circle()
+                .fill(Color.oliveGreen)
+            if showsProgress {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(.white)
+            } else {
+                Image(systemName: systemName)
+                    .font(InteraFont.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+        }
+        .frame(width: Self.bookingDetailCircularActionButtonSize, height: Self.bookingDetailCircularActionButtonSize)
+        .shadow(color: Color.oliveGreen.opacity(0.28), radius: 7, y: 2)
+        .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+#if canImport(UIKit)
+/// Body-medium schedule value with an olive-green glyph outline and adaptive fill (matches read-only booking details).
+private struct OutlinedScheduleLabelText: UIViewRepresentable {
+    let text: String
+    let font: UIFont
+    let fillColor: UIColor
+    let strokeColor: UIColor
+    let strokeWidth: CGFloat
+
+    func makeUIView(context: Context) -> UILabel {
+        let label = UILabel()
+        label.numberOfLines = 0
+        label.backgroundColor = .clear
+        label.isUserInteractionEnabled = false
+        label.lineBreakMode = .byWordWrapping
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        label.setContentHuggingPriority(.defaultHigh, for: .vertical)
+        return label
+    }
+
+    func updateUIView(_ label: UILabel, context: Context) {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: fillColor,
+            .strokeColor: strokeColor,
+            .strokeWidth: strokeWidth,
+        ]
+        label.attributedText = NSAttributedString(string: text, attributes: attributes)
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UILabel, context: Context) -> CGSize? {
+        let width = proposal.width ?? UIView.layoutFittingExpandedSize.width
+        uiView.preferredMaxLayoutWidth = width
+        return uiView.sizeThatFits(CGSize(width: width, height: UIView.layoutFittingExpandedSize.height))
+    }
+}
+#endif
+
+private struct BookingDetailMetricPillChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.white.opacity(0.05))
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(BookingSelectorTheme.cream, lineWidth: 1)
+                }
+            }
+    }
+}
+
+private extension View {
+    func bookingDetailMetricPillChrome() -> some View {
+        modifier(BookingDetailMetricPillChrome())
+    }
+}
+
+private struct EditableScheduleFieldChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color.clear)
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(Color.oliveGreen, lineWidth: 1.5)
+            }
+    }
+}
+
+private extension View {
+    func editableScheduleFieldChrome() -> some View {
+        modifier(EditableScheduleFieldChrome())
+    }
+
+    func bookingDetailRequestChangeKeyboardHandling(
+        isEditing: Bool,
+        showScheduleEditSheet: Binding<Bool>,
+        dismissNotesKeyboard: @escaping () -> Void
+    ) -> some View {
+        self
+            .onChange(of: showScheduleEditSheet.wrappedValue) { _, isPresented in
+                if isPresented {
+                    dismissNotesKeyboard()
+                }
+            }
+            .onChange(of: isEditing) { _, editing in
+                if !editing {
+                    dismissNotesKeyboard()
+                }
+            }
     }
 }
 
