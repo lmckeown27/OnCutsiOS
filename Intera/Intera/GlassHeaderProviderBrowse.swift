@@ -269,6 +269,11 @@ private struct GlassToolbarProfileAvatarButton: View {
 
 // MARK: - Scroll offset (collapsing header)
 
+extension Notification.Name {
+    /// Posted when the hub pager lands on Home — browse re-reads vertical scroll + pill collapse state.
+    static let homeHubBrowseShouldResyncUtilityPill = Notification.Name("homeHubBrowseShouldResyncUtilityPill")
+}
+
 @available(iOS 26.0, macOS 26.0, *)
 private struct GlobalHeaderMeasuredHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
@@ -292,12 +297,80 @@ private struct GlassBrowseScrollOffsetBridgeModifier: ViewModifier {
     }
 }
 
+#if os(iOS)
+/// Reads the hosting `UIScrollView` after hub tab switches — SwiftUI geometry can stay stale while Home is off-screen.
+@available(iOS 26.0, *)
+private struct HomeBrowseScrollResyncBridge: UIViewRepresentable {
+    var resyncGeneration: Int
+    var onSample: (CGFloat) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(onSample: onSample) }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.scheduleSample(from: uiView, generation: resyncGeneration)
+    }
+
+    final class Coordinator {
+        let onSample: (CGFloat) -> Void
+        private var lastGeneration = -1
+        private var attempts = 0
+
+        init(onSample: @escaping (CGFloat) -> Void) {
+            self.onSample = onSample
+        }
+
+        func scheduleSample(from anchor: UIView, generation: Int) {
+            guard generation != lastGeneration else { return }
+            lastGeneration = generation
+            attempts = 0
+            trySample(from: anchor)
+        }
+
+        private func trySample(from anchor: UIView) {
+            attempts += 1
+            if let scroll = anchor.intera_enclosingVerticalScrollView() {
+                onSample(max(0, scroll.contentOffset.y))
+                return
+            }
+            guard attempts < 8 else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self, weak anchor] in
+                guard let self, let anchor else { return }
+                self.trySample(from: anchor)
+            }
+        }
+    }
+}
+
+@available(iOS 26.0, *)
+private extension UIView {
+    func intera_enclosingVerticalScrollView() -> UIScrollView? {
+        var current: UIView? = self
+        while let view = current {
+            if let scroll = view as? UIScrollView,
+               scroll.contentSize.height > scroll.bounds.height + 1 {
+                return scroll
+            }
+            current = view.superview
+        }
+        return nil
+    }
+}
+#endif
+
 // MARK: - Constants
 
 private enum GlassHeaderConstants {
-    /// Minimum scroll distance (points) over which utility chrome goes from fully shown (`contentOffset.y` = 0) to hidden.
-    /// Actual range is `max(this, effectiveHeaderHeight)` so the fade tracks roughly one header height.
+    /// Minimum scroll distance (points) over which utility chrome goes from fully shown to hidden.
     static let chromeHideScrollRangeMinimum: CGFloat = 88
+    /// Gap between the utility pill bottom and the upcoming booking card — matches provider list row spacing (`.space4`).
+    static let utilityPillToBookingSpacing: CGFloat = .space4
 }
 
 // MARK: - Radius slider (morphing utility pill)
@@ -407,12 +480,20 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     /// When `true`, provider rows and search suggestions do not accept taps (detail overlay is open).
     /// When `true`, provider cards and browse chrome are non-interactive (detail overlay is capturing touches).
     var isProviderDetailCapturingTouches: Bool = false
+    /// Live hub page index — `@Binding` so TabView off-screen pages still see the current tab (plain `Int` went stale).
+    @Binding var homeHubPageIndex: Int
 
     @FocusState private var isSearchFieldFocused: Bool
     /// `ScrollGeometry.contentOffset.y` — **0** at rest at top; increases when scrolling down (synced every frame, no snapping).
     @State private var contentOffsetY: CGFloat = 0
-    @State private var headerMeasuredHeight: CGFloat = 150
+    /// Direction-aware hide amount for the utility pill overlay (increases on scroll down, decreases on scroll up).
+    @State private var utilityPillCollapseOffset: CGFloat = 0
+    @State private var utilityPillScrollResyncGeneration = 0
+    @State private var headerMeasuredHeight: CGFloat = 4 + Self.utilityPillMainBarHeight + GlassHeaderConstants.utilityPillToBookingSpacing
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @Environment(\.interaHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
+    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
+    @Environment(\.interaHubPagingCoordinator) private var hubPagingCoordinator
 
     @State private var isSearchExpanded = false
     @State private var isServiceTagsExpanded = false
@@ -439,8 +520,8 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     private static var utilityPillMainBarHeight: CGFloat { 56 }
     /// Taller than the collapsed utility pill so service chips are easier to scan and tap.
     private static var serviceTagsExpandedBarMinHeight: CGFloat { 88 }
-    /// Fallback when the utility chrome height preference hasn’t reported yet (or reports ~0) while the pill is visible.
-    private static var headerHeightFallbackUtilityOnly: CGFloat { 120 }
+    /// Fallback before the utility chrome preference reports — pill row (56) + top inset (4) + list gap (`.space4`).
+    private static var headerHeightFallbackUtilityOnly: CGFloat { 4 + utilityPillMainBarHeight + GlassHeaderConstants.utilityPillToBookingSpacing }
 
     private var shouldShowRadiusSlider: Bool {
         #if os(iOS)
@@ -455,25 +536,42 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         headerMeasuredHeight > 2 ? headerMeasuredHeight : Self.headerHeightFallbackUtilityOnly
     }
 
-    /// Scroll distance over which chrome goes from fully visible to fully collapsed (linear 1:1 with opacity).
-    private var chromeCollapseScrollRange: CGFloat {
-        max(GlassHeaderConstants.chromeHideScrollRangeMinimum, effectiveHeaderHeight)
+    /// Resting clearance from scroll top to booking — pill row only, not the inflated full-chrome measure.
+    private var utilityPillBookingStackOffset: CGFloat {
+        let topInset = showsHomePinnedBookingStripes ? 4 : 10
+        return CGFloat(topInset) + Self.utilityPillMainBarHeight + GlassHeaderConstants.utilityPillToBookingSpacing
     }
 
-    /// 1 = utility pill + reminder at full opacity and resting layout; 0 = fully hidden (scroll has moved down by `chromeCollapseScrollRange` or more).
-    private var utilityChromeProgress: CGFloat {
-        #if os(iOS)
-        // iPad: scroll-offset bridges can leave chrome faded or hard to reach; keep browse controls fully visible like iPhone at rest.
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            return 1
+    /// Clearance used for pill ↔ booking handoff (compact at rest; expands when search/tags/radius chrome is open).
+    private var utilityPillHandoffClearance: CGFloat {
+        if showsHomePinnedBookingStripes,
+           !isSearchExpanded, !isServiceTagsExpanded, !isAdjustingRadius {
+            return utilityPillBookingStackOffset
         }
+        let gap = showsHomePinnedBookingStripes ? GlassHeaderConstants.utilityPillToBookingSpacing : 0
+        return effectiveHeaderHeight + gap
+    }
+
+    /// Scroll distance over which the utility pill slides fully off-screen.
+    private var chromeCollapseScrollRange: CGFloat {
+        max(GlassHeaderConstants.chromeHideScrollRangeMinimum, utilityPillHandoffClearance)
+    }
+
+    private var shouldTrackUtilityPillScrollCollapse: Bool {
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad { return false }
         #endif
-        if isSearchExpanded || isServiceTagsExpanded || isAdjustingRadius { return 1 }
-        if accessibilityReduceMotion { return 1 }
-        let y = max(0, contentOffsetY)
-        let r = chromeCollapseScrollRange
-        guard r > 0 else { return 1 }
-        return min(1, max(0, 1 - y / r))
+        if isSearchExpanded || isServiceTagsExpanded || isAdjustingRadius { return false }
+        if accessibilityReduceMotion { return false }
+        return true
+    }
+
+    /// 1 = utility pill fully visible; 0 = slid off-screen. Direction-aware — hides on scroll down, returns on scroll up.
+    private var utilityChromeProgress: CGFloat {
+        guard shouldTrackUtilityPillScrollCollapse else { return 1 }
+        let range = chromeCollapseScrollRange
+        guard range > 0 else { return 1 }
+        return min(1, max(0, 1 - utilityPillCollapseOffset / range))
     }
 
     private var scrollPressure: CGFloat {
@@ -499,13 +597,18 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             && ((todayBookingActivity != nil) || (pendingPaymentBooking != nil))
     }
 
-    /// Top padding tracks chrome height × scroll progress so the list stays aligned with the pill without binary snapping.
-    private var listTopContentInset: CGFloat {
-        effectiveHeaderHeight * utilityChromeProgress
+    /// How far the utility pill travels off-screen — matched to booking clearance for a 1:1 handoff.
+    private var utilityPillHideTravel: CGFloat {
+        utilityPillHandoffClearance * (1 - utilityChromeProgress)
     }
 
-    /// Pinned `Section` header: **outside** `GlassEffectContainer` so Liquid Glass on list cards does not composite above this card. Higher `zIndex` keeps the reminder painting over scrolling rows.
-    /// Opacity and vertical alignment follow `utilityChromeProgress` 1:1 with the utility pill (shared scroll progress — no per-frame spring, avoids jank). Subtle bounce comes from `scrollBounceBehavior`.
+    /// Fixed top inset at rest — never tied to scroll progress (dynamic inset caused scroll feedback loops / glitches).
+    private var listTopContentInset: CGFloat {
+        guard !showsHomePinnedBookingStripes else { return 0 }
+        return effectiveHeaderHeight
+    }
+
+    /// Pinned `Section` header — fixed layout padding plus transform-only slide (never mutates scroll metrics mid-gesture).
     @ViewBuilder
     private var homePinnedBookingStripesSectionHeader: some View {
         if showsHomePinnedBookingStripes {
@@ -527,8 +630,10 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     )
                 }
             }
+            .padding(.top, utilityPillBookingStackOffset)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .opacity(Double(utilityChromeProgress))
+            .offset(y: -utilityPillHideTravel)
+            .animation(nil, value: utilityPillHideTravel)
             .compositingGroup()
             .zIndex(2)
         }
@@ -641,9 +746,37 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         }
     }
 
-    /// `onScrollGeometryChange` — keep `contentOffsetY` in sync with the scroll view (no snapping) for linear chrome progress.
-    private func handleScrollContentOffsetChange(_ offsetY: CGFloat) {
+    private var isHomeHubPageActive: Bool {
+        (hubPagingCoordinator?.hubPageIndex ?? homeHubPageIndex) == 0
+    }
+
+    private func beginUtilityPillScrollResync() {
+        utilityPillScrollResyncGeneration += 1
+    }
+
+    /// Scroll offset bridge — drives direction-aware utility pill hide/show and hub bar collapse.
+    private func handleScrollContentOffsetChange(_ offsetY: CGFloat, resyncSample: Bool = false) {
+        if !isHomeHubPageActive { return }
+
+        let previousOffsetY = contentOffsetY
         contentOffsetY = offsetY
+        hubBarScrollHandler.onOffsetChange?(offsetY)
+
+        guard shouldTrackUtilityPillScrollCollapse else {
+            utilityPillCollapseOffset = 0
+            return
+        }
+        if offsetY <= 0 {
+            utilityPillCollapseOffset = 0
+            return
+        }
+        let range = chromeCollapseScrollRange
+        if resyncSample {
+            utilityPillCollapseOffset = min(range, offsetY)
+            return
+        }
+        let delta = offsetY - previousOffsetY
+        utilityPillCollapseOffset = min(range, max(0, utilityPillCollapseOffset + delta))
     }
 
     /// Hub `NavigationStack` + clear nav: iPad often reports a small `safeAreaInsets.top` while inline title / toolbar still consume space, clipping the browse utility row.
@@ -727,7 +860,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     }
                     .padding(.top, listTopContentInset)
                     .padding(.horizontal, .space4)
-                    .padding(.bottom, .space6)
+                    .padding(.bottom, .space6 + hubBarOverlayBottomInset)
                 }
                 #if os(iOS)
                 .scrollContentBackground(.hidden)
@@ -742,7 +875,14 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                         dismissChromeFromScroll()
                     }
                 )
-                .modifier(GlassBrowseScrollOffsetBridgeModifier(onOffsetChange: handleScrollContentOffsetChange))
+                .modifier(GlassBrowseScrollOffsetBridgeModifier(onOffsetChange: { handleScrollContentOffsetChange($0) }))
+                #if os(iOS)
+                .background {
+                    HomeBrowseScrollResyncBridge(resyncGeneration: utilityPillScrollResyncGeneration) { offsetY in
+                        handleScrollContentOffsetChange(offsetY, resyncSample: true)
+                    }
+                }
+                #endif
                 .refreshable {
                     showsPullRefreshProgressIndicator = true
                     defer { showsPullRefreshProgressIndicator = false }
@@ -770,8 +910,18 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             .onChange(of: utilityPillChromeBlocksParentHubPaging) { _, active in
                 utilityPillSuppressesHubPaging?.wrappedValue = active
             }
+            .onChange(of: homeHubPageIndex) { _, page in
+                guard page == 0 else { return }
+                beginUtilityPillScrollResync()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .homeHubBrowseShouldResyncUtilityPill)) { _ in
+                beginUtilityPillScrollResync()
+            }
             .onAppear {
                 utilityPillSuppressesHubPaging?.wrappedValue = utilityPillChromeBlocksParentHubPaging
+                if isHomeHubPageActive {
+                    beginUtilityPillScrollResync()
+                }
             }
         }
     }
@@ -837,7 +987,8 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             collapsingUtilityHeaderChrome
         }
         .opacity(Double(utilityChromeProgress))
-        .offset(y: -(1 - utilityChromeProgress) * effectiveHeaderHeight)
+        .offset(y: -utilityPillHideTravel)
+        .animation(nil, value: utilityChromeProgress)
         .allowsHitTesting(utilityChromeProgress > 0.12)
         .onChange(of: isSearchExpanded) { _, expanded in
             if expanded {
@@ -1243,7 +1394,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         }
     }
 
-    /// Collapsed: icon only. Expanded: `TextField` (placeholder “Search providers…”) + close.
+    /// Collapsed: icon only. Expanded: `TextField` (placeholder “Search Barbers”) + close.
     private var utilityPillSearchSegment: some View {
         Group {
             if isSearchExpanded {
@@ -1253,7 +1404,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                         .foregroundStyle(utilityPillSearchInputCharcoal)
                         .accessibilityHidden(true)
 
-                    TextField("Search providers…", text: $searchText)
+                    TextField("Search Barbers", text: $searchText)
                         .font(utilityPillSearchInputFont)
                         .textFieldStyle(.plain)
                         .foregroundStyle(utilityPillSearchInputCharcoal)
@@ -1315,7 +1466,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 }
                 .buttonStyle(UtilityPillPhysicalPressStyle())
                 .fixedSize(horizontal: true, vertical: false)
-                .accessibilityLabel("Search providers")
+                .accessibilityLabel("Search Barbers")
             }
         }
     }

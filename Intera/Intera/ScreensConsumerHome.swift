@@ -662,7 +662,8 @@ struct ConsumerHomeScreen: View {
             sessionManager: sessionManager,
             mainCoordinator: coordinator,
             hasActiveConsumerBooking: hasActiveConsumerBooking,
-            isProviderDetailCapturingTouches: isProviderDetailCapturingTouches
+            isProviderDetailCapturingTouches: isProviderDetailCapturingTouches,
+            homeHubPageIndex: .constant(0)
         )
         .onChange(of: providerVM.selectedServiceType) { _, _ in
             providerListShuffleSeed = UInt64.random(in: 1 ... UInt64.max)
@@ -732,7 +733,7 @@ struct ConsumerHomeScreen: View {
                         selectedCategory: $selectedCategory,
                         providers: providers
                     )
-                    SearchBar(text: $searchText, placeholder: "Search providers…")
+                    SearchBar(text: $searchText, placeholder: "Search Barbers")
                         .padding(.horizontal, .space4)
                         .padding(.top, .space3)
                         .padding(.bottom, .space2)
@@ -754,7 +755,7 @@ struct ConsumerHomeScreen: View {
                         selectedCategory: $selectedCategory,
                         providers: providers
                     )
-                    SearchBar(text: $searchText, placeholder: "Search providers…")
+                    SearchBar(text: $searchText, placeholder: "Search Barbers")
                         .padding(.horizontal, .space4)
                         .padding(.top, .space3)
                         .padding(.bottom, .space2)
@@ -2232,11 +2233,16 @@ struct UnifiedProviderHomeScreen: View {
     @State private var isBrowseUtilitySearchFocused = false
     /// Hides `ConsumerStickyHubBar` while Profile first/last name fields are focused (same reason as browse search).
     @State private var isProfileHubNameFieldFocused = false
-    /// Miles slider, expanded search, or Tags strip — hub `TabView` horizontal swipe is disabled while any is active.
+    /// When `true`, miles slider, expanded search, or Tags strip — hub `TabView` horizontal swipe is disabled.
     @State private var isUtilityPillChromeExpanded = false
-    /// Paged `TabView` scroll — drives hub bubble 1:1 (`HubPagingScrollOffsetReader`).
-    @State private var hubTabScrollOffsetX: CGFloat = 0
-    @State private var hubTabPageWidth: CGFloat = 0
+    /// Provider utility-pill search (expanded field / keyboard) — hub bar is unmounted, not merely hidden.
+    private var browseProviderSearchSuppressesHubBar: Bool {
+        isUtilityPillChromeExpanded || isBrowseUtilitySearchFocused
+    }
+    /// UIKit paging bridge + cream bubble driver (shared by scroll observer and hub bar).
+    #if os(iOS)
+    @State private var hubPagingCoordinator = HubPagingCoordinator()
+    #endif
     /// After non-animated hub selection (e.g. bubble drag release), forces the paging `UIScrollView` to match — fixes adjacent single-step moves.
     @State private var hubTabSyncPagingScrollToSelection = false
     /// Cancels stale post-animation scroll reconcile tasks when the user taps another hub icon quickly.
@@ -2251,6 +2257,9 @@ struct UnifiedProviderHomeScreen: View {
     @State private var hubTabSyncPagingScrollAggressive = true
     /// While dragging the hub bubble, suppresses scroll-offset publishing so the main `TabView` does not flicker.
     @State private var isHubBubbleDragging = false
+    /// 0 = expanded floating hub bar; 1 = minimized while scrolling page content downward.
+    @State private var hubBarCollapseProgress: CGFloat = 0
+    @State private var hubBarLastScrollOffsetY: CGFloat = 0
     /// While a Messages thread is open on the hub Messages tab, horizontal hub tab swiping is disabled (conversation edge swipe is isolated).
     @State private var messagesThreadPresentedForHubPaging = false
     /// Bumped when a message push opens a thread so the Messages `NavigationStack` is recreated — avoids stacking two `MessagingConversationView`s after resume from background.
@@ -2322,7 +2331,6 @@ struct UnifiedProviderHomeScreen: View {
     /// `NavigationStack`s; gating on `navigationPath` for every tab could collapse the hub for a frame during inner
     /// pop transitions and make the selector disappear while returning to the inbox.
     private var hubShellAllowsBottomChromeInset: Bool {
-        guard !isBrowseUtilitySearchFocused else { return false }
         if hubPageIndex == 0, homeOuterPushedMessagingThread { return false }
         if homeShellBookingThreadObscuresHubChrome { return false }
         return true
@@ -2344,7 +2352,7 @@ struct UnifiedProviderHomeScreen: View {
         homeOuterPushedMessagingThread = false
     }
 
-    /// Hub rail visible and tappable. On Profile only, first/last name focus hides the bar visually (`opacity(0)`) but the same inset stays — avoids collapsing `safeAreaInset` while editing, which resized the hub `TabView` pager and caused selection ↔ scroll oscillation when changing tabs.
+    /// Hub rail visible and tappable. On Profile only, first/last name focus hides the bar visually (`opacity(0)`) while it stays overlayed — avoids resizing the hub `TabView` pager during name edits.
     private var unifiedShowsConsumerStickyHubBar: Bool {
         guard hubShellAllowsBottomChromeInset else { return false }
         return !(hubPageIndex == 3 && isProfileHubNameFieldFocused)
@@ -2386,9 +2394,7 @@ struct UnifiedProviderHomeScreen: View {
         TabView(selection: $hubPageIndex) {
             unifiedHubHomePage
                 .tag(0)
-                /// Paged `TabView` keeps off-screen pages in the hierarchy; without this, Home (browse glass)
-                /// can sit above Bookings and eat touches — booking-notification deep-links looked “inert”.
-                .allowsHitTesting(hubPageIndex == 0)
+                .interaHubPageInteractionLock(pageIndex: 0, coordinator: hubPagingCoordinator)
 
             NavigationStack {
                 ConversationListView(
@@ -2410,7 +2416,7 @@ struct UnifiedProviderHomeScreen: View {
             }
             .id(messagesHubNavigationStackEpoch)
             .tag(1)
-            .allowsHitTesting(hubPageIndex == 1)
+            .interaHubPageInteractionLock(pageIndex: 1, coordinator: hubPagingCoordinator)
 
             ConsumerBookingsHubView(
                 sessionManager: sessionManager,
@@ -2423,7 +2429,7 @@ struct UnifiedProviderHomeScreen: View {
             .interaNavigationShellBackgroundClear()
             #endif
             .tag(2)
-            .allowsHitTesting(hubPageIndex == 2)
+            .interaHubPageInteractionLock(pageIndex: 2, coordinator: hubPagingCoordinator)
 
             NavigationStack {
                 UserProfileView(
@@ -2439,28 +2445,34 @@ struct UnifiedProviderHomeScreen: View {
                 #endif
             }
             .tag(3)
-            .allowsHitTesting(hubPageIndex == 3)
+            .interaHubPageInteractionLock(pageIndex: 3, coordinator: hubPagingCoordinator)
         }
         #if os(iOS)
         .tabViewStyle(.page(indexDisplayMode: .never))
         .animation(nil, value: hubPageIndex)
         .background {
-            ZStack {
-                HubPageViewControllerSurfaceTint(hubPageIndex: hubPageIndex)
-                HubPagingScrollOffsetReader(
-                    scrollOffsetX: $hubTabScrollOffsetX,
-                    pageWidth: $hubTabPageWidth,
-                    hubPageIndex: hubPageIndex,
-                    isPagingInteractionEnabled: hubTabPagingInteractionEnabled,
-                    syncPagingScrollToSelection: $hubTabSyncPagingScrollToSelection,
-                    syncPagingScrollAggressive: $hubTabSyncPagingScrollAggressive,
-                    suppressScrollPublishingFromObserver: isHubBubbleDragging || hubTabSuppressScrollPublish
-                )
-            }
+            HubPageViewControllerSurfaceTint()
         }
         #endif
         .background(Color.clear)
     }
+
+    #if os(iOS)
+    /// Off the paged `TabView` subtree so scroll KVO does not call `updateUIView` on the pager every frame.
+    private var hubPagingScrollObserver: some View {
+        HubPagingScrollOffsetReader(
+            coordinator: hubPagingCoordinator,
+            hubPageIndex: hubPageIndex,
+            isPagingInteractionEnabled: hubTabPagingInteractionEnabled,
+            syncPagingScrollToSelection: $hubTabSyncPagingScrollToSelection,
+            syncPagingScrollAggressive: $hubTabSyncPagingScrollAggressive,
+            suppressScrollPublishingFromObserver: isHubBubbleDragging || hubTabSuppressScrollPublish
+        )
+        .frame(width: 0, height: 0)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+    #endif
 
     #if os(iOS)
     private func resyncHubTabPagingScroll() {
@@ -2523,17 +2535,16 @@ struct UnifiedProviderHomeScreen: View {
             // Icon taps / bubble release: page content snaps immediately; only the cream bubble may spring.
             #if os(iOS)
             hubTabSuppressScrollPublish = true
-            let pageWidth = max(1, hubTabPageWidth)
-            let targetOffset = CGFloat(page) * pageWidth
+            hubPagingCoordinator.suppressScrollPublish = true
             let reduceMotion = UIAccessibility.isReduceMotionEnabled
             if rapidReselect || reduceMotion {
                 hubBubbleAnchoredToPageIndex = true
-                hubTabScrollOffsetX = targetOffset
+                hubPagingCoordinator.bubbleAnchoredToPageIndex = true
+                hubPagingCoordinator.animateBubbleToPage(page, animated: false)
             } else {
                 hubBubbleAnchoredToPageIndex = false
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
-                    hubTabScrollOffsetX = targetOffset
-                }
+                hubPagingCoordinator.bubbleAnchoredToPageIndex = false
+                hubPagingCoordinator.animateBubbleToPage(page, animated: true)
             }
             #endif
             var t = Transaction()
@@ -2547,9 +2558,11 @@ struct UnifiedProviderHomeScreen: View {
                 guard hubNavigateReconcileGeneration == generation else { return }
                 guard hubPageIndex == page else { return }
                 hubTabSuppressScrollPublish = false
+                hubPagingCoordinator.suppressScrollPublish = false
                 hubBubbleAnchoredToPageIndex = false
-                let expected = CGFloat(page) * max(1, hubTabPageWidth)
-                if abs(hubTabScrollOffsetX - expected) > 2 {
+                hubPagingCoordinator.bubbleAnchoredToPageIndex = false
+                let expected = CGFloat(page) * max(1, hubPagingCoordinator.pageWidth)
+                if abs(hubPagingCoordinator.scrollOffsetX - expected) > 2 {
                     hubTabSyncPagingScrollAggressive = false
                     hubTabSyncPagingScrollToSelection = true
                 }
@@ -2558,30 +2571,75 @@ struct UnifiedProviderHomeScreen: View {
         }
     }
     
-    /// Reserve-only slot for bottom hub chrome (`ConsumerStickyHubMetrics.chromeHeight`). The real bar is painted in
-    /// ``hubStickyBarOverlay`` so UIKit’s navigation pop snapshot doesn’t sit above `safeAreaInset` content for ~1s.
-    private var hubStickyBarReserveHeight: CGFloat {
-        ConsumerStickyHubMetrics.chromeHeight
+    @MainActor
+    private func handleHubPageVerticalScrollOffset(_ offsetY: CGFloat) {
+        #if os(iOS)
+        if hubPagingCoordinator.isUserScrolling { return }
+        #endif
+        guard unifiedShowsConsumerStickyHubBar else {
+            hubBarCollapseProgress = 0
+            hubBarLastScrollOffsetY = 0
+            return
+        }
+        InteraHubBarCollapseController.update(
+            progress: &hubBarCollapseProgress,
+            lastOffsetY: &hubBarLastScrollOffsetY,
+            offsetY: offsetY
+        )
+    }
+
+    #if os(iOS)
+    /// Hub bar remount is async — defer bubble layout until `HubBubbleUIKitHost` attaches.
+    private func resyncHubBubbleAfterMount() {
+        DispatchQueue.main.async {
+            guard !browseProviderSearchSuppressesHubBar else { return }
+            hubPagingCoordinator.syncBubbleAfterHubBarMount(page: hubPageIndex)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            guard !browseProviderSearchSuppressesHubBar else { return }
+            hubPagingCoordinator.syncBubbleAfterHubBarMount(page: hubPageIndex)
+        }
+    }
+    #endif
+
+    private var hubBarOverlayBottomInset: CGFloat {
+        guard hubShellAllowsBottomChromeInset else { return 0 }
+        if browseProviderSearchSuppressesHubBar { return 0 }
+        return ConsumerStickyHubMetrics.overlayContentBottomInset(collapseProgress: hubBarCollapseProgress)
     }
 
     @ViewBuilder
     private var hubStickyBarOverlay: some View {
-        if hubShellAllowsBottomChromeInset {
-            ConsumerStickyHubBar(
-                hubPageIndex: $hubPageIndex,
-                unreadMessageCount: chatViewModel.unreadMessageCount,
-                upcomingBookingCount: upcomingBookingIndicatorCount,
-                onNavigateToPage: { page, animated in navigateHubPage(page, animated: animated) },
-                tabScrollOffsetX: hubTabScrollOffsetX,
-                tabPageWidth: hubTabPageWidth,
-                bubbleAnchoredToPageIndex: hubBubbleAnchoredToPageIndex,
-                isHubBubbleDragging: $isHubBubbleDragging
-            )
+        if hubShellAllowsBottomChromeInset, !browseProviderSearchSuppressesHubBar {
+            Group {
+                #if os(iOS)
+                ConsumerStickyHubBar(
+                    hubPageIndex: $hubPageIndex,
+                    pagingCoordinator: hubPagingCoordinator,
+                    unreadMessageCount: chatViewModel.unreadMessageCount,
+                    upcomingBookingCount: upcomingBookingIndicatorCount,
+                    onNavigateToPage: { page, animated in navigateHubPage(page, animated: animated) },
+                    bubbleAnchoredToPageIndex: hubBubbleAnchoredToPageIndex,
+                    collapseProgress: hubBarCollapseProgress,
+                    isHubBubbleDragging: $isHubBubbleDragging
+                )
+                #else
+                ConsumerStickyHubBar(
+                    hubPageIndex: $hubPageIndex,
+                    unreadMessageCount: chatViewModel.unreadMessageCount,
+                    upcomingBookingCount: upcomingBookingIndicatorCount,
+                    onNavigateToPage: { page, animated in navigateHubPage(page, animated: animated) },
+                    bubbleAnchoredToPageIndex: hubBubbleAnchoredToPageIndex,
+                    collapseProgress: hubBarCollapseProgress,
+                    isHubBubbleDragging: $isHubBubbleDragging
+                )
+                #endif
+            }
             .opacity(unifiedShowsConsumerStickyHubBar ? 1 : 0)
             .allowsHitTesting(unifiedShowsConsumerStickyHubBar)
             .accessibilityHidden(!unifiedShowsConsumerStickyHubBar)
             .padding(.horizontal, 20)
-            .safeAreaPadding(.bottom, 0)
+            .padding(.bottom, 8)
         }
     }
 
@@ -2591,23 +2649,52 @@ struct UnifiedProviderHomeScreen: View {
         ZStack {
             InteraHubTabShellBackground()
                 .ignoresSafeArea()
-            unifiedHubPagedContent
+            InteraHubPagerRenderGate(
+                hubPageIndex: hubPageIndex,
+                messagesHubNavigationStackEpoch: messagesHubNavigationStackEpoch
+            ) {
+                unifiedHubPagedContent
+            }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
             .background(Color.clear)
-            // Insets scroll content above the pill; keep layout height with a spacer so the real hub can live in an overlay.
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if hubShellAllowsBottomChromeInset {
-                    Color.clear
-                        .frame(height: hubStickyBarReserveHeight)
-                        .accessibilityHidden(true)
-                }
-            }
             .overlay(alignment: .bottom) {
                 hubStickyBarOverlay
+                    .zIndex(50)
             }
+            #if os(iOS)
+            .overlay {
+                InteraHubScrollBridgeRenderGate(
+                    hubPageIndex: hubPageIndex,
+                    isPagingInteractionEnabled: hubTabPagingInteractionEnabled,
+                    syncPagingScrollToSelection: hubTabSyncPagingScrollToSelection,
+                    suppressScrollPublishingFromObserver: isHubBubbleDragging || hubTabSuppressScrollPublish
+                ) {
+                    hubPagingScrollObserver
+                }
+            }
+            #endif
+            .environment(\.interaHubBarOverlayBottomInset, hubBarOverlayBottomInset)
+            .environment(\.interaHubBarScrollOffsetHandler, InteraHubBarScrollOffsetHandler(onOffsetChange: handleHubPageVerticalScrollOffset))
+            #if os(iOS)
+            .environment(\.interaHubPagingCoordinator, hubPagingCoordinator)
+            #endif
             .animation(.spring(response: 0.32, dampingFraction: 0.86), value: isBrowseUtilitySearchFocused)
             #if os(iOS)
+            .onAppear {
+                hubPagingCoordinator.setHubBarBubblePresentationEnabled(!browseProviderSearchSuppressesHubBar)
+            }
+            .onChange(of: browseProviderSearchSuppressesHubBar) { _, suppressed in
+                hubPagingCoordinator.setHubBarBubblePresentationEnabled(!suppressed)
+                if suppressed {
+                    hubBubbleAnchoredToPageIndex = true
+                    hubPagingCoordinator.bubbleAnchoredToPageIndex = true
+                } else {
+                    hubBubbleAnchoredToPageIndex = false
+                    hubPagingCoordinator.bubbleAnchoredToPageIndex = false
+                    resyncHubBubbleAfterMount()
+                }
+            }
             .onChange(of: chatViewModel.activePaymentRequest) { _, new in
                 // After payment `fullScreenCover` tears down, the paged hub `UIScrollView` can keep a stale offset;
                 // syncing here restores the sticky hub rail without forcing the user to swipe tabs.
@@ -2626,6 +2713,12 @@ struct UnifiedProviderHomeScreen: View {
             }
             #endif
             .onChange(of: hubPageIndex) { old, new in
+                var collapseReset = Transaction()
+                collapseReset.disablesAnimations = true
+                withTransaction(collapseReset) {
+                    hubBarCollapseProgress = 0
+                    hubBarLastScrollOffsetY = 0
+                }
                 // If scroll observation was suppressed (hub bubble drag), clear so the rail isn’t stuck
                 // desynced from the pager after deep links / notification navigation.
                 isHubBubbleDragging = false
@@ -2659,6 +2752,7 @@ struct UnifiedProviderHomeScreen: View {
                     clearHomeShellHubSuppressionFlags()
                     stripHomeOuterMessagingThreadFromNavigationPathIfNeeded()
                     #if os(iOS)
+                    NotificationCenter.default.post(name: .homeHubBrowseShouldResyncUtilityPill, object: nil)
                     // Adjacent swipe (e.g. Messages → Home) already drives the page `UIScrollView`;
                     // aggressive reconcile snaps offset without animation and fights the gesture.
                     if abs(old - new) != 1 {
@@ -3178,7 +3272,8 @@ struct UnifiedProviderHomeScreen: View {
             sessionManager: sessionManager,
             mainCoordinator: coordinator,
             hasActiveConsumerBooking: hasActiveConsumerBooking,
-            isProviderDetailCapturingTouches: isProviderDetailCapturingTouches
+            isProviderDetailCapturingTouches: isProviderDetailCapturingTouches,
+            homeHubPageIndex: $hubPageIndex
         )
     }
 
@@ -3232,7 +3327,7 @@ struct UnifiedProviderHomeScreen: View {
                         selectedCategory: $selectedCategory,
                         providers: serviceProviders
                     )
-                    SearchBar(text: $searchText, placeholder: "Search providers…")
+                    SearchBar(text: $searchText, placeholder: "Search Barbers")
                         .padding(.horizontal, .space4)
                         .padding(.top, .space3)
                         .padding(.bottom, .space2)
@@ -3270,7 +3365,7 @@ struct UnifiedProviderHomeScreen: View {
                         selectedCategory: $selectedCategory,
                         providers: serviceProviders
                     )
-                    SearchBar(text: $searchText, placeholder: "Search providers…")
+                    SearchBar(text: $searchText, placeholder: "Search Barbers")
                         .padding(.horizontal, .space4)
                         .padding(.top, .space3)
                         .padding(.bottom, .space2)
@@ -3307,11 +3402,13 @@ struct UnifiedProviderHomeScreen: View {
                     .padding(.horizontal, .space4)
                     .padding(.top, headerInset)
                     .padding(.bottom, .space6)
+                    .interaHubBarScrollContentBottomInset()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 #if os(iOS)
                 .scrollBounceBehavior(.always, axes: .vertical)
                 #endif
+                .interaHubBarScrollOffsetReporting(handleHubPageVerticalScrollOffset)
                 .refreshable {
                     await refreshUnifiedHomeSurfaceForPullToRefresh()
                 }
@@ -3416,7 +3513,7 @@ private struct StickyProviderBrowseChrome: View {
             VStack(spacing: 0) {
                 SearchBar(
                     text: $searchText,
-                    placeholder: "Search providers…",
+                    placeholder: "Search Barbers",
                     fillsSearchFieldBackground: false
                 )
                 .padding(.horizontal, .space4)

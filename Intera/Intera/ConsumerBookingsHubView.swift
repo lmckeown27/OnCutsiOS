@@ -17,6 +17,7 @@ struct ConsumerBookingsHubView: View {
     var onNavigationDepthChange: ((Int) -> Void)? = nil
 
     @EnvironmentObject private var chatViewModel: ChatViewModel
+    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
 
     @State private var detailNavigationPath = NavigationPath()
     @State private var rows: [ConsumerBookingSimpleRow] = []
@@ -65,7 +66,7 @@ struct ConsumerBookingsHubView: View {
                         onSignIn: onShowLogin,
                         onSignUp: onShowSignUp
                     )
-                } else if isLoading && rows.isEmpty {
+                } else                 if isLoading && rows.isEmpty {
                     ScrollView {
                         VStack {
                             Spacer(minLength: 120)
@@ -74,8 +75,10 @@ struct ConsumerBookingsHubView: View {
                             Spacer(minLength: 120)
                         }
                         .frame(maxWidth: .infinity)
+                        .interaHubBarScrollContentBottomInset()
                     }
                     .scrollBounceBehavior(.always, axes: .vertical)
+                    .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
                     .refreshable { await reloadBookingsListForPullToRefresh() }
                 } else if !hasAnyBooking {
                     ScrollView {
@@ -86,8 +89,10 @@ struct ConsumerBookingsHubView: View {
                         )
                         .frame(maxWidth: .infinity)
                         .padding(.top, 40)
+                        .interaHubBarScrollContentBottomInset()
                     }
                     .scrollBounceBehavior(.always, axes: .vertical)
+                    .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
                     .refreshable { await reloadBookingsListForPullToRefresh() }
                 } else {
                     UnifiedTimelineView(

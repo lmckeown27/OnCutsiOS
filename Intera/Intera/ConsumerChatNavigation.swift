@@ -23,6 +23,8 @@ struct ConversationListView: View {
     var onResetMessagesNavigationStackBeforePush: (() -> Void)? = nil
 
     @EnvironmentObject private var chatViewModel: ChatViewModel
+    @Environment(\.interaHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
+    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
 
     @State private var consumerBookings: [ConsumerBookingSimpleRow] = []
     /// Cancels superseded push-open work when `pendingPushConversationId` changes or the hub stack is reset.
@@ -85,10 +87,12 @@ struct ConversationListView: View {
                         Task { await openBookingThreadUsingHomeShellMessageFlow(booking: booking) }
                     }
                 )
+                .padding(.bottom, hubBarOverlayBottomInset)
             }
             #if os(iOS)
             .scrollBounceBehavior(.always, axes: .vertical)
             #endif
+            .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
             .refreshable { await reloadInboxForPullToRefresh() }
         } else {
             inboxConversationRowsScroll
@@ -116,11 +120,13 @@ struct ConversationListView: View {
                     .buttonStyle(InboxRowLiquidPressStyle())
                 }
             }
+            .padding(.bottom, hubBarOverlayBottomInset)
         }
         #if os(iOS)
         .scrollContentBackground(.hidden)
         .scrollBounceBehavior(.always, axes: .vertical)
         #endif
+        .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
         .refreshable { await reloadInboxForPullToRefresh() }
     }
 

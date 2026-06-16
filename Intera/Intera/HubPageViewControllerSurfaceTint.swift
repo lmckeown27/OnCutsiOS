@@ -17,12 +17,8 @@ private let interaHubPageSwipeChromeUIColor = UIColor { traits in
     traits.userInterfaceStyle == .dark ? .black : .white
 }
 
-/// Finds the hosting `UIPageViewController` and paints its root + the **horizontal** paging `UIScrollView`
-/// shell so gutters during `TabView` page transitions match the lava shell (not system white).
+/// Paints the page controller shell once — re-running on every tab change caused a one-frame hitch at swipe start.
 struct HubPageViewControllerSurfaceTint: UIViewRepresentable {
-    /// Bumps `updateUIView` on each swipe so we re-apply after UIKit rebuilds transition subviews.
-    var hubPageIndex: Int
-
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
@@ -35,14 +31,16 @@ struct HubPageViewControllerSurfaceTint: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.applySurfaceTint(anchoredTo: uiView)
+        context.coordinator.applySurfaceTintIfNeeded(anchoredTo: uiView)
     }
 
     final class Coordinator {
         private var attempts = 0
         private let maxAttempts = 10
+        private var didApply = false
 
-        func applySurfaceTint(anchoredTo uiView: UIView) {
+        func applySurfaceTintIfNeeded(anchoredTo uiView: UIView) {
+            guard !didApply else { return }
             let color = interaHubPageSwipeChromeUIColor
 
             func tryApply() {
@@ -56,16 +54,20 @@ struct HubPageViewControllerSurfaceTint: UIViewRepresentable {
                 guard let root = window.rootViewController else { return }
                 guard let pvc = root.intera_firstPageViewControllerDeep() else { return }
                 pvc.view.backgroundColor = color
-                // Horizontal page curl scroll is usually a direct subview; tint only those (not deep nested vertical scrolls).
                 for sub in pvc.view.subviews {
                     if let scroll = sub as? UIScrollView {
                         scroll.backgroundColor = color
                     }
                 }
+                didApply = true
             }
 
             attempts = 0
-            DispatchQueue.main.async(execute: tryApply)
+            if uiView.window != nil {
+                tryApply()
+            } else {
+                DispatchQueue.main.async(execute: tryApply)
+            }
         }
     }
 }

@@ -624,6 +624,8 @@ private struct UserProfileSettingsDrawerOverlay: View {
     @State private var lastPersistedFirst: String = ""
     @State private var lastPersistedLast: String = ""
     @State private var profileNameAutosaveTask: Task<Void, Never>?
+    @Environment(\.interaHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
+    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
     @State private var isDeleting = false
     @State private var formError: String?
     @State private var showDeleteConfirm = false
@@ -683,11 +685,12 @@ private struct UserProfileSettingsDrawerOverlay: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 28)
+                    .padding(.bottom, 28 + hubBarOverlayBottomInset)
                 }
                 #if os(iOS)
                 .scrollDismissesKeyboard(.interactively)
                 #endif
+                .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

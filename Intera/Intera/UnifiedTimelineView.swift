@@ -27,6 +27,8 @@ struct UnifiedTimelineView: View {
     @State private var showJumpToTodayFAB = false
     @State private var timelineContentTop: CGFloat = 0
     @State private var timelineHeaderMinYs: [String: CGFloat] = [:]
+    @Environment(\.interaHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
+    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -40,7 +42,7 @@ struct UnifiedTimelineView: View {
                 if showJumpToTodayFAB, !projection.today.isEmpty {
                     jumpToTodayButton(proxy: proxy)
                         .padding(.trailing, 20)
-                        .padding(.bottom, 24)
+                        .padding(.bottom, 24 + hubBarOverlayBottomInset)
                 }
             }
             .onPreferenceChange(TimelineScrollGeometry.ContentTopPreferenceKey.self) { y in
@@ -68,6 +70,7 @@ struct UnifiedTimelineView: View {
                 timelineLazyStack
             }
             .scrollBounceBehavior(.always, axes: .vertical)
+            .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
             .refreshable {
                 await onPullToRefresh()
             }
@@ -76,6 +79,7 @@ struct UnifiedTimelineView: View {
                 timelineLazyStack
             }
             .scrollBounceBehavior(.always, axes: .vertical)
+            .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
         }
     }
 
@@ -97,7 +101,7 @@ struct UnifiedTimelineView: View {
             )
         }
         .padding(.horizontal, 16)
-        .padding(.bottom, 28)
+        .padding(.bottom, 28 + hubBarOverlayBottomInset)
         .background(contentTopTracker)
     }
 
