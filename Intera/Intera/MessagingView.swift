@@ -1341,10 +1341,7 @@ struct MessagingConversationView: View {
                     bookingDetailPresentationID: presentation.id,
                     hasActiveConsumerBooking: hasActiveConsumerBooking,
                     onShowLogin: { onShowLogin?() },
-                    bookingMessagingMode: .bookingsTab,
-                    presentBookingMessagingThread: { _ in
-                        pushedBookingDetailRoute = nil
-                    }
+                    appendBookingMessagingThreadOnNavigationPath: nil
                 )
                 .id(presentation.id)
                 #if os(iOS)

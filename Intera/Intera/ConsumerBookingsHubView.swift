@@ -108,30 +108,10 @@ struct ConsumerBookingsHubView: View {
         }
     }
 
-    /// With booking detail on `NavigationPath`, append `.messagingThread` (item handoff on the timeline root pops detail back to the list).
     @MainActor
-    private func presentBookingsHubMessagingThread(_ handoff: ChatViewModel.BookingMessagingThreadHandoff) {
-        chatViewModel.homeStackMessagingHandoff = nil
-        chatViewModel.homeBookingMessagingThreadHandoff = nil
-        chatViewModel.bookingsTabMessagingThreadHandoff = nil
-
-        guard detailNavigationPath.count >= 1 else {
-            chatViewModel.bookingsTabMessagingThreadHandoff = handoff
-            return
-        }
-        if detailNavigationPath.count > 1 {
-            detailNavigationPath.removeLast()
-        }
-        detailNavigationPath.append(ConsumerHomeBookingStackRoute.messagingThread(handoff))
-    }
-
-    private var bookingsTabMessagingThreadHandoffWhenTimelineRoot: Binding<ChatViewModel.BookingMessagingThreadHandoff?> {
-        Binding(
-            get: {
-                detailNavigationPath.isEmpty ? chatViewModel.bookingsTabMessagingThreadHandoff : nil
-            },
-            set: { chatViewModel.bookingsTabMessagingThreadHandoff = $0 }
-        )
+    private func appendBookingsHubMessagingThread(_ handoff: ChatViewModel.BookingMessagingThreadHandoff) {
+        chatViewModel.clearPathBackedMessagingItemHandoffs()
+        detailNavigationPath.interaAppendBookingMessagingThread(handoff)
     }
 
     @ViewBuilder
@@ -143,8 +123,7 @@ struct ConsumerBookingsHubView: View {
             bookingDetailPresentationID: presentationID,
             hasActiveConsumerBooking: hasActiveConsumerBooking,
             onShowLogin: onShowLogin,
-            bookingMessagingMode: .bookingsTab,
-            presentBookingMessagingThread: presentBookingsHubMessagingThread
+            appendBookingMessagingThreadOnNavigationPath: appendBookingsHubMessagingThread
         )
         #if os(iOS)
         .interaNavigationShellBackgroundClear()
@@ -203,7 +182,6 @@ struct ConsumerBookingsHubView: View {
             onNavigationVisibilityChanged: { visible, _ in
                 if !visible {
                     chatViewModel.promoteOrInsertConversationFromHandoff(handoff)
-                    chatViewModel.bookingsTabMessagingThreadHandoff = nil
                 }
             },
             onResyncSharedHubInboxSilently: {
@@ -237,9 +215,6 @@ struct ConsumerBookingsHubView: View {
                 .navigationDestination(for: ConsumerHomeBookingStackRoute.self) { route in
                     hubBookingStackRouteDestination(route)
                 }
-                .navigationDestination(item: bookingsTabMessagingThreadHandoffWhenTimelineRoot) { handoff in
-                    bookingsHubMessagingThreadDestination(handoff)
-                }
         }
         .navigationTitle("")
         #if os(iOS)
@@ -263,13 +238,11 @@ struct ConsumerBookingsHubView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .interaNavigateToConsumerHomeAfterPayment)) { _ in
             detailNavigationPath = NavigationPath()
-            chatViewModel.bookingsTabMessagingThreadHandoff = nil
             reportBookingsNavigationDepth()
         }
         .onReceive(NotificationCenter.default.publisher(for: .consumerBookingsHubShouldPopToRoot)) { _ in
             detailNavigationPath = NavigationPath()
             chatViewModel.pendingOpenBookingDetailId = nil
-            chatViewModel.bookingsTabMessagingThreadHandoff = nil
             reportBookingsNavigationDepth()
         }
         /// `onChange` misses the first assignment when this tab wasn’t mounted yet; `task(id:)` runs when the
@@ -294,9 +267,6 @@ struct ConsumerBookingsHubView: View {
         .onChange(of: detailNavigationPath.count) { _, count in
             if count == 0 {
                 supplementalDetailRowsByNormalizedId.removeAll()
-                chatViewModel.bookingsTabMessagingThreadHandoff = nil
-            } else {
-                chatViewModel.bookingsTabMessagingThreadHandoff = nil
             }
             reportBookingsNavigationDepth()
         }

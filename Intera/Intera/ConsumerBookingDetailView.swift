@@ -25,9 +25,8 @@ struct ConsumerBookingDetailView: View {
     /// When `true`, skips the default `InteraLavaLampBackground` so a parent (e.g. home reminder morph) owns the lava layer.
     var usesExternalLavaBackdrop: Bool = false
     var onShowLogin: () -> Void = {}
-    var bookingMessagingMode: ChatViewModel.BookingDetailMessagingMode = .bookingsTab
-    /// Host `NavigationStack` pushes ``ConsumerHomeBookingStackRoute/messagingThread`` (path) or sets browse handoff.
-    var presentBookingMessagingThread: ((ChatViewModel.BookingMessagingThreadHandoff) -> Void)? = nil
+    /// Host appends ``ConsumerHomeBookingStackRoute/messagingThread`` on its `NavigationPath` (required on path-backed stacks).
+    var appendBookingMessagingThreadOnNavigationPath: ((ChatViewModel.BookingMessagingThreadHandoff) -> Void)? = nil
 
     @State private var showRebookSheet = false
     @State private var isOpeningMessaging = false
@@ -215,11 +214,7 @@ struct ConsumerBookingDetailView: View {
     }
 
     private var showsMessageProviderCTA: Bool {
-        guard sessionManager.isAuthenticated else { return false }
-        switch bookingMessagingMode {
-        case .bookingsTab, .homeBookingPathHandoff:
-            break
-        }
+        guard sessionManager.isAuthenticated, appendBookingMessagingThreadOnNavigationPath != nil else { return false }
         let u = bookingRow.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
         return !["CANCELLED", "REJECTED", "DECLINED", "REFUNDED"].contains(u)
     }
@@ -563,23 +558,17 @@ struct ConsumerBookingDetailView: View {
         guard !isOpeningMessaging else { return }
         isOpeningMessaging = true
         defer { isOpeningMessaging = false }
-        guard let handoff = await chatViewModel.presentMessagingThreadForBooking(
-            row: bookingRow,
-            sessionManager: sessionManager,
-            presentationStack: .bookingsTabNavigation
-        ) else {
+        guard let append = appendBookingMessagingThreadOnNavigationPath else {
             showMessagingUnavailableAlert = true
             return
         }
-        if let presentBookingMessagingThread {
-            presentBookingMessagingThread(handoff)
-            return
-        }
-        switch bookingMessagingMode {
-        case .bookingsTab:
-            _ = chatViewModel.openBookingsTabMessagingThreadIfNeeded(handoff)
-        case .homeBookingPathHandoff:
-            _ = chatViewModel.openHomeBookingMessagingThreadIfNeeded(handoff)
+        let opened = await chatViewModel.presentBookingMessagingFromDetail(
+            row: bookingRow,
+            sessionManager: sessionManager,
+            appendToNavigationPath: append
+        )
+        if !opened {
+            showMessagingUnavailableAlert = true
         }
     }
 

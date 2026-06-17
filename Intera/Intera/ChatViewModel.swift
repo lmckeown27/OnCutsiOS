@@ -219,15 +219,12 @@ final class ChatViewModel: ObservableObject {
         case homeShellNavigation
     }
 
-    /// How booking detail opens the provider thread (handoff → parent appends `.messagingThread` on that stack’s `NavigationPath`).
+    /// Legacy / unused on path-backed stacks — booking detail uses `NavigationPath` append instead.
     enum BookingDetailMessagingMode: Sendable {
-        /// ``ConsumerBookingsHubView`` inner stack.
         case bookingsTab
-        /// ``ConsumerHomeScreen`` / ``UnifiedProviderHomeScreen`` outer stack (booking reminder detail).
         case homeBookingPathHandoff
     }
 
-    /// Bookings timeline-only thread (`navigationDestination(item:)` while `detailNavigationPath` is empty). Detail uses path append.
     @Published var bookingsTabMessagingThreadHandoff: BookingMessagingThreadHandoff?
     /// Browse / empty-state on the home outer stack (`NavigationPath` empty).
     @Published var homeStackMessagingHandoff: BookingMessagingThreadHandoff?
@@ -441,13 +438,13 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    /// Presents the booking thread. Prefer `appendMessagingThreadOnNavigationPath` from the hosting `NavigationStack`.
+    /// Resolves the thread, clears item handoffs, then appends `.messagingThread` on the host `NavigationPath`.
+    /// Never use `navigationDestination(item:)` on the same stack as `NavigationStack(path:)` — that crashes on pop.
     @MainActor
     func presentBookingMessagingFromDetail(
         row: ConsumerBookingSimpleRow,
         sessionManager: AppSessionManager,
-        mode: BookingDetailMessagingMode,
-        appendMessagingThreadOnNavigationPath: ((BookingMessagingThreadHandoff) -> Void)? = nil
+        appendToNavigationPath: (ChatViewModel.BookingMessagingThreadHandoff) -> Void
     ) async -> Bool {
         guard let handoff = await presentMessagingThreadForBooking(
             row: row,
@@ -456,20 +453,18 @@ final class ChatViewModel: ObservableObject {
         ) else {
             return false
         }
-        if let appendMessagingThreadOnNavigationPath {
-            homeStackMessagingHandoff = nil
-            homeBookingMessagingThreadHandoff = nil
-            bookingsTabMessagingThreadHandoff = nil
-            hubMessagesThreadPresentation = nil
-            appendMessagingThreadOnNavigationPath(handoff)
-            return true
-        }
-        switch mode {
-        case .bookingsTab:
-            return openBookingsTabMessagingThreadIfNeeded(handoff)
-        case .homeBookingPathHandoff:
-            return openHomeBookingMessagingThreadIfNeeded(handoff)
-        }
+        clearPathBackedMessagingItemHandoffs()
+        await Task.yield()
+        appendToNavigationPath(handoff)
+        return true
+    }
+
+    @MainActor
+    func clearPathBackedMessagingItemHandoffs() {
+        bookingsTabMessagingThreadHandoff = nil
+        homeBookingMessagingThreadHandoff = nil
+        homeStackMessagingHandoff = nil
+        hubMessagesThreadPresentation = nil
     }
 
     @MainActor
@@ -477,6 +472,10 @@ final class ChatViewModel: ObservableObject {
     func openBookingsTabMessagingThreadIfNeeded(_ handoff: BookingMessagingThreadHandoff) -> Bool {
         let key = Self.normalizedConversationKey(handoff.conversationId)
         guard !key.isEmpty else { return false }
+        if let existing = bookingsTabMessagingThreadHandoff,
+           Self.normalizedConversationKey(existing.conversationId) == key {
+            return true
+        }
         homeStackMessagingHandoff = nil
         homeBookingMessagingThreadHandoff = nil
         hubMessagesThreadPresentation = nil
@@ -489,6 +488,10 @@ final class ChatViewModel: ObservableObject {
     func openHomeBookingMessagingThreadIfNeeded(_ handoff: BookingMessagingThreadHandoff) -> Bool {
         let key = Self.normalizedConversationKey(handoff.conversationId)
         guard !key.isEmpty else { return false }
+        if let existing = homeBookingMessagingThreadHandoff,
+           Self.normalizedConversationKey(existing.conversationId) == key {
+            return true
+        }
         homeStackMessagingHandoff = nil
         bookingsTabMessagingThreadHandoff = nil
         hubMessagesThreadPresentation = nil

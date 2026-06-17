@@ -170,18 +170,13 @@ struct ConsumerHomeScreen: View {
     }
 
     @MainActor
-    private func pushHomeShellBookingMessagingThread(_ handoff: ChatViewModel.BookingMessagingThreadHandoff) {
-        chatViewModel.bookingsTabMessagingThreadHandoff = nil
-        chatViewModel.homeBookingMessagingThreadHandoff = nil
-        chatViewModel.homeStackMessagingHandoff = nil
+    private func appendHomeShellBookingMessagingThread(_ handoff: ChatViewModel.BookingMessagingThreadHandoff) {
+        chatViewModel.clearPathBackedMessagingItemHandoffs()
         if navigationPath.isEmpty {
             chatViewModel.homeStackMessagingHandoff = handoff
             return
         }
-        if navigationPath.count > 1 {
-            navigationPath.removeLast()
-        }
-        navigationPath.append(ConsumerHomeBookingStackRoute.messagingThread(handoff))
+        navigationPath.interaAppendBookingMessagingThread(handoff)
     }
 
     @ViewBuilder
@@ -222,8 +217,7 @@ struct ConsumerHomeScreen: View {
                     bookingDetailPresentationID: presentationID,
                     hasActiveConsumerBooking: hasActiveConsumerBooking,
                     onShowLogin: { showOAuthSignInSheet = true },
-                    bookingMessagingMode: .homeBookingPathHandoff,
-                    presentBookingMessagingThread: pushHomeShellBookingMessagingThread
+                    appendBookingMessagingThreadOnNavigationPath: appendHomeShellBookingMessagingThread
                 )
                 .id(presentationID)
                 #if os(iOS)
@@ -239,7 +233,6 @@ struct ConsumerHomeScreen: View {
         case .messagingThread(let handoff):
             homeMessagingThreadDestination(handoff) {
                 chatViewModel.promoteOrInsertConversationFromHandoff(handoff)
-                chatViewModel.homeBookingMessagingThreadHandoff = nil
             }
         }
     }
@@ -471,7 +464,7 @@ struct ConsumerHomeScreen: View {
         }
         .onChange(of: navigationPath.count) { _, count in
             if count == 0 {
-                chatViewModel.homeBookingMessagingThreadHandoff = nil
+                chatViewModel.clearPathBackedMessagingItemHandoffs()
             }
         }
         .task {
@@ -2799,9 +2792,7 @@ struct UnifiedProviderHomeScreen: View {
                     var tearDown = Transaction()
                     tearDown.disablesAnimations = true
                     withTransaction(tearDown) {
-                        chatViewModel.homeStackMessagingHandoff = nil
-                        chatViewModel.homeBookingMessagingThreadHandoff = nil
-                        chatViewModel.bookingsTabMessagingThreadHandoff = nil
+                        chatViewModel.clearPathBackedMessagingItemHandoffs()
                         clearHomeShellHubSuppressionFlags()
                         navigationPath = NavigationPath()
                     }
@@ -2887,19 +2878,14 @@ struct UnifiedProviderHomeScreen: View {
     }
 
     @MainActor
-    private func pushHomeShellBookingMessagingThread(_ handoff: ChatViewModel.BookingMessagingThreadHandoff) {
-        chatViewModel.bookingsTabMessagingThreadHandoff = nil
-        chatViewModel.homeBookingMessagingThreadHandoff = nil
-        chatViewModel.homeStackMessagingHandoff = nil
+    private func appendUnifiedHomeShellBookingMessagingThread(_ handoff: ChatViewModel.BookingMessagingThreadHandoff) {
+        chatViewModel.clearPathBackedMessagingItemHandoffs()
         if navigationPath.isEmpty {
             homeOuterPushedMessagingThread = false
             chatViewModel.homeStackMessagingHandoff = handoff
             return
         }
-        if navigationPath.count > 1 {
-            navigationPath.removeLast()
-        }
-        navigationPath.append(ConsumerHomeBookingStackRoute.messagingThread(handoff))
+        navigationPath.interaAppendBookingMessagingThread(handoff)
         homeOuterPushedMessagingThread = true
     }
 
@@ -2956,8 +2942,7 @@ struct UnifiedProviderHomeScreen: View {
                     bookingDetailPresentationID: presentationID,
                     hasActiveConsumerBooking: hasActiveConsumerBooking,
                     onShowLogin: { showOAuthSignInSheet = true },
-                    bookingMessagingMode: .homeBookingPathHandoff,
-                    presentBookingMessagingThread: pushHomeShellBookingMessagingThread
+                    appendBookingMessagingThreadOnNavigationPath: appendUnifiedHomeShellBookingMessagingThread
                 )
                 .id(presentationID)
                 #if os(iOS)
@@ -2973,12 +2958,7 @@ struct UnifiedProviderHomeScreen: View {
         case .messagingThread(let handoff):
             unifiedHomeMessagingThreadDestination(handoff, onDismissClearHandoff: {
                 chatViewModel.promoteOrInsertConversationFromHandoff(handoff)
-                chatViewModel.homeBookingMessagingThreadHandoff = nil
             }, obscuresHubChromeWhileVisible: false)
-            .onDisappear {
-                clearHomeShellHubSuppressionFlags()
-                stripHomeOuterMessagingThreadFromNavigationPathIfNeeded()
-            }
         }
     }
 
@@ -3148,8 +3128,7 @@ struct UnifiedProviderHomeScreen: View {
                 stripHomeOuterMessagingThreadFromNavigationPathIfNeeded()
             }
             if count == 0 {
-                chatViewModel.homeBookingMessagingThreadHandoff = nil
-                chatViewModel.homeStackMessagingHandoff = nil
+                chatViewModel.clearPathBackedMessagingItemHandoffs()
             }
             syncHubPagingAfterHomeShellNavigationChange(pathDepth: count)
         }
