@@ -962,7 +962,7 @@ struct LiquidGlassSignupFlowView: View {
                             HStack(alignment: .center, spacing: 12) {
                                 Image(systemName: "circle.grid.3x3.fill")
                                     .font(InteraFont.title3.weight(.semibold))
-                                    .foregroundStyle(Color.oliveGreen.opacity(0.95))
+                                    .foregroundStyleInteraShellIconSecondary()
                                     .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 8) {
                                     TextField(
@@ -1188,7 +1188,7 @@ struct LiquidGlassSignupFlowView: View {
                         .font(InteraFont.caption.weight(.semibold))
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(Color.oliveGreen.opacity(0.95))
+                .foregroundStyleOliveGreen(opacity: 0.95)
                 .disabled(coordinator.isSubmitting)
 
                 if coordinator.isSubmitting {
@@ -1266,7 +1266,7 @@ struct LiquidGlassSignupFlowView: View {
             VStack(spacing: 20) {
                 Image(systemName: "sparkles")
                     .font(InteraFont.system(size: 48))
-                    .foregroundStyle(Color.oliveGreen)
+                    .foregroundStyleInteraShellIcon()
                 Text("You’re verified")
                     .font(InteraLiquidGlassTypography.title(24, weight: .bold))
                 Text("One last step: accept the Terms of Service to enter \(AppBranding.displayName).")
@@ -1301,6 +1301,7 @@ struct LiquidGlassSignupFlowView: View {
                 Image(systemName: coordinator.termsAccepted ? "checkmark.circle.fill" : "doc.text.fill")
                     .font(InteraFont.title3)
                     .foregroundStyle(coordinator.termsAccepted ? Color.oliveGreen : .secondary)
+                    .interaOliveGreenTextOutline(when: coordinator.termsAccepted)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Terms of Service")
                         .font(InteraFont.caption.weight(.semibold))
@@ -1337,6 +1338,7 @@ struct LiquidGlassSignupFlowView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .foregroundStyle(termsDocumentReachedBottom ? Color.oliveGreen : Color.secondary)
+                        .interaOliveGreenTextOutline(when: termsDocumentReachedBottom)
                         .background {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .fill(

@@ -1393,7 +1393,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 .overlay(
                     Text(provider.businessName.prefix(1).uppercased())
                         .font(InteraFont.caption.weight(.bold))
-                        .foregroundStyle(Color.brand)
+                        .foregroundStyleOliveGreen()
                 )
         }
     }

@@ -2,66 +2,74 @@
 //  HubGuestAuthPrompt.swift
 //  Intera
 //
-//  Shared call-to-action for hub tabs (Messages, Bookings, Profile) when the user is not signed in.
+//  Floating sign-in chrome for signed-out hub users — replaces `ConsumerStickyHubBar`
+//  over the home provider list (same overlay position and glass treatment).
 //
 
 import SwiftUI
 
-/// Sign-in / sign-up prompt shown on main-tab hub pages for signed-out users.
-struct HubGuestAuthPrompt: View {
-    let title: String
-    let systemImage: String
-    /// Optional copy between the title and the sign-in block.
-    var message: String? = nil
-    /// Shown directly above the Sign In button.
-    let signInCallout: String
-    let onSignIn: () -> Void
-    let onSignUp: () -> Void
+enum GuestHubSignInMetrics {
+    /// Expanded guest sign-in panel height reference (Manual Sign-In + Apple/Google row + create account).
+    static let expandedChromeHeight: CGFloat = 196
+    static let minimizedChromeHeight: CGFloat = 88
+    static let overlayContentBottomPadding: CGFloat = 220
+    /// Centered width for the side-by-side provider pills.
+    static let pillMaxWidth: CGFloat = 260
 
-    private let calloutFont = Font.body
-    private let calloutColor = Color.lavaShellCreamSecondary
+    static func overlayContentBottomInset(collapseProgress: CGFloat) -> CGFloat {
+        let expanded = overlayContentBottomPadding
+        let collapsed = minimizedChromeHeight + 20
+        return expanded - (expanded - collapsed) * min(1, max(0, collapseProgress))
+    }
+}
+
+/// Sign-in options overlay shown instead of the hub bar when the user is signed out.
+@available(iOS 17.0, macOS 14.0, *)
+struct GuestHubSignInBar: View {
+    let sessionManager: AppSessionManager
+    @ObservedObject var appleOAuthFollowUp: AppleOAuthPostSignInCoordinator
+    let onRequestManualSignIn: () -> Void
+    let onRequestEmailSignUp: () -> Void
+    var collapseProgress: CGFloat = 0
+
+    private static let panelCorner: CGFloat = 28
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 22) {
-                Image(systemName: systemImage)
-                    .font(InteraFont.system(size: 44, weight: .medium))
-                    .foregroundStyle(Color.oliveGreen)
-                    .symbolRenderingMode(.hierarchical)
-                    .accessibilityHidden(true)
+        guestSignInPanel
+            .scaleEffect(1.0 - 0.08 * collapseProgress, anchor: .bottom)
+            .offset(y: 14 * collapseProgress)
+            .opacity(1.0 - 0.18 * collapseProgress)
+            .shadow(
+                color: .black.opacity(0.18 * (1.0 - collapseProgress * 0.35)),
+                radius: 14,
+                y: 4
+            )
+            .animation(.spring(response: 0.34, dampingFraction: 0.86), value: collapseProgress)
+    }
 
-                Text(title)
-                    .font(InteraFont.title2.weight(.bold))
-                    .foregroundStyle(Color.lavaShellCream)
-                    .multilineTextAlignment(.center)
-
-                if let message, !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Text(message)
-                        .font(InteraFont.body)
-                        .foregroundStyle(Color.lavaShellCreamSecondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                VStack(spacing: 8) {
-                    Text(signInCallout)
-                        .font(calloutFont)
-                        .foregroundStyle(calloutColor)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    PrimaryButton(title: "Sign In", action: onSignIn, size: .large)
-                }
-                .frame(maxWidth: .infinity)
-
-                PrimaryButton(title: "Sign Up", action: onSignUp, variant: .outline, size: .large)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 28)
-            }
-            .frame(maxWidth: 420)
-            .padding(.horizontal, 24)
-            .padding(.vertical, 28)
-            .frame(maxWidth: .infinity)
+    private var guestSignInPanel: some View {
+        OAuthProviderSignInOptionsContent(
+            sessionManager: sessionManager,
+            appleOAuthFollowUp: appleOAuthFollowUp,
+            layout: .inline,
+            showsCreateAccountLink: true,
+            showsEmailSignInOption: true,
+            providerPillStackAxis: .horizontal,
+            pillMaxWidth: GuestHubSignInMetrics.pillMaxWidth,
+            onNavigateToEmail: onRequestManualSignIn,
+            onCreateAccount: onRequestEmailSignUp,
+            onSignedIn: {}
+        )
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .background {
+            RoundedRectangle(cornerRadius: Self.panelCorner, style: .continuous)
+                .fill(.ultraThinMaterial)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: Self.panelCorner, style: .continuous)
+                .stroke(Color.interaShellGlassStroke, lineWidth: 1)
         }
     }
 }

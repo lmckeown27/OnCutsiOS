@@ -134,7 +134,7 @@ struct UpcomingBookingDetailsCard: View {
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")
                 .font(InteraFont.caption.weight(.bold))
-                .foregroundStyle(Color.oliveGreen)
+                .foregroundStyleInteraShellIconSecondary()
                 .accessibilityHidden(true)
         }
         .padding(.horizontal, 12)
@@ -148,7 +148,7 @@ struct UpcomingBookingDetailsCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(booking.appointmentTime)
                     .font(InteraFont.body.weight(.bold).monospacedDigit())
-                    .foregroundStyle(Color.oliveGreen)
+                    .foregroundStyleOliveGreen()
                 Text(booking.appointmentDate)
                     .font(InteraFont.caption.weight(.medium))
                     .foregroundStyle(Color.lavaShellCreamTertiary)
@@ -199,7 +199,7 @@ struct UpcomingBookingDetailsCard: View {
                 .fill(Color.oliveGreen.opacity(0.12))
             Text(booking.barberName.prefix(1).uppercased())
                 .font(InteraFont.title3.weight(.bold))
-                .foregroundStyle(Color.oliveGreen)
+                .foregroundStyleOliveGreen()
         }
         .frame(width: avatarSize, height: avatarSize)
     }
@@ -209,13 +209,7 @@ struct UpcomingBookingDetailsCard: View {
 
         return Text(label)
             .font(InteraFont.caption2.weight(.semibold))
-            .foregroundStyle(Color.oliveGreen)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background {
-                Capsule()
-                    .fill(Color.oliveGreen.opacity(0.12))
-            }
+            .foregroundStyleOliveGreen()
     }
 }
 

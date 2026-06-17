@@ -63,7 +63,7 @@ struct InteraDefaultProfileAvatarGlyph: View {
             Color.oliveGreen.opacity(0.08)
             Image(systemName: "person")
                 .font(InteraFont.system(size: iconFontSize, weight: .semibold))
-                .foregroundStyle(Color.oliveGreen)
+                .foregroundStyleInteraShellIconSecondary()
         }
         .accessibilityHidden(true)
     }

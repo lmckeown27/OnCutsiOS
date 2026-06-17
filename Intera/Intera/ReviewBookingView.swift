@@ -44,14 +44,32 @@ struct ReviewBookingView: View {
 
             reviewInfoRow(title: "Service", value: booking.serviceName)
             reviewInfoRow(title: "When", value: formattedScheduledAt)
-            reviewInfoRow(title: "Location", value: booking.location)
 
-            Text("$\(booking.finalServicePriceUsd)")
-                .font(InteraLiquidGlassTypography.title(34, weight: .bold))
-                .foregroundStyle(.primary)
+            VStack(spacing: 8) {
+                Text("$\(booking.finalServicePriceUsd)")
+                    .font(InteraLiquidGlassTypography.title(34, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .center)
 
-            PrimaryButton(title: "Submit") {
-                submitTapped()
+                if !booking.location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(booking.location)
+                        .font(InteraFont.body)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+            }
+
+            HStack {
+                Spacer(minLength: 0)
+                PrimaryButton(
+                    title: "Submit",
+                    action: submitTapped,
+                    size: .large,
+                    shape: .pill,
+                    isFullWidth: false
+                )
+                Spacer(minLength: 0)
             }
             .padding(.top, 4)
         }
@@ -89,10 +107,11 @@ struct ReviewBookingView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "camera.fill")
                                 .font(InteraFont.caption.weight(.semibold))
+                                .foregroundStyleInteraShellIconSecondary()
                             Text("Instagram")
                                 .font(InteraFont.subheadline.weight(.medium))
+                                .foregroundStyleOliveGreen()
                         }
-                        .foregroundStyle(Color.oliveGreen)
                     }
                 }
             }
@@ -105,7 +124,7 @@ struct ReviewBookingView: View {
     private var heroPlaceholder: some View {
         Text(booking.barberDisplayName.prefix(2).uppercased())
             .font(InteraFont.headline)
-            .foregroundStyle(Color.brand)
+            .foregroundStyleOliveGreen()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.brand.opacity(0.15))
     }

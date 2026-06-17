@@ -321,7 +321,7 @@ struct LoginView: View {
                             RoundedRectangle(cornerRadius: .radiusMedium)
                                 .fill(Color.brand.opacity(0.2))
                         }
-                        .foregroundStyle(Color.brand)
+                        .foregroundStyleOliveGreen()
                 }
             }
         }

@@ -147,7 +147,9 @@ final class ChatViewModel: ObservableObject {
 
     /// Presents a hub Messages thread and clears a mismatched foreground id left by an aborted push.
     func presentHubMessagesThread(_ presentation: HubMessagesThreadPresentation) {
-        hubMessagesThreadPresentation = presentation
+        withAnimation(MessagingFlowMotion.threadNavigationPush) {
+            hubMessagesThreadPresentation = presentation
+        }
         let cid = presentation.conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cid.isEmpty else { return }
         if let fg = hubForegroundConversationId?.trimmingCharacters(in: .whitespacesAndNewlines),

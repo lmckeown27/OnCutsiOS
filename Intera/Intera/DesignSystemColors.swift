@@ -148,14 +148,24 @@ extension Color {
     /// Pure black - text, icons
     static let appBlack = Color.black
     
-    /// Olive green - brand color, accents, buttons (lifted slightly for legibility on dark shell UI)
-    static let oliveGreen = Color(hex: "6E9082")
+    /// Olive green - brand color. Lighter on light shell (`849E92`), darker on dark shell (`556860`).
+    /// For **text**, prefer ``View/foregroundStyleOliveGreen(opacity:)`` so glyphs get an adaptive outline.
+    static var oliveGreen: Color {
+        #if canImport(UIKit)
+        interaDynamic(Self.oliveGreenLightUIColor, Self.oliveGreenDarkUIColor)
+        #else
+        Color(hex: "849E92")
+        #endif
+    }
+
+    /// Canonical mid olive — fixed reference (pre-adaptive default `6E9082`).
+    static let oliveGreenBase = Color(hex: "6E9082")
     
     // MARK: - Olive Green Variations (for hover, pressed, disabled states)
     
-    /// Lighter olive for hover
+    /// Lighter olive for hover / light-mode brand fill endpoint
     static let oliveLight = Color(hex: "849E92")
-    /// Darker olive for pressed/active
+    /// Darker olive for pressed/active / dark-mode brand fill endpoint
     static let oliveDark = Color(hex: "556860")
     /// Very light olive for subtle backgrounds
     static let oliveTint = Color(hex: "F2F5F4")
@@ -183,10 +193,22 @@ extension Color {
     /// Subtle background tint
     static let backgroundSecondary = Color(hex: "FAFAFA")
     
+    #if canImport(UIKit)
+    private static let oliveGreenLightUIColor = UIColor(red: 132 / 255, green: 158 / 255, blue: 146 / 255, alpha: 1)
+    private static let oliveGreenDarkUIColor = UIColor(red: 85 / 255, green: 104 / 255, blue: 96 / 255, alpha: 1)
+
+    /// UIKit resolved olive fill (matches ``oliveGreen``).
+    static var oliveGreenUIColor: UIColor {
+        UIColor { traits in
+            traits.userInterfaceStyle == .dark ? oliveGreenDarkUIColor : oliveGreenLightUIColor
+        }
+    }
+    #endif
+
     // MARK: - Legacy Aliases (for gradual migration)
     // TODO: Remove these once all references are updated
     
-    static let brand = oliveGreen
+    static var brand: Color { oliveGreen }
     static let brandDark = oliveDark
     static let brandLight = oliveLight
 
@@ -208,14 +230,14 @@ extension Color {
     static let neutral800 = textDark
     static let neutral900 = textDark
     
-    static let success = oliveGreen
-    static let warning = oliveGreen
-    static let error = oliveGreen
-    static let info = oliveGreen
+    static var success: Color { oliveGreen }
+    static var warning: Color { oliveGreen }
+    static var error: Color { oliveGreen }
+    static var info: Color { oliveGreen }
     
-    static let statusPending = oliveGreen
-    static let statusAccepted = oliveGreen
-    static let statusCompleted = oliveGreen
+    static var statusPending: Color { oliveGreen }
+    static var statusAccepted: Color { oliveGreen }
+    static var statusCompleted: Color { oliveGreen }
     static let statusCancelled = textSecondary
     static let statusNoShow = textTertiary
     

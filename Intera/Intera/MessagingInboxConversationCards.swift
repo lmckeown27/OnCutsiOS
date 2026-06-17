@@ -246,11 +246,12 @@ struct ConversationInboxThreadCard: View {
                 Spacer(minLength: 0)
                 HStack(spacing: 4) {
                     Text("View Conversation")
+                        .foregroundStyleOliveGreen()
                     Image(systemName: "chevron.right")
                         .font(InteraFont.caption.weight(.bold))
+                        .foregroundStyleInteraShellIconSecondary()
                 }
                 .font(InteraFont.subheadline.weight(.semibold))
-                .foregroundStyle(Color.oliveGreen)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)

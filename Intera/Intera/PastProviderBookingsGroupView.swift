@@ -129,7 +129,7 @@ struct PastProviderBookingsGroupView: View {
 
                 Image(systemName: "chevron.right")
                     .font(InteraFont.caption.weight(.bold))
-                    .foregroundStyle(Color.oliveGreen)
+                    .foregroundStyleInteraShellIconSecondary()
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, 12)

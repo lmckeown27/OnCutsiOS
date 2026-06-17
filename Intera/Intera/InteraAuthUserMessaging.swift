@@ -12,6 +12,40 @@ enum InteraAuthUserMessaging {
 
     // MARK: - OAuth (Google)
 
+    static func googleSignInOutcome(for error: Error) -> (title: String, message: String) {
+        if let ver = error as? AuthBackendVerificationError {
+            switch ver {
+            case .serverRejected(let status, let msg):
+                if isOAuthAccountNotFound(status: status, message: msg) {
+                    return googleAccountNotFoundCreateAccountOutcome()
+                }
+                if status == 401 {
+                    return (
+                        "Sign In Failed",
+                        msg ?? "Google sign-in was rejected. Try again or use another sign-in method."
+                    )
+                }
+            default:
+                break
+            }
+        }
+
+        return oauthSignInOutcome(for: error)
+    }
+
+    /// User dismissed Google sign-in — callers should not show an alert.
+    static func isGoogleSignInCancellation(_ error: Error) -> Bool {
+        let ns = error as NSError
+        if ns.domain == "com.google.GIDSignIn", ns.code == -5 {
+            return true
+        }
+        if ns.domain == "com.google.GIDSignIn" {
+            let lower = error.localizedDescription.lowercased()
+            return lower.contains("cancel") || lower.contains("cancelled")
+        }
+        return false
+    }
+
     static func oauthSignInOutcome(for error: Error) -> (title: String, message: String) {
         let ns = error as NSError
         let lower = error.localizedDescription.lowercased()
@@ -62,8 +96,7 @@ enum InteraAuthUserMessaging {
         if let ver = error as? AuthBackendVerificationError {
             switch ver {
             case .serverRejected(let status, let msg):
-                let m = (msg ?? "").lowercased()
-                if status == 401, m.contains("not found") {
+                if status == 401, isOAuthAccountNotFound(status: status, message: msg) {
                     return (
                         "No Matching Account",
                         "There’s no \(AppBranding.displayName) account for this Apple ID yet. Use Sign Up in the app to create one, then sign in with the same Apple ID."
@@ -186,6 +219,22 @@ enum InteraAuthUserMessaging {
     }
 
     // MARK: - Private
+
+    private static func isOAuthAccountNotFound(status: Int, message: String?) -> Bool {
+        guard status == 401 else { return false }
+        let m = (message ?? "").lowercased()
+        return m.contains("not found")
+            || m.contains("account_not_found")
+            || m.contains("no account")
+            || m.contains("no matching account")
+    }
+
+    private static func googleAccountNotFoundCreateAccountOutcome() -> (title: String, message: String) {
+        (
+            "Sign In Couldn’t Complete",
+            "There’s no \(AppBranding.displayName) account for this Google account yet. Tap Create Account below to register, then sign in with Google again."
+        )
+    }
 
     private static func humanizeGoogleSignInMessage(_ raw: String) -> String {
         let lower = raw.lowercased()

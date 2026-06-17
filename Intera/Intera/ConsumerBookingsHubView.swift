@@ -12,7 +12,6 @@ struct ConsumerBookingsHubView: View {
     let sessionManager: AppSessionManager
     let coordinator: MainCoordinator
     var onShowLogin: () -> Void = {}
-    var onShowSignUp: () -> Void = {}
     /// Reports `detailNavigationPath.count` for hub paging sync after pop; the hub bar stays visible over Bookings pushes so payment **Pay later** does not strand the user without hub navigation.
     var onNavigationDepthChange: ((Int) -> Void)? = nil
 
@@ -58,12 +57,10 @@ struct ConsumerBookingsHubView: View {
             #endif
             Group {
                 if !sessionManager.isAuthenticated {
-                    HubGuestAuthPrompt(
-                        title: "Your appointments",
+                    ContentUnavailableView(
+                        "Sign in required",
                         systemImage: "calendar.badge.clock",
-                        signInCallout: "Sign in to see upcoming visits, history, and manage your bookings.",
-                        onSignIn: onShowLogin,
-                        onSignUp: onShowSignUp
+                        description: Text("Sign in to see your appointments.")
                     )
                 } else                 if isLoading && rows.isEmpty {
                     ScrollView {

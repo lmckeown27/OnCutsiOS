@@ -56,7 +56,7 @@ struct CampusCutsCard<Content: View>: View {
         CampusCutsCard(backgroundColor: .oliveTint) {
             HStack {
                 Image(systemName: "info.circle.fill")
-                    .foregroundStyle(Color.oliveGreen)
+                    .foregroundStyleInteraShellIcon()
                     .font(InteraFont.title2)
                 
                 VStack(alignment: .leading) {

@@ -48,6 +48,7 @@ struct TabPicker<T: Hashable>: View {
                 .font(InteraFont.labelMedium)
                 .fontWeight(selectedTab == tab ? .semibold : .regular)
                 .foregroundStyle(selectedTab == tab ? Color.brand : Color.neutral500)
+                .interaOliveGreenTextOutline(when: selectedTab == tab)
                 
                 Rectangle()
                     .fill(selectedTab == tab ? Color.brand : Color.clear)

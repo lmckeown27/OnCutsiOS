@@ -103,10 +103,6 @@ struct EmailPasswordSignInView: View {
             }
             .padding(24)
         }
-        .navigationTitle("Email")
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
         .alert(authOutcomeTitle, isPresented: $showAuthOutcomeAlert) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -187,6 +183,44 @@ struct EmailPasswordSignInView: View {
             authOutcomeTitle = o.title
             authOutcomeMessage = o.message
             showAuthOutcomeAlert = true
+        }
+    }
+}
+
+@available(iOS 17.0, macOS 14.0, *)
+struct ManualEmailSignInSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let sessionManager: AppSessionManager
+    let onFinished: () -> Void
+    let onRequestEmailSignUp: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            EmailPasswordSignInView(
+                sessionManager: sessionManager,
+                apiV1BaseTrimmed: AppConfiguration.messagingAPIRootTrimmed,
+                onSignedIn: {
+                    onFinished()
+                    dismiss()
+                },
+                onRequestSignUp: {
+                    onFinished()
+                    onRequestEmailSignUp()
+                }
+            )
+            .navigationTitle("Manual Sign-In")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
         }
     }
 }

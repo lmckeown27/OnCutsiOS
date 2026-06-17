@@ -67,7 +67,7 @@ struct ConsumerBookingDetailView: View {
     @State private var alternativeLocationNames: [String] = []
     @State private var isLoadingEditPickerOptions = false
     @State private var isConfirmingEdits = false
-    @State private var showCancelBookingConfirmation = false
+    @State private var isConfirmingCancelBooking = false
     @State private var isCancellingBooking = false
 
     /// Snapshotted when Request Change edit chrome finishes loading picker options — Submit stays inert until drafts differ.
@@ -354,6 +354,13 @@ struct ConsumerBookingDetailView: View {
             if localServiceName == nil { localServiceName = bookingRow.displayServiceName }
         }
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(displayableServiceLine)
+                    .font(Self.heroServiceDisplayFont)
+                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.92))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
             if allowsBookingEdit && !isEditing {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: beginEditing) {
@@ -380,18 +387,6 @@ struct ConsumerBookingDetailView: View {
             if allowsBookingEdit && isEditing {
                 confirmChangesInset
             }
-        }
-        .confirmationDialog(
-            "Cancel this booking?",
-            isPresented: $showCancelBookingConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Cancel booking", role: .destructive) {
-                Task { await performCancelBooking() }
-            }
-            Button("Not now", role: .cancel) {}
-        } message: {
-            Text("Your provider will be notified. This can’t be undone.")
         }
         .sheet(isPresented: $showScheduleEditSheet) {
             scheduleEditHalfSheet
@@ -660,22 +655,9 @@ struct ConsumerBookingDetailView: View {
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.6)
 
-            // Service editing disabled during Request Change — show read-only service label.
-            // if allowsBookingEdit && isEditing {
-            //     serviceEditHeroRow
-            // } else {
-            HStack(alignment: .center, spacing: 10) {
-                Text(displayableServiceLine)
-                    .font(Self.heroServiceDisplayFont)
-                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.92))
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if showsMessageProviderCTA && !isEditing {
-                    messageProviderCircularButton
-                }
+            if showsMessageProviderCTA && !isEditing {
+                messageProviderCircularButton
             }
-            // }
         }
         .frame(maxWidth: .infinity)
     }
@@ -768,7 +750,7 @@ struct ConsumerBookingDetailView: View {
                 .font(InteraFont.subheadline.weight(.semibold))
                 .foregroundStyle(BookingSelectorTheme.cream)
 
-            Text("Your provider must approve before your booking updates.")
+            Text("Your \(bookingRow.providerKindTag) must approve before your booking updates.")
                 .font(InteraFont.caption)
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.65))
                 .fixedSize(horizontal: false, vertical: true)
@@ -786,49 +768,29 @@ struct ConsumerBookingDetailView: View {
     }
 
     private var bookingStatusAndPriceRow: some View {
-        HStack(alignment: .top, spacing: 12) {
-            bookingStatusPill
-                .frame(maxWidth: .infinity)
-            if formattedPrice != nil {
-                bookingPricePill
-                    .frame(maxWidth: .infinity)
+        HStack(alignment: .center, spacing: 12) {
+            bookingDetailMetricButton(
+                title: "Status",
+                value: bookingRow.displayStatus
+            )
+            if let price = formattedPrice {
+                bookingDetailMetricButton(title: "Price", value: price)
             }
         }
     }
 
-    private var bookingStatusPill: some View {
-        VStack(alignment: .center, spacing: 4) {
-            Text("Status")
+    private func bookingDetailMetricButton(title: String, value: String) -> some View {
+        VStack(alignment: .center, spacing: 6) {
+            Text(title)
                 .bookingDetailFieldTitleStyle()
                 .multilineTextAlignment(.center)
-            Text(bookingRow.displayStatus)
+            Text(value)
                 .font(InteraFont.body.weight(.semibold))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .bookingDetailMetricPillChrome()
-    }
-
-    private var bookingPricePill: some View {
-        VStack(alignment: .center, spacing: 4) {
-            Text("Price")
-                .bookingDetailFieldTitleStyle()
-                .multilineTextAlignment(.center)
-            if let price = formattedPrice {
-                Text(price)
-                    .font(InteraFont.body.weight(.semibold))
-                    .foregroundStyle(BookingSelectorTheme.cream)
-                    .multilineTextAlignment(.center)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .bookingDetailMetricPillChrome()
+        .frame(maxWidth: .infinity, minHeight: 54)
     }
 
     // MARK: - Timeline (date / time / location)
@@ -885,7 +847,6 @@ struct ConsumerBookingDetailView: View {
         VStack(alignment: .leading, spacing: 16) {
             pendingScheduleSnapshotSection(
                 title: "Confirmed appointment",
-                subtitle: "Your current booking",
                 dateLine: confirmedFormattedDateLine,
                 timeLine: confirmedFormattedTimeLine,
                 locationLine: showLocation ? confirmedBookingLocationLine : nil,
@@ -894,7 +855,6 @@ struct ConsumerBookingDetailView: View {
 
             pendingScheduleSnapshotSection(
                 title: "Requested change",
-                subtitle: "Awaiting provider approval",
                 dateLine: proposedFormattedDateLine ?? confirmedFormattedDateLine,
                 timeLine: proposedFormattedTimeLine ?? confirmedFormattedTimeLine,
                 locationLine: showLocation && pendingLocationDiffersFromConfirmed
@@ -907,7 +867,6 @@ struct ConsumerBookingDetailView: View {
 
     private func pendingScheduleSnapshotSection(
         title: String,
-        subtitle: String,
         dateLine: String,
         timeLine: String,
         locationLine: String?,
@@ -916,14 +875,9 @@ struct ConsumerBookingDetailView: View {
         let isRequested = style == .requested
 
         return VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(InteraFont.caption.weight(.semibold))
-                    .foregroundStyle(isRequested ? Color.oliveGreen : BookingSelectorTheme.cream.opacity(0.88))
-                Text(subtitle)
-                    .font(InteraFont.caption2)
-                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.58))
-            }
+            Text(title)
+                .font(InteraFont.caption.weight(.semibold))
+                .foregroundStyleOliveGreen()
 
             scheduleSnapshotField(label: "Date", value: dateLine, emphasized: isRequested)
             scheduleSnapshotField(label: "Time", value: timeLine, emphasized: isRequested)
@@ -1365,6 +1319,7 @@ struct ConsumerBookingDetailView: View {
         requestChangeBaselinesReady = false
         withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
             isEditing = false
+            isConfirmingCancelBooking = false
         }
     }
 
@@ -1688,73 +1643,138 @@ struct ConsumerBookingDetailView: View {
 
     private var confirmChangesInset: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 12) {
-                Button {
-                    dismissRequestChangeNotesKeyboard()
-                    confirmEdits()
-                } label: {
-                    HStack(spacing: 10) {
-                        if isConfirmingEdits {
-                            ProgressView()
-                                .controlSize(.small)
-                                .tint(BookingSelectorTheme.deepCharcoal)
-                        }
-                        Text(submitRequestButtonTitle)
-                            .font(Self.editBottomBarButtonFont)
-                            .foregroundStyle(BookingSelectorTheme.deepCharcoal)
-                    }
-                    .contentTransition(.interpolate)
-                    .animation(.spring(response: 0.38, dampingFraction: 0.78), value: isEditing)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 54)
-                    .background {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(BookingSelectorTheme.cream)
-                    }
-                }
-                .buttonStyle(BookButtonStyle())
-                .disabled(isConfirmingEdits || isCancellingBooking || !hasRequestChangeDraftChanges)
-                .opacity((isConfirmingEdits || isCancellingBooking || !hasRequestChangeDraftChanges) ? 0.55 : 1)
-                .allowsHitTesting(hasRequestChangeDraftChanges && !isConfirmingEdits && !isCancellingBooking)
-                .frame(maxWidth: .infinity)
+            if isConfirmingCancelBooking {
+                Text("Your \(bookingRow.providerKindTag) will be notified. This can’t be undone.")
+                    .font(InteraFont.caption)
+                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 10)
+                    .padding(.bottom, 8)
 
-                Button {
-                    dismissRequestChangeNotesKeyboard()
-                    showCancelBookingConfirmation = true
-                } label: {
-                    HStack(spacing: 8) {
-                        if isCancellingBooking {
-                            ProgressView()
-                                .controlSize(.small)
-                                .tint(Color.red)
-                        }
-                        Text("Cancel Booking")
-                            .font(Self.editBottomBarButtonFont)
-                            .foregroundStyle(Color.red)
-                            .multilineTextAlignment(.center)
+                cancelBookingConfirmationButtons
+            } else {
+                requestChangeActionButtons
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea(edges: .bottom)
+        }
+        .animation(.spring(response: 0.38, dampingFraction: 0.78), value: isConfirmingCancelBooking)
+        .animation(.spring(response: 0.38, dampingFraction: 0.78), value: isEditing)
+    }
+
+    private var requestChangeActionButtons: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Button {
+                dismissRequestChangeNotesKeyboard()
+                confirmEdits()
+            } label: {
+                HStack(spacing: 10) {
+                    if isConfirmingEdits {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(BookingSelectorTheme.deepCharcoal)
                     }
+                    Text(submitRequestButtonTitle)
+                        .font(Self.editBottomBarButtonFont)
+                        .foregroundStyle(BookingSelectorTheme.deepCharcoal)
+                }
+                .contentTransition(.interpolate)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 54)
+                .background {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(BookingSelectorTheme.cream)
+                }
+            }
+            .buttonStyle(BookButtonStyle())
+            .disabled(isConfirmingEdits || isCancellingBooking || !hasRequestChangeDraftChanges)
+            .opacity((isConfirmingEdits || isCancellingBooking || !hasRequestChangeDraftChanges) ? 0.55 : 1)
+            .allowsHitTesting(hasRequestChangeDraftChanges && !isConfirmingEdits && !isCancellingBooking)
+            .frame(maxWidth: .infinity)
+
+            Button {
+                dismissRequestChangeNotesKeyboard()
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) {
+                    isConfirmingCancelBooking = true
+                }
+            } label: {
+                Text("Cancel Booking")
+                    .font(Self.editBottomBarButtonFont)
+                    .foregroundStyle(Color.red)
+                    .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 54)
                     .background {
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .stroke(Color.red.opacity(0.85), lineWidth: 1.5)
                     }
-                }
-                .buttonStyle(.plain)
-                .disabled(isConfirmingEdits || isCancellingBooking)
-                .opacity((isConfirmingEdits || isCancellingBooking) ? 0.55 : 1)
-                .accessibilityLabel("Cancel booking")
-                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .ignoresSafeArea(edges: .bottom)
-            }
+            .buttonStyle(.plain)
+            .disabled(isConfirmingEdits || isCancellingBooking)
+            .opacity((isConfirmingEdits || isCancellingBooking) ? 0.55 : 1)
+            .accessibilityLabel("Cancel booking")
+            .frame(maxWidth: .infinity)
         }
-        .animation(.spring(response: 0.38, dampingFraction: 0.78), value: isEditing)
+    }
+
+    private var cancelBookingConfirmationButtons: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Button {
+                dismissRequestChangeNotesKeyboard()
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) {
+                    isConfirmingCancelBooking = false
+                }
+            } label: {
+                Text("Keep Booking")
+                    .font(Self.editBottomBarButtonFont)
+                    .foregroundStyle(BookingSelectorTheme.cream)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 54)
+                    .background {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(BookingSelectorTheme.cream.opacity(0.55), lineWidth: 1.5)
+                    }
+            }
+            .buttonStyle(.plain)
+            .disabled(isCancellingBooking)
+            .frame(maxWidth: .infinity)
+
+            Button {
+                dismissRequestChangeNotesKeyboard()
+                Task { await performCancelBooking() }
+            } label: {
+                HStack(spacing: 8) {
+                    if isCancellingBooking {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(.white)
+                    }
+                    Text("Confirm Cancel")
+                        .font(Self.editBottomBarButtonFont)
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 54)
+                .background {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.red)
+                }
+            }
+            .buttonStyle(BookButtonStyle())
+            .disabled(isCancellingBooking)
+            .opacity(isCancellingBooking ? 0.75 : 1)
+            .accessibilityLabel("Confirm cancel booking")
+            .frame(maxWidth: .infinity)
+        }
     }
 
     private var scheduleEditHalfSheet: some View {
@@ -1868,30 +1888,6 @@ private struct OutlinedScheduleLabelText: UIViewRepresentable {
     }
 }
 #endif
-
-private struct BookingDetailMetricPillChrome: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .background {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.05))
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(BookingSelectorTheme.cream, lineWidth: 1)
-                }
-            }
-    }
-}
-
-private extension View {
-    func bookingDetailMetricPillChrome() -> some View {
-        modifier(BookingDetailMetricPillChrome())
-    }
-}
 
 private struct EditableScheduleFieldChrome: ViewModifier {
     func body(content: Content) -> some View {

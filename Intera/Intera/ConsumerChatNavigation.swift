@@ -14,9 +14,7 @@ struct ConversationListView: View {
     let coordinator: MainCoordinator
     /// Consumer shell: dismiss inbox and return to browse. Barber tab shell: omit to use `navigateToTab(.home)`.
     var onBrowseServiceProviders: (() -> Void)? = nil
-    /// When set (e.g. main hub tab), signed-out users see `HubGuestAuthPrompt` instead of a static empty state.
-    var onRequestSignIn: (() -> Void)? = nil
-    var onRequestSignUp: (() -> Void)? = nil
+    /// When set (e.g. main hub tab), signed-out users are kept on Home by the hub shell.
     /// Hub paged `TabView` should disable horizontal swiping while a thread is open so interactive back doesn’t change tabs. Second value is the open ``conversationId`` when `visible == true`.
     var onThreadPresentationChanged: ((Bool, String) -> Void)? = nil
     /// Hub Messages tab only: reset the wrapping `NavigationStack` identity before opening a thread from a **push tap** so a fresh stack presents ``ChatViewModel/hubMessagesThreadPresentation`` without stacking a second `MessagingConversationView` after resume from background.
@@ -60,21 +58,11 @@ struct ConversationListView: View {
     @ViewBuilder
     private var inboxMainContent: some View {
         if !sessionManager.isAuthenticated {
-            if let onSignIn = onRequestSignIn, let onSignUp = onRequestSignUp {
-                HubGuestAuthPrompt(
-                    title: "Messages with your providers",
-                    systemImage: "bubble.left.and.bubble.right.fill",
-                    signInCallout: "Sign in to read and send messages about your bookings.",
-                    onSignIn: onSignIn,
-                    onSignUp: onSignUp
-                )
-            } else {
-                ContentUnavailableView(
-                    "Sign in required",
-                    systemImage: "message.badge",
-                    description: Text("Sign in to see your conversations.")
-                )
-            }
+            ContentUnavailableView(
+                "Sign in required",
+                systemImage: "message.badge",
+                description: Text("Sign in to see your conversations.")
+            )
         } else if chatViewModel.rows.isEmpty {
             ScrollView {
                 MessagesEmptyState(
@@ -152,7 +140,7 @@ struct ConversationListView: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .tint(Color.oliveGreen)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
     }
 
     private var inboxWithThreadAndHandoffObservers: some View {

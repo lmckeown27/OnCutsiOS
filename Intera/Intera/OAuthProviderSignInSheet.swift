@@ -13,9 +13,11 @@ import UIKit
 #endif
 
 @available(iOS 17.0, macOS 14.0, *)
-private enum OAuthSignInSubroute: Hashable {
-    // case phone — re-enable with `Phone number` button below
-    case email
+enum OAuthProviderSignInOptionsLayout {
+    /// Sheet presentation: bottom-aligned create-account link and frosted backdrop.
+    case sheet
+    /// Hub guest tabs: pills flow in scroll content without sheet chrome.
+    case inline
 }
 
 // MARK: - Physical press (matches Book control: easeInOut scale + light impact)
@@ -55,119 +57,102 @@ private extension View {
 }
 
 @available(iOS 17.0, macOS 14.0, *)
-struct OAuthProviderSignInSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
+struct OAuthProviderSignInOptionsContent: View {
     let sessionManager: AppSessionManager
-    let onFinished: () -> Void
-    /// When set, shows **Create account** to open package-driven email sign-up (`IntegratedSignUpFlowRegistry`).
-    var onRequestEmailSignUp: (() -> Void)?
-    /// When `false`, hides the bottom “Create account” link (e.g. user already chose Sign Up on the prior sheet).
-    var showsCreateAccountLink: Bool
+    @ObservedObject var appleOAuthFollowUp: AppleOAuthPostSignInCoordinator
+    var layout: OAuthProviderSignInOptionsLayout = .sheet
+    var showsCreateAccountLink: Bool = true
+    var showsEmailSignInOption: Bool = true
+    /// When `.horizontal`, Apple and Google pills sit side by side (compact icon treatment).
+    var providerPillStackAxis: Axis = .vertical
+    /// When set, provider pills are centered at this width instead of spanning the container.
+    var pillMaxWidth: CGFloat? = nil
+    let onNavigateToEmail: () -> Void
+    var onCreateAccount: (() -> Void)?
+    let onSignedIn: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var showAuthOutcomeAlert = false
     @State private var authOutcomeTitle = ""
     @State private var authOutcomeMessage = ""
-    @State private var path: [OAuthSignInSubroute] = []
     #if os(iOS) || os(visionOS)
     @StateObject private var appleNativeSignInPresenterBox = AppleNativeSignInPresenterBox()
     #endif
-    /// Owned by the parent that presents this sheet so `login()` / `AppSessionManager` updates do not reset `@State`.
-    @ObservedObject private var appleOAuthFollowUp: AppleOAuthPostSignInCoordinator
 
-    private var apiRoot: String { AppConfiguration.messagingAPIRootTrimmed }
-
-    init(
-        sessionManager: AppSessionManager,
-        appleOAuthFollowUp: AppleOAuthPostSignInCoordinator,
-        onFinished: @escaping () -> Void,
-        onRequestEmailSignUp: (() -> Void)? = nil,
-        showsCreateAccountLink: Bool = true
-    ) {
-        self.sessionManager = sessionManager
-        self._appleOAuthFollowUp = ObservedObject(wrappedValue: appleOAuthFollowUp)
-        self.onFinished = onFinished
-        self.onRequestEmailSignUp = onRequestEmailSignUp
-        self.showsCreateAccountLink = showsCreateAccountLink
-    }
+    private var showPrimaryOAuthProviderRows: Bool { !sessionManager.isAuthenticated }
 
     var body: some View {
-        NavigationStack(path: $path) {
-            signInOptionsRoot
-                .navigationDestination(for: OAuthSignInSubroute.self) { route in
-                    switch route {
-                    case .email:
-                        EmailPasswordSignInView(
-                            sessionManager: sessionManager,
-                            apiV1BaseTrimmed: apiRoot,
-                            onSignedIn: {
-                                onFinished()
-                                dismiss()
-                            },
-                            onRequestSignUp: {
-                                dismiss()
-                                onRequestEmailSignUp?()
-                            }
-                        )
-                    }
-                }
-                .navigationTitle("Sign In")
-                #if os(iOS)
-                .navigationBarTitleDisplayMode(.inline)
-                #endif
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            dismiss()
-                        }
-                    }
-                }
-                .alert(authOutcomeTitle, isPresented: $showAuthOutcomeAlert) {
-                    Button("OK", role: .cancel) {}
-                } message: {
-                    Text(authOutcomeMessage)
-                }
-                .onAppear { dismissIfAlreadySignedIn() }
-                /// After Apple / Google sign-in, `isAuthenticated` flips while `path` may still hold `.email` — clear so reviewers never see password fields “after” Apple.
-                .onChange(of: sessionManager.isAuthenticated) { _, authed in
-                    if authed { path = [] }
-                }
+        Group {
+            switch layout {
+            case .sheet:
+                sheetLayoutBody
+            case .inline:
+                inlineLayoutBody
+            }
+        }
+        .alert(authOutcomeTitle, isPresented: $showAuthOutcomeAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(authOutcomeMessage)
         }
     }
 
-    private func dismissIfAlreadySignedIn() {
-        guard sessionManager.isAuthenticated else { return }
-        // During `completeLogin` the session becomes authenticated while this flag is still true; avoid dismissing
-        // until the Apple exchange finishes so the sheet can close cleanly.
-        guard !appleOAuthFollowUp.appleBackendExchangeInProgress else { return }
-        onFinished()
-        dismiss()
+    private var providerPills: some View {
+        Group {
+            if providerPillStackAxis == .horizontal {
+                HStack(spacing: 10) {
+                    #if os(iOS) || os(macOS) || os(visionOS)
+                    signInWithApplePillCompact
+                    #endif
+                    googleSignInPillCompact
+                }
+            } else {
+                VStack(spacing: 14) {
+                    #if os(iOS) || os(macOS) || os(visionOS)
+                    signInWithApplePill
+                    #endif
+                    googleSignInPill
+                }
+            }
+        }
+        .modifier(OAuthSignInPillWidthModifier(maxWidth: pillMaxWidth))
+        .opacity(showPrimaryOAuthProviderRows ? 1 : 0)
+        .allowsHitTesting(showPrimaryOAuthProviderRows)
+        .accessibilityHidden(!showPrimaryOAuthProviderRows)
     }
 
-    /// Keep sign-in pills in the hierarchy after `login()` flips `isAuthenticated`.
-    /// Removing rows with `if !isAuthenticated` can recreate `NavigationStack` content and reset `@State`,
-    /// which can dismiss the OAuth UI unexpectedly right after sign-in.
-    private var showPrimaryOAuthProviderRows: Bool { !sessionManager.isAuthenticated }
+    @ViewBuilder
+    private var manualSignInSection: some View {
+        if showsEmailSignInOption {
+            manualSignInPill
+                .modifier(OAuthSignInPillWidthModifier(maxWidth: pillMaxWidth))
+                .opacity(showPrimaryOAuthProviderRows ? 1 : 0)
+                .allowsHitTesting(showPrimaryOAuthProviderRows)
+            oauthOrDivider
+                .modifier(OAuthSignInPillWidthModifier(maxWidth: pillMaxWidth))
+                .padding(.top, providerPillStackAxis == .horizontal ? 6 : 16)
+                .opacity(showPrimaryOAuthProviderRows ? 1 : 0)
+                .allowsHitTesting(false)
+        }
+    }
 
-    private var signInOptionsRoot: some View {
+    private var sheetLayoutBody: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 14) {
-                #if os(iOS) || os(macOS) || os(visionOS)
-                signInWithApplePill
-                #endif
-                googleSignInPill
-                continueWithEmailPill
-            }
-            .opacity(showPrimaryOAuthProviderRows ? 1 : 0)
-            .allowsHitTesting(showPrimaryOAuthProviderRows)
-            .accessibilityHidden(!showPrimaryOAuthProviderRows)
-            .padding(.horizontal, 22)
-            .padding(.top, 8)
+            manualSignInSection
+                .padding(.horizontal, 22)
+                .padding(.top, 8)
+
+            providerPills
+                .padding(.horizontal, 22)
+                .padding(.top, showsEmailSignInOption ? 4 : 8)
 
             Spacer(minLength: 0)
 
-            if showsCreateAccountLink, let onRequestEmailSignUp {
-                createAccountLink(onRequestEmailSignUp: onRequestEmailSignUp)
+            if showsCreateAccountLink, let onCreateAccount {
+                oauthOrDivider
+                    .padding(.horizontal, 22)
+                createAccountLink(action: onCreateAccount)
                     .padding(.horizontal, 22)
                     .padding(.bottom, 28)
                     .opacity(showPrimaryOAuthProviderRows ? 1 : 0)
@@ -185,10 +170,30 @@ struct OAuthProviderSignInSheet: View {
         }
     }
 
+    private var inlineLayoutBody: some View {
+        VStack(spacing: 0) {
+            manualSignInSection
+
+            providerPills
+                .padding(.top, showsEmailSignInOption ? 4 : 0)
+
+            if showsCreateAccountLink, let onCreateAccount {
+                oauthOrDivider
+                    .modifier(OAuthSignInPillWidthModifier(maxWidth: pillMaxWidth))
+                    .padding(.top, providerPillStackAxis == .horizontal ? 6 : 16)
+                createAccountLink(action: onCreateAccount)
+                    .modifier(OAuthSignInPillWidthModifier(maxWidth: pillMaxWidth))
+                    .padding(.top, 4)
+                    .opacity(showPrimaryOAuthProviderRows ? 1 : 0)
+                    .allowsHitTesting(showPrimaryOAuthProviderRows)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
     // MARK: - Sign in with Apple (Guideline 4.8)
 
     #if os(iOS) || os(macOS) || os(visionOS)
-    /// White pill styling shared with the custom iOS button; macOS uses `SignInWithAppleButton` in the same footprint.
     private static let applePillText = Color.black
 
     private var signInWithApplePill: some View {
@@ -253,7 +258,6 @@ struct OAuthProviderSignInSheet: View {
         }
     }
 
-    /// Presents only the system Sign in with Apple UI (Face ID / passcode). Name and email come from Authentication Services + Keychain replay.
     private func startNativeSignInWithApple() {
         guard !sessionManager.isAuthenticated else { return }
         guard !appleOAuthFollowUp.appleBackendExchangeInProgress else { return }
@@ -268,7 +272,6 @@ struct OAuthProviderSignInSheet: View {
             }
         }
     }
-
     #endif
 
     private func handleAppleSignInResult(_ result: Result<ASAuthorization, Error>) {
@@ -299,8 +302,7 @@ struct OAuthProviderSignInSheet: View {
                         presetPlatformPassword: nil
                     )
                     appleOAuthFollowUp.appleBackendExchangeInProgress = false
-                    onFinished()
-                    dismiss()
+                    onSignedIn()
                 } catch {
                     appleOAuthFollowUp.appleBackendExchangeInProgress = false
                     let outcome = InteraAuthUserMessaging.appleSignInOutcome(for: error)
@@ -324,24 +326,102 @@ struct OAuthProviderSignInSheet: View {
     }
     #endif
 
-    // MARK: Google — same pill layout / press as peers; white “Sign in with Google” treatment + brand colors
+    // MARK: Google
 
-    /// Shared vertical size for Apple + Google provider rows.
     private static let oauthPillHeight: CGFloat = 54
-
-    /// Google brand neutrals (Sign-in button guidelines).
+    private static let compactOAuthPillHeight: CGFloat = 48
     private static let googleButtonText = Color(red: 0.24, green: 0.25, blue: 0.26)
     private static let googleButtonBorder = Color(red: 0.86, green: 0.87, blue: 0.88)
+
+    #if os(iOS) || os(macOS) || os(visionOS)
+    private var signInWithApplePillCompact: some View {
+        Group {
+            #if os(iOS) || os(visionOS)
+            Button {
+                startNativeSignInWithApple()
+            } label: {
+                signInWithApplePillCompactChrome
+            }
+            .buttonStyle(.plain)
+            .signInPopupPhysicalPress()
+            .disabled(appleOAuthFollowUp.appleBackendExchangeInProgress)
+            .accessibilityLabel("Sign in with Apple")
+            #elseif os(macOS)
+            SignInWithAppleButton(.signIn) { request in
+                request.requestedScopes = [.fullName, .email]
+            } onCompletion: { result in
+                handleAppleSignInResult(result)
+            }
+            .signInWithAppleButtonStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.compactOAuthPillHeight)
+            .clipShape(Capsule(style: .continuous))
+            .signInPopupPhysicalPress()
+            #endif
+        }
+    }
+
+    #if os(iOS) || os(visionOS)
+    private var signInWithApplePillCompactChrome: some View {
+        Image(systemName: "apple.logo")
+            .font(InteraFont.title3.weight(.semibold))
+            .foregroundStyle(Self.applePillText)
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.compactOAuthPillHeight)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(Color.white)
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(Self.googleButtonBorder, lineWidth: 1)
+                    }
+            }
+    }
+    #endif
+    #endif
+
+    private var googleSignInPillCompact: some View {
+        Button {
+            Task {
+                do {
+                    try await GoogleSignInAppSupport.signInInteractively(sessionManager: sessionManager)
+                    onSignedIn()
+                } catch {
+                    guard !InteraAuthUserMessaging.isGoogleSignInCancellation(error) else { return }
+                    let outcome = InteraAuthUserMessaging.googleSignInOutcome(for: error)
+                    authOutcomeTitle = outcome.title
+                    authOutcomeMessage = outcome.message
+                    showAuthOutcomeAlert = true
+                    ProductionLogging.recordNonFatal(error, context: ["area": "google_sign_in"])
+                }
+            }
+        } label: {
+            googleSignInAssetIcon(size: 22)
+                .frame(maxWidth: .infinity)
+                .frame(height: Self.compactOAuthPillHeight)
+                .background {
+                    Capsule(style: .continuous)
+                        .fill(Color.white)
+                        .overlay {
+                            Capsule(style: .continuous)
+                                .strokeBorder(Self.googleButtonBorder, lineWidth: 1)
+                        }
+                }
+        }
+        .buttonStyle(.plain)
+        .signInPopupPhysicalPress()
+        .accessibilityLabel("Sign in with Google")
+    }
 
     private var googleSignInPill: some View {
         Button {
             Task {
                 do {
                     try await GoogleSignInAppSupport.signInInteractively(sessionManager: sessionManager)
-                    onFinished()
-                    dismiss()
+                    onSignedIn()
                 } catch {
-                    let outcome = InteraAuthUserMessaging.oauthSignInOutcome(for: error)
+                    guard !InteraAuthUserMessaging.isGoogleSignInCancellation(error) else { return }
+                    let outcome = InteraAuthUserMessaging.googleSignInOutcome(for: error)
                     authOutcomeTitle = outcome.title
                     authOutcomeMessage = outcome.message
                     showAuthOutcomeAlert = true
@@ -352,7 +432,7 @@ struct OAuthProviderSignInSheet: View {
             HStack(spacing: 0) {
                 Spacer(minLength: 0)
                 HStack(spacing: 14) {
-                    GoogleFourColorRingGlyph(size: 22)
+                    googleSignInAssetIcon(size: 22)
                     Text("Sign in with Google")
                         .font(InteraFont.body.weight(.semibold))
                         .foregroundStyle(Self.googleButtonText)
@@ -375,13 +455,21 @@ struct OAuthProviderSignInSheet: View {
         .signInPopupPhysicalPress()
     }
 
-    // MARK: Email — ghost
+    private func googleSignInAssetIcon(size: CGFloat) -> some View {
+        Image("Google")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
 
-    private var continueWithEmailPill: some View {
+    // MARK: Manual sign-in (email / password)
+
+    private var manualSignInPill: some View {
         Button {
-            path.append(.email)
+            onNavigateToEmail()
         } label: {
-            Text("Continue with Email")
+            Text("Manual Sign-In")
                 .font(InteraFont.body.weight(.semibold))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .frame(maxWidth: .infinity)
@@ -390,60 +478,149 @@ struct OAuthProviderSignInSheet: View {
                     Capsule(style: .continuous)
                         .strokeBorder(BookingSelectorTheme.cream, lineWidth: 1)
                 }
-                // Text only hit-tests glyphs; expand to the full ghost pill.
                 .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
         .signInPopupPhysicalPress()
     }
 
-    // MARK: Create account (Past link)
+    // MARK: Create account
 
-    private func createAccountLink(onRequestEmailSignUp: @escaping () -> Void) -> some View {
-        Button {
-            dismiss()
-            onRequestEmailSignUp()
-        } label: {
-            Text("Create account")
-                .bookingCalendarWeekdayLabelStyle()
-                .foregroundStyle(BookingSelectorTheme.cream)
+    private var oauthOrDivider: some View {
+        Text("or")
+            .font(InteraFont.caption.weight(.medium))
+            .foregroundStyle(BookingSelectorTheme.cream.opacity(0.62))
+            .frame(maxWidth: .infinity)
+    }
+
+    private func createAccountLink(action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text("Create Account")
+                .font(InteraFont.subheadline.weight(.semibold))
+                .foregroundStyleOliveGreen()
                 .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background {
+                    Capsule(style: .continuous)
+                        .strokeBorder(
+                            InteraOliveGreenTextStyle.outlineColor(for: colorScheme),
+                            lineWidth: 1.5
+                        )
+                }
+                .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
+        .signInPopupPhysicalPress()
     }
 }
 
-// MARK: - Google identity glyph (brand palette ring)
-
-/// Four-color arc ring using Google’s standard blue / red / yellow / green — reads instantly as Google next to email sign-in.
 @available(iOS 17.0, macOS 14.0, *)
-private struct GoogleFourColorRingGlyph: View {
-    var size: CGFloat = 22
+private struct OAuthSignInPillWidthModifier: ViewModifier {
+    let maxWidth: CGFloat?
 
-    private var lineWidth: CGFloat { max(2.25, size * 0.12) }
+    func body(content: Content) -> some View {
+        if let maxWidth {
+            content
+                .frame(maxWidth: maxWidth)
+                .frame(maxWidth: .infinity)
+        } else {
+            content
+        }
+    }
+}
 
-    private static let blue = Color(red: 0.26, green: 0.52, blue: 0.96)
-    private static let red = Color(red: 0.92, green: 0.25, blue: 0.21)
-    private static let yellow = Color(red: 0.98, green: 0.74, blue: 0.02)
-    private static let green = Color(red: 0.20, green: 0.66, blue: 0.33)
+@available(iOS 17.0, macOS 14.0, *)
+struct OAuthProviderSignInSheet: View {
+    @Environment(\.dismiss) private var dismiss
 
-    private var segmentColors: [Color] {
-        [Self.blue, Self.red, Self.yellow, Self.green]
+    let sessionManager: AppSessionManager
+    let onFinished: () -> Void
+    /// When set, shows **Create account** to open package-driven email sign-up (`IntegratedSignUpFlowRegistry`).
+    var onRequestEmailSignUp: (() -> Void)?
+    /// When `false`, hides the bottom “Create account” link (e.g. user already chose Sign Up on the prior sheet).
+    var showsCreateAccountLink: Bool
+
+    @State private var showsEmailSignInRoot = false
+    /// Owned by the parent that presents this sheet so `login()` / `AppSessionManager` updates do not reset `@State`.
+    @ObservedObject private var appleOAuthFollowUp: AppleOAuthPostSignInCoordinator
+
+    init(
+        sessionManager: AppSessionManager,
+        appleOAuthFollowUp: AppleOAuthPostSignInCoordinator,
+        onFinished: @escaping () -> Void,
+        onRequestEmailSignUp: (() -> Void)? = nil,
+        showsCreateAccountLink: Bool = true
+    ) {
+        self.sessionManager = sessionManager
+        self._appleOAuthFollowUp = ObservedObject(wrappedValue: appleOAuthFollowUp)
+        self.onFinished = onFinished
+        self.onRequestEmailSignUp = onRequestEmailSignUp
+        self.showsCreateAccountLink = showsCreateAccountLink
     }
 
     var body: some View {
-        ZStack {
-            ForEach(0..<4, id: \.self) { i in
-                Circle()
-                    .trim(from: CGFloat(i) * 0.25, to: CGFloat(i) * 0.25 + 0.24)
-                    .stroke(
-                        segmentColors[i],
-                        style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+        NavigationStack {
+            Group {
+                if showsEmailSignInRoot {
+                    emailSignInScreen
+                } else {
+                    OAuthProviderSignInOptionsContent(
+                        sessionManager: sessionManager,
+                        appleOAuthFollowUp: appleOAuthFollowUp,
+                        layout: .sheet,
+                        showsCreateAccountLink: showsCreateAccountLink,
+                        onNavigateToEmail: { showsEmailSignInRoot = true },
+                        onCreateAccount: {
+                            dismiss()
+                            onRequestEmailSignUp?()
+                        },
+                        onSignedIn: {
+                            onFinished()
+                            dismiss()
+                        }
                     )
-                    .rotationEffect(.degrees(-90))
+                }
+            }
+            .navigationTitle(showsEmailSignInRoot ? "Manual Sign-In" : "Sign In")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear { dismissIfAlreadySignedIn() }
+            .onChange(of: sessionManager.isAuthenticated) { _, authed in
+                if authed { showsEmailSignInRoot = false }
             }
         }
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
+    }
+
+    private var emailSignInScreen: some View {
+        EmailPasswordSignInView(
+            sessionManager: sessionManager,
+            apiV1BaseTrimmed: AppConfiguration.messagingAPIRootTrimmed,
+            onSignedIn: {
+                onFinished()
+                dismiss()
+            },
+            onRequestSignUp: {
+                dismiss()
+                onRequestEmailSignUp?()
+            }
+        )
+        #if os(iOS)
+        .navigationBarBackButtonHidden(true)
+        #endif
+    }
+
+    private func dismissIfAlreadySignedIn() {
+        guard sessionManager.isAuthenticated else { return }
+        guard !appleOAuthFollowUp.appleBackendExchangeInProgress else { return }
+        onFinished()
+        dismiss()
     }
 }

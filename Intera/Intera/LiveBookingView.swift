@@ -293,7 +293,7 @@ struct LiveBookingView: View {
                     Label("Instagram", systemImage: "camera.fill")
                         .font(InteraFont.subheadline.weight(.medium))
                         .labelStyle(.iconOnly)
-                        .foregroundStyle(Color.oliveGreen)
+                        .foregroundStyleInteraShellIcon()
                         .frame(width: 36, height: 36)
                         .background {
                             Circle().fill(.ultraThinMaterial)
@@ -308,7 +308,7 @@ struct LiveBookingView: View {
     private var heroPlaceholder: some View {
         Text(provider.businessName.prefix(2).uppercased())
             .font(InteraFont.headline)
-            .foregroundStyle(Color.brand)
+            .foregroundStyleOliveGreen()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.brand.opacity(0.2))
     }

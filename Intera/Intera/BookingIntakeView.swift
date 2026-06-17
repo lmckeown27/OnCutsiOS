@@ -301,10 +301,11 @@ struct BookingIntakeView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "camera.fill")
                                 .font(InteraFont.caption.weight(.semibold))
+                                .foregroundStyleInteraShellIconSecondary()
                             Text("Instagram")
                                 .font(InteraFont.subheadline.weight(.medium))
+                                .foregroundStyleOliveGreen()
                         }
-                        .foregroundStyle(Color.oliveGreen)
                     }
                     .opacity(headerCollapse > 0.95 ? 0 : 1)
                     .frame(height: headerCollapse > 0.95 ? 0 : nil)
@@ -323,7 +324,7 @@ struct BookingIntakeView: View {
     private var placeholderInitials: some View {
         Text(provider.businessName.prefix(2).uppercased())
             .font(InteraFont.headline)
-            .foregroundStyle(Color.brand)
+            .foregroundStyleOliveGreen()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.brand.opacity(0.15))
     }

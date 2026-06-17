@@ -8,6 +8,18 @@
 
 import SwiftUI
 
+private struct ServiceProviderCardPriceLabelStyle: ViewModifier {
+    let usesLiquidGlassMorphChrome: Bool
+
+    func body(content: Content) -> some View {
+        if usesLiquidGlassMorphChrome {
+            content.foregroundStyle(Color.white)
+        } else {
+            content.foregroundStyleOliveGreen()
+        }
+    }
+}
+
 private struct ServiceProviderCardButtonStyle: ButtonStyle {
     let cornerRadius: CGFloat
     let glassMorphNamespace: Namespace.ID?
@@ -75,11 +87,6 @@ struct ServiceProviderCard: View {
         return .neutral600
     }
 
-    private var cardAccentTextColor: Color {
-        if usesLiquidGlassMorphChrome { return .white }
-        return .oliveGreen
-    }
-
     private var kindPillForegroundColor: Color {
         if usesLiquidGlassMorphChrome { return .white }
         return .brand
@@ -119,7 +126,7 @@ struct ServiceProviderCard: View {
                             .overlay(
                                 Text(provider.businessName.prefix(2).uppercased())
                                     .font(InteraFont.headline)
-                                    .foregroundStyle(Color.brand)
+                                    .foregroundStyleOliveGreen()
                             )
                     }
                     .frame(width: 80, height: 80)
@@ -132,7 +139,7 @@ struct ServiceProviderCard: View {
                         .overlay(
                             Text(provider.businessName.prefix(2).uppercased())
                                 .font(InteraFont.headline)
-                                .foregroundStyle(Color.brand)
+                                .foregroundStyleOliveGreen()
                         )
                 }
                 
@@ -197,11 +204,12 @@ struct ServiceProviderCard: View {
                     VStack(alignment: .trailing, spacing: .space1) {
                         if let priceRange = provider.priceRange {
                             Text(priceRange.displayLabel)
-                                .font(InteraFont.bodyMedium)
-                                .fontWeight(.semibold)
+                                .font(InteraFont.headlineSmall)
                                 .multilineTextAlignment(.trailing)
                                 .fixedSize(horizontal: false, vertical: true)
-                                .foregroundStyle(cardAccentTextColor)
+                                .modifier(ServiceProviderCardPriceLabelStyle(
+                                    usesLiquidGlassMorphChrome: usesLiquidGlassMorphChrome
+                                ))
                         }
                         if let distanceLabel = provider.formattedDistanceFromUser {
                             HStack(spacing: 4) {

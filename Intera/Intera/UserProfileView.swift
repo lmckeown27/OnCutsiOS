@@ -70,10 +70,7 @@ struct UserProfileView: View {
     var showsIntegratedAccountMenu: Bool = false
     /// Called after sign out from the integrated Account section (e.g. dismiss the hosting sheet).
     var onAccountMenuSignOut: (() -> Void)? = nil
-    /// When both are set and there is no session, shows `HubGuestAuthPrompt` instead of a plain empty state (main hub tab).
-    var onGuestRequestSignIn: (() -> Void)? = nil
-    var onGuestRequestSignUp: (() -> Void)? = nil
-    /// When set (e.g. hub Profile tab), parent hides the main bottom tab bar while first/last name fields are focused.
+    /// When set (e.g. main hub tab), signed-out users are kept on Home by the hub shell.
     var hubBottomBarSuppressionWhileFocused: Binding<Bool>? = nil
 
     /// Barber bio from API (fallback when editing profile before remote profile loads).
@@ -99,23 +96,12 @@ struct UserProfileView: View {
                     hubBottomBarSuppressionWhileFocused: hubBottomBarSuppressionWhileFocused
                 )
             } else {
-                if let onSignIn = onGuestRequestSignIn, let onSignUp = onGuestRequestSignUp {
-                    HubGuestAuthPrompt(
-                        title: "Your \(AppBranding.displayName) account",
-                        systemImage: "person.crop.circle.badge.plus",
-                        signInCallout: "Sign in to manage your profile, portfolio, and settings.",
-                        onSignIn: onSignIn,
-                        onSignUp: onSignUp
-                    )
-                    .padding(.top, 12)
-                } else {
-                    ContentUnavailableView(
-                        "Not signed in",
-                        systemImage: "person.crop.circle.badge.questionmark",
-                        description: Text("Sign in to view your profile.")
-                    )
-                    .padding(.top, 48)
-                }
+                ContentUnavailableView(
+                    "Not signed in",
+                    systemImage: "person.crop.circle.badge.questionmark",
+                    description: Text("Sign in to view your profile.")
+                )
+                .padding(.top, 48)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -283,7 +269,7 @@ private struct UserProfileGlassHeaderCard: View {
                         if showVerified {
                             Label("Verified", systemImage: "checkmark.seal.fill")
                                 .font(InteraFont.caption.weight(.bold))
-                                .foregroundStyle(Color.oliveGreen)
+                                .foregroundStyleOliveGreen()
                                 .labelStyle(.titleAndIcon)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -299,7 +285,7 @@ private struct UserProfileGlassHeaderCard: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .background(Color.oliveGreen.opacity(0.12))
-                        .foregroundStyle(Color.oliveGreen)
+                        .foregroundStyleOliveGreen()
                         .clipShape(Capsule())
                 }
             }
@@ -385,7 +371,7 @@ private struct UserProfileAppointmentList: View {
                             .foregroundStyle(.secondary)
                         Text(Self.df.string(from: item.scheduledAt))
                             .font(InteraFont.caption)
-                            .foregroundStyle(Color.oliveGreen)
+                            .foregroundStyleOliveGreen()
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
@@ -484,7 +470,7 @@ private struct UserProfileServicesList: View {
                     Spacer()
                     Text("$\(row.priceUsd)")
                         .font(InteraFont.bodyLarge.weight(.semibold))
-                        .foregroundStyle(Color.oliveGreen)
+                        .foregroundStyleOliveGreen()
                 }
                 .padding(16)
                 .background {
@@ -523,6 +509,7 @@ private struct UserProfileReviewsList: View {
                                 Image(systemName: i < r.rating ? "star.fill" : "star")
                                     .font(InteraFont.caption2)
                                     .foregroundStyle(i < r.rating ? Color.oliveGreen : Color.secondary.opacity(0.4))
+                                    .interaOliveGreenTextOutline(when: i < r.rating)
                             }
                         }
                     }
@@ -558,13 +545,6 @@ private enum EditProfileMainTab: String, CaseIterable, Identifiable {
         switch self {
         case .profileInfo: return "Profile Info"
         case .security: return "Security"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .profileInfo: return "person.crop.circle"
-        case .security: return "lock"
         }
     }
 }
@@ -953,20 +933,19 @@ private struct UserProfileSettingsDrawerOverlay: View {
                         tab = t
                     }
                 } label: {
+                    let isSelected = tab == t
                     VStack(spacing: 6) {
-                        Image(systemName: t.symbol)
-                            .font(InteraFont.system(size: 18, weight: .semibold))
                         Text(t.title)
-                            .font(InteraFont.caption2.weight(.semibold))
+                            .font(InteraFont.subheadline.weight(.semibold))
                             .multilineTextAlignment(.center)
                     }
-                    .foregroundStyle(tab == t ? Color.oliveGreen : Color.secondary)
+                    .foregroundStyle(editTabForegroundColor(for: t, isSelected: isSelected))
                     .frame(maxWidth: .infinity, minHeight: 52, alignment: .center)
                     .padding(.vertical, 10)
                     .background {
-                        if tab == t {
+                        if isSelected {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.oliveGreen.opacity(0.18))
+                                .fill(editTabSelectionFill(for: t))
                         }
                     }
                     .contentShape(Rectangle())
@@ -982,6 +961,20 @@ private struct UserProfileSettingsDrawerOverlay: View {
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(Color.white.opacity(0.14), lineWidth: 0.5)
+        }
+    }
+
+    private func editTabForegroundColor(for tab: EditProfileMainTab, isSelected: Bool) -> Color {
+        switch tab {
+        case .security: return .red
+        case .profileInfo: return isSelected ? .primary : .secondary
+        }
+    }
+
+    private func editTabSelectionFill(for tab: EditProfileMainTab) -> Color {
+        switch tab {
+        case .profileInfo: return Color.primary.opacity(0.08)
+        case .security: return Color.red.opacity(0.18)
         }
     }
 
@@ -1088,9 +1081,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                         ProfileBlockedMessagingUsersView(sessionManager: sessionManager)
                     } label: {
                         integratedAccountRow(
-                            title: "Blocked people",
-                            systemImage: "person.fill.xmark",
-                            trailing: .chevron
+                            title: "Blocked people"
                         )
                     }
                     .buttonStyle(.plain)
@@ -1124,10 +1115,18 @@ private struct UserProfileSettingsDrawerOverlay: View {
         }
     }
 
-    private enum IntegratedAccountTrailing {
-        case chevron
-        case external
-        case none
+    private func integratedAccountRow(
+        title: String,
+        emphasizeSignOut: Bool = false
+    ) -> some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .font(InteraFont.body)
+                .foregroundStyle(emphasizeSignOut ? Color.red : Color.primary)
+            Spacer(minLength: 8)
+        }
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
     }
 
     private var integratedAccountMenuSection: some View {
@@ -1137,9 +1136,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 VStack(spacing: 0) {
                     Link(destination: URL(string: "https://campuscut.com/privacy")!) {
                         integratedAccountRow(
-                            title: "Privacy Policy",
-                            systemImage: "hand.raised",
-                            trailing: .external
+                            title: "Privacy Policy"
                         )
                     }
 
@@ -1147,9 +1144,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
 
                     Link(destination: URL(string: "https://campuscut.com/terms")!) {
                         integratedAccountRow(
-                            title: "Terms of Service",
-                            systemImage: "doc.text",
-                            trailing: .external
+                            title: "Terms of Service"
                         )
                     }
 
@@ -1159,9 +1154,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                         ProfileBlockedMessagingUsersView(sessionManager: sessionManager)
                     } label: {
                         integratedAccountRow(
-                            title: "Blocked people",
-                            systemImage: "person.fill.xmark",
-                            trailing: .chevron
+                            title: "Blocked people"
                         )
                     }
                     .buttonStyle(.plain)
@@ -1172,9 +1165,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                         showApplePayReviewerInfo = true
                     } label: {
                         integratedAccountRow(
-                            title: "Apple Pay & payments",
-                            systemImage: "apple.logo",
-                            trailing: .chevron
+                            title: "Apple Pay & payments"
                         )
                     }
                     .buttonStyle(.plain)
@@ -1186,8 +1177,6 @@ private struct UserProfileSettingsDrawerOverlay: View {
                     } label: {
                         integratedAccountRow(
                             title: "Sign Out",
-                            systemImage: "rectangle.portrait.and.arrow.right",
-                            trailing: .none,
                             emphasizeSignOut: true
                         )
                     }
@@ -1200,39 +1189,6 @@ private struct UserProfileSettingsDrawerOverlay: View {
     private func integratedAccountDivider() -> some View {
         Divider()
             .opacity(0.35)
-    }
-
-    private func integratedAccountRow(
-        title: String,
-        systemImage: String,
-        trailing: IntegratedAccountTrailing,
-        emphasizeSignOut: Bool = false
-    ) -> some View {
-        let accent = emphasizeSignOut ? Color.red : Color.oliveGreen
-        return HStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(InteraFont.body.weight(.semibold))
-                .foregroundStyle(accent)
-                .frame(width: 26, alignment: .center)
-            Text(title)
-                .font(InteraFont.body)
-                .foregroundStyle(emphasizeSignOut ? Color.red : Color.primary)
-            Spacer(minLength: 8)
-            switch trailing {
-            case .chevron:
-                Image(systemName: "chevron.right")
-                    .font(InteraFont.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            case .external:
-                Image(systemName: "arrow.up.forward")
-                    .font(InteraFont.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            case .none:
-                EmptyView()
-            }
-        }
-        .padding(.vertical, 14)
-        .contentShape(Rectangle())
     }
 
     private var avatarSection: some View {

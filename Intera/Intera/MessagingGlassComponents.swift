@@ -14,6 +14,10 @@ import UIKit
 
 enum MessagingFlowMotion {
     static let messageAppearSpring = Animation.spring(response: 0.4, dampingFraction: 0.8)
+    /// Push/pop for hub Messages → thread (`navigationDestination(item:)`).
+    static let threadNavigationPush = Animation.smooth(duration: 0.38)
+    /// Delay before bubble insert transitions + animated scroll-to-bottom on first paint.
+    static let threadOpenMotionDelay: Duration = .milliseconds(380)
 }
 
 enum MessagingFlowHaptics {
@@ -192,7 +196,7 @@ struct PinnedBookingHeader: View {
                     HStack(spacing: 6) {
                         Image(systemName: "calendar.badge.clock")
                             .font(InteraFont.caption.weight(.semibold))
-                            .foregroundStyle(Color.oliveGreen)
+                            .foregroundStyleInteraShellIconSecondary()
                         Text("Latest booking")
                             .font(InteraFont.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
@@ -202,7 +206,7 @@ struct PinnedBookingHeader: View {
                         .foregroundStyle(.primary)
                     Text(row.displayStatus)
                         .font(InteraFont.caption.weight(.semibold))
-                        .foregroundStyle(Color.oliveGreen.opacity(0.95))
+                        .foregroundStyleOliveGreen(opacity: 0.95)
                     if let when = formattedSchedule(row) {
                         Text(when)
                             .font(InteraFont.subheadline)

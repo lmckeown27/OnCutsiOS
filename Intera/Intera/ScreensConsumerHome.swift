@@ -279,10 +279,11 @@ struct ConsumerHomeScreen: View {
                         HStack(spacing: .space1) {
                             Image(systemName: "chevron.left")
                                 .font(InteraFont.body)
+                                .foregroundStyleInteraShellIcon()
                             Text("Services")
                                 .font(InteraFont.bodyMedium)
+                                .foregroundStyleOliveGreen()
                         }
-                        .foregroundStyle(Color.brand)
                     }
                 }
                 
@@ -299,7 +300,7 @@ struct ConsumerHomeScreen: View {
                         } label: {
                             Image(systemName: "location.circle")
                                 .font(InteraFont.body.weight(.semibold))
-                                .foregroundStyle(Color.brand)
+                                .foregroundStyleInteraShellIcon()
                         }
                         .accessibilityLabel("Maximum search distance")
                     }
@@ -1492,7 +1493,7 @@ struct ServiceProviderDetailSheet: View {
                                     .overlay(
                                         Text(provider.businessName.prefix(2).uppercased())
                                             .font(InteraFont.title)
-                                            .foregroundStyle(Color.brand)
+                                            .foregroundStyleOliveGreen()
                                     )
                             }
                             .frame(width: 120, height: 120)
@@ -1504,7 +1505,7 @@ struct ServiceProviderDetailSheet: View {
                                 .overlay(
                                     Text(provider.businessName.prefix(2).uppercased())
                                         .font(InteraFont.title)
-                                        .foregroundStyle(Color.brand)
+                                        .foregroundStyleOliveGreen()
                                 )
                         }
                         
@@ -1972,6 +1973,7 @@ private struct ProviderDetailReviewsPreviewSection: View {
                             Text("See all reviews")
                                 .font(InteraFont.subheadline.weight(.semibold))
                                 .foregroundStyle(useVibrantLiquidGlassStyling ? Color.oliveGreen : Color.white.opacity(0.95))
+                                .interaOliveGreenTextOutline(when: useVibrantLiquidGlassStyling)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -2210,6 +2212,7 @@ struct UnifiedProviderHomeScreen: View {
     @State private var unifiedGuestAuthResumeAction: GuestAuthResumeAction = .none
     @State private var unifiedOAuthSignInShowsCreateAccountLink = true
     @State private var showOAuthSignInSheet = false
+    @State private var showManualSignInSheet = false
     @State private var showIntegratedSignUpSheet = false
     @State private var showLoginPrompt = false
     @State private var selectedProvider: ServiceProvider?
@@ -2318,9 +2321,15 @@ struct UnifiedProviderHomeScreen: View {
 
     /// When a thread is open on Messages (`hubPageIndex == 1`), the hub’s page `UIScrollView` must not steal horizontal drags from interactive back.
     private var hubTabPagingInteractionEnabled: Bool {
+        if !sessionManager.isAuthenticated { return false }
         if isUtilityPillChromeExpanded { return false }
         if hubPageIndex != 1 { return true }
         return !messagesThreadPresentedForHubPaging
+    }
+
+    /// Signed-out users stay on Home; hub bar is replaced by the guest sign-in overlay.
+    private var guestHubNavigationLocked: Bool {
+        !sessionManager.isAuthenticated
     }
 
     /// Structural gate for bottom hub chrome (inset height). When `false`, no bottom inset (e.g. browse search, pushed routes).
@@ -2352,10 +2361,21 @@ struct UnifiedProviderHomeScreen: View {
         homeOuterPushedMessagingThread = false
     }
 
-    /// Hub rail visible and tappable. On Profile only, first/last name focus hides the bar visually (`opacity(0)`) while it stays overlayed — avoids resizing the hub `TabView` pager during name edits.
-    private var unifiedShowsConsumerStickyHubBar: Bool {
+    /// Hub rail or guest sign-in overlay visible and tappable.
+    private var unifiedShowsHubBottomChrome: Bool {
         guard hubShellAllowsBottomChromeInset else { return false }
+        if guestHubNavigationLocked {
+            return hubPageIndex == 0
+        }
         return !(hubPageIndex == 3 && isProfileHubNameFieldFocused)
+    }
+
+    private var unifiedShowsConsumerStickyHubBar: Bool {
+        sessionManager.isAuthenticated && unifiedShowsHubBottomChrome
+    }
+
+    private var unifiedShowsGuestSignInBar: Bool {
+        guestHubNavigationLocked && unifiedShowsHubBottomChrome
     }
 
     /// Visible refresh wheel above sticky / glass chrome (system `UIRefreshControl` is easy to miss under overlays).
@@ -2403,8 +2423,6 @@ struct UnifiedProviderHomeScreen: View {
                     onBrowseServiceProviders: {
                         navigateHubPage(0, animated: true)
                     },
-                    onRequestSignIn: { showOAuthSignInSheet = true },
-                    onRequestSignUp: { showIntegratedSignUpSheet = true },
                     onThreadPresentationChanged: { visible, _ in messagesThreadPresentedForHubPaging = visible },
                     onResetMessagesNavigationStackBeforePush: {
                         messagesHubNavigationStackEpoch += 1
@@ -2424,7 +2442,6 @@ struct UnifiedProviderHomeScreen: View {
                 sessionManager: sessionManager,
                 coordinator: coordinator,
                 onShowLogin: { showOAuthSignInSheet = true },
-                onShowSignUp: { showIntegratedSignUpSheet = true },
                 onNavigationDepthChange: { bookingsTabNavigationDepth = $0 }
             )
             #if os(iOS)
@@ -2438,8 +2455,6 @@ struct UnifiedProviderHomeScreen: View {
                     sessionManager: sessionManager,
                     coordinator: coordinator,
                     showsIntegratedAccountMenu: true,
-                    onGuestRequestSignIn: { showOAuthSignInSheet = true },
-                    onGuestRequestSignUp: { showIntegratedSignUpSheet = true },
                     hubBottomBarSuppressionWhileFocused: $isProfileHubNameFieldFocused
                 )
                 #if os(iOS)
@@ -2505,6 +2520,7 @@ struct UnifiedProviderHomeScreen: View {
     #endif
 
     private func navigateHubPage(_ page: Int, animated: Bool = true) {
+        guard sessionManager.isAuthenticated || page == 0 else { return }
         if page != 3 {
             isProfileHubNameFieldFocused = false
         }
@@ -2583,7 +2599,7 @@ struct UnifiedProviderHomeScreen: View {
             guard abs(pageProgress - CGFloat(hubPageIndex)) < 0.02 else { return }
         }
         #endif
-        guard unifiedShowsConsumerStickyHubBar else {
+        guard unifiedShowsHubBottomChrome else {
             hubBarCollapseProgress = 0
             hubBarLastScrollOffsetY = 0
             return
@@ -2619,6 +2635,9 @@ struct UnifiedProviderHomeScreen: View {
     private var hubBarOverlayBottomInset: CGFloat {
         guard hubShellAllowsBottomChromeInset else { return 0 }
         if browseProviderSearchSuppressesHubBar { return 0 }
+        if guestHubNavigationLocked {
+            return GuestHubSignInMetrics.overlayContentBottomInset(collapseProgress: hubBarCollapseProgress)
+        }
         return ConsumerStickyHubMetrics.overlayContentBottomInset(collapseProgress: hubBarCollapseProgress)
     }
 
@@ -2626,32 +2645,42 @@ struct UnifiedProviderHomeScreen: View {
     private var hubStickyBarOverlay: some View {
         if hubShellAllowsBottomChromeInset, !browseProviderSearchSuppressesHubBar {
             Group {
-                #if os(iOS)
-                ConsumerStickyHubBar(
-                    hubPageIndex: $hubPageIndex,
-                    pagingCoordinator: hubPagingCoordinator,
-                    unreadMessageCount: chatViewModel.unreadMessageCount,
-                    upcomingBookingCount: upcomingBookingIndicatorCount,
-                    onNavigateToPage: { page, animated in navigateHubPage(page, animated: animated) },
-                    bubbleAnchoredToPageIndex: hubBubbleAnchoredToPageIndex,
-                    collapseProgress: hubBarCollapseProgress,
-                    isHubBubbleDragging: $isHubBubbleDragging
-                )
-                #else
-                ConsumerStickyHubBar(
-                    hubPageIndex: $hubPageIndex,
-                    unreadMessageCount: chatViewModel.unreadMessageCount,
-                    upcomingBookingCount: upcomingBookingIndicatorCount,
-                    onNavigateToPage: { page, animated in navigateHubPage(page, animated: animated) },
-                    bubbleAnchoredToPageIndex: hubBubbleAnchoredToPageIndex,
-                    collapseProgress: hubBarCollapseProgress,
-                    isHubBubbleDragging: $isHubBubbleDragging
-                )
-                #endif
+                if unifiedShowsGuestSignInBar {
+                    GuestHubSignInBar(
+                        sessionManager: sessionManager,
+                        appleOAuthFollowUp: appleOAuthPostSignIn,
+                        onRequestManualSignIn: { showManualSignInSheet = true },
+                        onRequestEmailSignUp: { showIntegratedSignUpSheet = true },
+                        collapseProgress: hubBarCollapseProgress
+                    )
+                } else if unifiedShowsConsumerStickyHubBar {
+                    #if os(iOS)
+                    ConsumerStickyHubBar(
+                        hubPageIndex: $hubPageIndex,
+                        pagingCoordinator: hubPagingCoordinator,
+                        unreadMessageCount: chatViewModel.unreadMessageCount,
+                        upcomingBookingCount: upcomingBookingIndicatorCount,
+                        onNavigateToPage: { page, animated in navigateHubPage(page, animated: animated) },
+                        bubbleAnchoredToPageIndex: hubBubbleAnchoredToPageIndex,
+                        collapseProgress: hubBarCollapseProgress,
+                        isHubBubbleDragging: $isHubBubbleDragging
+                    )
+                    #else
+                    ConsumerStickyHubBar(
+                        hubPageIndex: $hubPageIndex,
+                        unreadMessageCount: chatViewModel.unreadMessageCount,
+                        upcomingBookingCount: upcomingBookingIndicatorCount,
+                        onNavigateToPage: { page, animated in navigateHubPage(page, animated: animated) },
+                        bubbleAnchoredToPageIndex: hubBubbleAnchoredToPageIndex,
+                        collapseProgress: hubBarCollapseProgress,
+                        isHubBubbleDragging: $isHubBubbleDragging
+                    )
+                    #endif
+                }
             }
-            .opacity(unifiedShowsConsumerStickyHubBar ? 1 : 0)
-            .allowsHitTesting(unifiedShowsConsumerStickyHubBar)
-            .accessibilityHidden(!unifiedShowsConsumerStickyHubBar)
+            .opacity(unifiedShowsHubBottomChrome ? 1 : 0)
+            .allowsHitTesting(unifiedShowsHubBottomChrome)
+            .accessibilityHidden(!unifiedShowsHubBottomChrome)
             .padding(.horizontal, 20)
             .padding(.bottom, 8)
         }
@@ -2730,6 +2759,18 @@ struct UnifiedProviderHomeScreen: View {
             }
             #endif
             .onChange(of: hubPageIndex) { old, new in
+                if guestHubNavigationLocked, new != 0 {
+                    var reset = Transaction()
+                    reset.disablesAnimations = true
+                    withTransaction(reset) {
+                        hubPageIndex = 0
+                    }
+                    #if os(iOS)
+                    hubTabSyncPagingScrollAggressive = true
+                    hubTabSyncPagingScrollToSelection = true
+                    #endif
+                    return
+                }
                 var collapseReset = Transaction()
                 collapseReset.disablesAnimations = true
                 withTransaction(collapseReset) {
@@ -2816,7 +2857,7 @@ struct UnifiedProviderHomeScreen: View {
                         } label: {
                             Image(systemName: "location.circle")
                                 .font(InteraFont.body.weight(.semibold))
-                                .foregroundStyle(Color.brand)
+                                .foregroundStyleInteraShellIcon()
                         }
                         .accessibilityLabel("Maximum search distance")
                     }
@@ -3003,6 +3044,21 @@ struct UnifiedProviderHomeScreen: View {
                     #endif
                 }
             }
+            .sheet(isPresented: $showManualSignInSheet) {
+                if #available(iOS 17.0, macOS 14.0, *) {
+                    ManualEmailSignInSheet(
+                        sessionManager: sessionManager,
+                        onFinished: { showManualSignInSheet = false },
+                        onRequestEmailSignUp: {
+                            showManualSignInSheet = false
+                            showIntegratedSignUpSheet = true
+                        }
+                    )
+                    #if os(iOS)
+                    .presentationDetents([.medium, .large])
+                    #endif
+                }
+            }
             .sheet(isPresented: $showIntegratedSignUpSheet) {
                 if #available(iOS 17.0, macOS 14.0, *) {
                     IntegratedSignUpSheet(sessionManager: sessionManager, onFinished: {
@@ -3106,6 +3162,13 @@ struct UnifiedProviderHomeScreen: View {
             Task { await loadProviders() }
             Task { await loadUnifiedConsumerBookingsForHome() }
             Task { await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager) }
+            if !authed {
+                hubPageIndex = 0
+                #if os(iOS)
+                hubTabSyncPagingScrollAggressive = true
+                hubTabSyncPagingScrollToSelection = true
+                #endif
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .messagingUnreadCountShouldRefresh)) { _ in
             Task { await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager) }

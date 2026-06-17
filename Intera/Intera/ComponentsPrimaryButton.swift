@@ -14,6 +14,13 @@ struct PrimaryButton: View {
     var isDisabled: Bool = false
     var variant: Variant = .primary
     var size: Size = .medium
+    var shape: Shape = .rounded
+    var isFullWidth: Bool = true
+    
+    enum Shape {
+        case rounded
+        case pill
+    }
     
     enum Variant {
         case primary
@@ -80,33 +87,60 @@ struct PrimaryButton: View {
     
     var body: some View {
         Button(action: action) {
-            HStack(spacing: .space2) {
-                if isLoading {
-                    ProgressView()
-                        .tint(variant.foregroundColor)
-                        .scaleEffect(0.8)
-                }
-                
-                Text(title)
-                    .font(InteraFont.system(size: size.fontSize, weight: .medium, design: .serif))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, size.horizontalPadding)
-            .padding(.vertical, size.verticalPadding)
-            .background(isDisabled ? Color.borderMedium : variant.backgroundColor)
-            .foregroundStyle(isDisabled ? Color.textDisabled : variant.foregroundColor)
-            .clipShape(RoundedRectangle(cornerRadius: .radiusMedium))
-            .overlay {
-                if let borderColor = variant.borderColor {
-                    RoundedRectangle(cornerRadius: .radiusMedium)
-                        .strokeBorder(borderColor, lineWidth: 1.5)
-                }
-            }
-            // Outline / ghost use a clear interior; without this, taps only land on glyphs + stroke.
-            .contentShape(RoundedRectangle(cornerRadius: .radiusMedium))
+            buttonLabel
+                .interaOliveGreenTextOutline(when: !isDisabled && (variant == .outline || variant == .ghost))
+                .modifier(PrimaryButtonShapeModifier(shape: shape, borderColor: variant.borderColor))
         }
         .buttonStyle(BookButtonStyle())
         .disabled(isDisabled || isLoading)
+    }
+
+    private var buttonLabel: some View {
+        HStack(spacing: .space2) {
+            if isLoading {
+                ProgressView()
+                    .tint(variant.foregroundColor)
+                    .scaleEffect(0.8)
+            }
+
+            Text(title)
+                .font(InteraFont.system(size: size.fontSize, weight: .medium, design: .serif))
+        }
+        .frame(maxWidth: isFullWidth ? .infinity : nil)
+        .padding(.horizontal, size.horizontalPadding)
+        .padding(.vertical, size.verticalPadding)
+        .background(isDisabled ? Color.borderMedium : variant.backgroundColor)
+        .foregroundStyle(isDisabled ? Color.textDisabled : variant.foregroundColor)
+    }
+}
+
+private struct PrimaryButtonShapeModifier: ViewModifier {
+    let shape: PrimaryButton.Shape
+    let borderColor: Color?
+
+    func body(content: Content) -> some View {
+        switch shape {
+        case .rounded:
+            content
+                .clipShape(RoundedRectangle(cornerRadius: .radiusMedium))
+                .overlay {
+                    if let borderColor {
+                        RoundedRectangle(cornerRadius: .radiusMedium)
+                            .strokeBorder(borderColor, lineWidth: 1.5)
+                    }
+                }
+                .contentShape(RoundedRectangle(cornerRadius: .radiusMedium))
+        case .pill:
+            content
+                .clipShape(Capsule(style: .continuous))
+                .overlay {
+                    if let borderColor {
+                        Capsule(style: .continuous)
+                            .strokeBorder(borderColor, lineWidth: 1.5)
+                    }
+                }
+                .contentShape(Capsule(style: .continuous))
+        }
     }
 }
 

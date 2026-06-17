@@ -271,7 +271,7 @@ struct MessagingInboxRowLabel: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(providerTitle)
                         .font(Self.senderNameFont)
-                        .foregroundStyle(Color.brand)
+                        .foregroundStyleOliveGreen()
                         .lineLimit(2)
                         .minimumScaleFactor(0.82)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -288,7 +288,7 @@ struct MessagingInboxRowLabel: View {
                         HStack(alignment: .top, spacing: 6) {
                             Image(systemName: "mappin.and.ellipse")
                                 .font(InteraFont.caption.weight(.semibold))
-                                .foregroundStyle(Color.oliveGreen)
+                                .foregroundStyleInteraShellIconSecondary()
                                 .frame(width: 14, alignment: .leading)
                             Text(loc)
                                 .font(InteraFont.caption)
@@ -956,6 +956,9 @@ struct MessagingConversationView: View {
     @State private var pushedBookingDetailRoute: MessagingThreadPushedBookingDetail?
     @State private var isOpeningBookingDetailFromDrawer = false
     @State private var bookingDetailOpenError: String?
+    /// Suppresses bubble insert transitions and animated scroll until the navigation push settles.
+    @State private var allowsThreadContentMotion = false
+    @State private var threadContentMotionTask: Task<Void, Never>?
 
     /// Snap / cancel physics aligned with hub tab paging (not a single-flick commit).
     private static let edgeGestureSnapSpring = Animation.spring(response: 0.33, dampingFraction: 0.86, blendDuration: 0.12)
@@ -1305,8 +1308,14 @@ struct MessagingConversationView: View {
             .toolbarBackground(.hidden, for: .navigationBar)
             #endif
             .tint(Color.oliveGreen)
-            .animation(LiquidGlassMotion.fluidSpring, value: conversationId)
             .onAppear {
+                threadContentMotionTask?.cancel()
+                allowsThreadContentMotion = false
+                threadContentMotionTask = Task { @MainActor in
+                    try? await Task.sleep(for: MessagingFlowMotion.threadOpenMotionDelay)
+                    guard !Task.isCancelled else { return }
+                    allowsThreadContentMotion = true
+                }
                 // Defer off the navigation appearance transaction; mutating `ChatViewModel` / parent bindings
                 // synchronously in `onAppear` causes "Modifying state during view update" and can strand `navigationDestination`.
                 Task { @MainActor in
@@ -1318,6 +1327,11 @@ struct MessagingConversationView: View {
                     // awaiting `loadThreadAndMarkRead()`, letting Socket append rows that the REST assign then wipes.
                     // Realtime is wired after the first successful load in `startThreadAfterTermsIfNeeded()`.
                 }
+            }
+            .onDisappear {
+                threadContentMotionTask?.cancel()
+                threadContentMotionTask = nil
+                allowsThreadContentMotion = false
             }
             .navigationDestination(item: $pushedBookingDetailRoute) { presentation in
                 ConsumerBookingDetailView(
@@ -1343,7 +1357,7 @@ struct MessagingConversationView: View {
     private var messagingConversationBaseLayers: some View {
         ZStack {
             ZStack {
-                InteraLavaLampBackground()
+                Color.clear
                 messagingConversationMainColumn
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1417,15 +1431,15 @@ struct MessagingConversationView: View {
         }
         .onChange(of: vm.messages.last?.id) { _, _ in
             guard !vm.messages.isEmpty else { return }
-            scrollThreadToBottom(proxy: proxy)
+            scrollThreadToBottom(proxy: proxy, animated: allowsThreadContentMotion)
         }
         .onChange(of: vm.messages.count) { _, _ in
             guard !vm.messages.isEmpty else { return }
-            scrollThreadToBottom(proxy: proxy)
+            scrollThreadToBottom(proxy: proxy, animated: allowsThreadContentMotion)
         }
         .onAppear {
             guard !vm.messages.isEmpty else { return }
-            scrollThreadToBottom(proxy: proxy)
+            scrollThreadToBottom(proxy: proxy, animated: false)
         }
     }
 
@@ -1456,22 +1470,20 @@ struct MessagingConversationView: View {
 
     /// Scrolls so the newest bubble is visible. We still defer a few frames so `ScrollViewReader` can resolve
     /// the bottom id after `VStack` layout (covers send, socket receive, and photo upload completion).
-    private func scrollThreadToBottom(proxy: ScrollViewProxy) {
+    private func scrollThreadToBottom(proxy: ScrollViewProxy, animated: Bool = true) {
         func scroll() {
             let targetId = MessagingConversationViewModel.latestRenderableMessage(from: vm.messages)?.id
                 ?? Self.messagingThreadBottomID
-            withAnimation(MessagingFlowMotion.messageAppearSpring) {
+            if animated {
+                withAnimation(MessagingFlowMotion.messageAppearSpring) {
+                    proxy.scrollTo(targetId, anchor: .bottom)
+                }
+            } else {
                 proxy.scrollTo(targetId, anchor: .bottom)
             }
         }
         DispatchQueue.main.async {
             scroll()
-            DispatchQueue.main.async {
-                scroll()
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-                scroll()
-            }
         }
     }
 
@@ -1772,10 +1784,12 @@ struct MessagingConversationView: View {
                 messageBubble(msg)
                     .id(msg.id)
                     .transition(
-                        .asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: msg.isFromCurrentUser ? .trailing : .leading)),
-                            removal: .opacity
-                        )
+                        allowsThreadContentMotion
+                            ? .asymmetric(
+                                insertion: .opacity.combined(with: .move(edge: msg.isFromCurrentUser ? .trailing : .leading)),
+                                removal: .opacity
+                            )
+                            : .identity
                     )
             }
             Color.clear
@@ -1827,7 +1841,7 @@ struct MessagingConversationView: View {
             PhotosPicker(selection: $pickerItem, matching: .images) {
                 Image(systemName: "photo.on.rectangle.angled")
                     .font(InteraFont.title3)
-                    .foregroundStyle(Color.oliveGreen)
+                    .foregroundStyleInteraShellIcon()
                     .frame(width: 36, height: 36)
             }
             .onChange(of: pickerItem) { _, new in
@@ -1857,7 +1871,7 @@ struct MessagingConversationView: View {
             } label: {
                 Image(systemName: "plus")
                     .font(InteraFont.title3.weight(.semibold))
-                    .foregroundStyle(Color.oliveGreen)
+                    .foregroundStyleInteraShellIcon()
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
@@ -1879,7 +1893,7 @@ struct MessagingConversationView: View {
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(InteraFont.system(size: 32))
-                    .foregroundStyle(Color.oliveGreen)
+                    .foregroundStyleInteraShellIcon()
             }
             .disabled(vm.draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
