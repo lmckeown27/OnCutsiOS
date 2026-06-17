@@ -10,6 +10,13 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Weak page container (file-level to avoid Release SIL inliner crash in nested generic)
+
+private final class HubPageWeakContainer {
+    weak var value: UIView?
+    init(_ value: UIView) { self.value = value }
+}
+
 // MARK: - UIColor helpers (match ConsumerStickyHubNavigation semantic colors)
 
 extension UIColor {
@@ -440,12 +447,12 @@ final class HubPagingCoordinator: NSObject {
         refreshPageInteractionLocks()
     }
 
-    private var pageContainers: [Int: WeakBox<UIView>] = [:]
+    private var pageContainers: [Int: HubPageWeakContainer] = [:]
 
     func registerPageContainer(pageIndex: Int, anchor: UIView) {
         guard let container = anchor.intera_hubPageContainerAncestor() else { return }
         if pageContainers[pageIndex]?.value === container { return }
-        pageContainers[pageIndex] = WeakBox(container)
+        pageContainers[pageIndex] = HubPageWeakContainer(container)
         refreshPageInteractionLocks()
     }
 
@@ -461,11 +468,6 @@ final class HubPagingCoordinator: NSObject {
 
     func refreshPageInteractionLocksAfterSelectionChange() {
         refreshPageInteractionLocks()
-    }
-
-    private final class WeakBox<T: AnyObject> {
-        weak var value: T?
-        init(_ value: T) { self.value = value }
     }
 
     private func scheduleRetry(anchoredTo uiView: UIView) {
