@@ -169,16 +169,6 @@ struct ConsumerHomeScreen: View {
         )
     }
 
-    @MainActor
-    private func appendHomeShellBookingMessagingThread(_ handoff: ChatViewModel.BookingMessagingThreadHandoff) {
-        chatViewModel.clearPathBackedMessagingItemHandoffs()
-        if navigationPath.isEmpty {
-            chatViewModel.homeStackMessagingHandoff = handoff
-            return
-        }
-        navigationPath.interaAppendBookingMessagingThread(handoff)
-    }
-
     @ViewBuilder
     private func homeMessagingThreadDestination(
         _ handoff: ChatViewModel.BookingMessagingThreadHandoff,
@@ -216,8 +206,7 @@ struct ConsumerHomeScreen: View {
                     coordinator: coordinator,
                     bookingDetailPresentationID: presentationID,
                     hasActiveConsumerBooking: hasActiveConsumerBooking,
-                    onShowLogin: { showOAuthSignInSheet = true },
-                    appendBookingMessagingThreadOnNavigationPath: appendHomeShellBookingMessagingThread
+                    onShowLogin: { showOAuthSignInSheet = true }
                 )
                 .id(presentationID)
                 #if os(iOS)
@@ -230,10 +219,8 @@ struct ConsumerHomeScreen: View {
                     description: Text("Pull to refresh on Home or reopen the booking from Bookings.")
                 )
             }
-        case .messagingThread(let handoff):
-            homeMessagingThreadDestination(handoff) {
-                chatViewModel.promoteOrInsertConversationFromHandoff(handoff)
-            }
+        case .messagingThread:
+            EmptyView()
         }
     }
 
@@ -2877,18 +2864,6 @@ struct UnifiedProviderHomeScreen: View {
         )
     }
 
-    @MainActor
-    private func appendUnifiedHomeShellBookingMessagingThread(_ handoff: ChatViewModel.BookingMessagingThreadHandoff) {
-        chatViewModel.clearPathBackedMessagingItemHandoffs()
-        if navigationPath.isEmpty {
-            homeOuterPushedMessagingThread = false
-            chatViewModel.homeStackMessagingHandoff = handoff
-            return
-        }
-        navigationPath.interaAppendBookingMessagingThread(handoff)
-        homeOuterPushedMessagingThread = true
-    }
-
     @ViewBuilder
     private func unifiedHomeMessagingThreadDestination(
         _ handoff: ChatViewModel.BookingMessagingThreadHandoff,
@@ -2941,8 +2916,7 @@ struct UnifiedProviderHomeScreen: View {
                     coordinator: coordinator,
                     bookingDetailPresentationID: presentationID,
                     hasActiveConsumerBooking: hasActiveConsumerBooking,
-                    onShowLogin: { showOAuthSignInSheet = true },
-                    appendBookingMessagingThreadOnNavigationPath: appendUnifiedHomeShellBookingMessagingThread
+                    onShowLogin: { showOAuthSignInSheet = true }
                 )
                 .id(presentationID)
                 #if os(iOS)
@@ -2955,10 +2929,8 @@ struct UnifiedProviderHomeScreen: View {
                     description: Text("Pull to refresh on Home or reopen the booking from Bookings.")
                 )
             }
-        case .messagingThread(let handoff):
-            unifiedHomeMessagingThreadDestination(handoff, onDismissClearHandoff: {
-                chatViewModel.promoteOrInsertConversationFromHandoff(handoff)
-            }, obscuresHubChromeWhileVisible: false)
+        case .messagingThread:
+            EmptyView()
         }
     }
 

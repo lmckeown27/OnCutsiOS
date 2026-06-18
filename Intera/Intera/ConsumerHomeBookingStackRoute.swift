@@ -6,11 +6,10 @@
 //  **Detail routes store only `bookingId` + `presentationID`**, not full `ConsumerBookingSimpleRow`, so a
 //  `bookings-simple` refresh cannot change the hash of path entries and tear down navigation.
 //
-//  **Bookings / home detail → Messages:** append `.messagingThread` on the stack’s `NavigationPath` (never `navigationDestination(item:)` on a path-backed stack).
+//  **Booking detail → Messages:** ``ConsumerBookingDetailView`` uses `navigationDestination(item:)` on the detail view (parent `NavigationPath` holds `.detail` only).
 //  Empty-path browse chat on the home shell uses ``homeStackMessagingHandoff`` + `navigationDestination(item:)` while `navigationPath` is empty.
 
 import Foundation
-import SwiftUI
 
 enum ConsumerHomeBookingStackRoute: Hashable {
     case detail(bookingId: String, presentationID: UUID)
@@ -39,15 +38,5 @@ extension ConsumerHomeBookingStackRoute {
             digest[8], digest[9], digest[10], digest[11],
             digest[12], digest[13], digest[14], digest[15]
         ))
-    }
-}
-
-extension NavigationPath {
-    /// Pushes (or replaces) the booking thread segment above booking detail. Path-only — safe on `NavigationStack(path:)`.
-    mutating func interaAppendBookingMessagingThread(_ handoff: ChatViewModel.BookingMessagingThreadHandoff) {
-        if count > 1 {
-            removeLast()
-        }
-        append(ConsumerHomeBookingStackRoute.messagingThread(handoff))
     }
 }

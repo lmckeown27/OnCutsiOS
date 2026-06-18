@@ -25,8 +25,6 @@ struct ConsumerBookingDetailView: View {
     /// When `true`, skips the default `InteraLavaLampBackground` so a parent (e.g. home reminder morph) owns the lava layer.
     var usesExternalLavaBackdrop: Bool = false
     var onShowLogin: () -> Void = {}
-    /// Host appends ``ConsumerHomeBookingStackRoute/messagingThread`` on its `NavigationPath` (required on path-backed stacks).
-    var appendBookingMessagingThreadOnNavigationPath: ((ChatViewModel.BookingMessagingThreadHandoff) -> Void)? = nil
 
     @State private var showRebookSheet = false
     @State private var isOpeningMessaging = false
@@ -214,7 +212,7 @@ struct ConsumerBookingDetailView: View {
     }
 
     private var showsMessageProviderCTA: Bool {
-        guard sessionManager.isAuthenticated, appendBookingMessagingThreadOnNavigationPath != nil else { return false }
+        guard sessionManager.isAuthenticated else { return false }
         let u = bookingRow.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
         return !["CANCELLED", "REJECTED", "DECLINED", "REFUNDED"].contains(u)
     }
@@ -395,6 +393,37 @@ struct ConsumerBookingDetailView: View {
             await loadEditPickerOptions()
             captureRequestChangeBaselines()
         }
+        .navigationDestination(item: chatViewModel.bookingDetailMessagingThreadHandoffBinding(forBookingId: bookingRow.id)) { handoff in
+            bookingDetailMessagingThreadDestination(handoff)
+        }
+    }
+
+    @ViewBuilder
+    private func bookingDetailMessagingThreadDestination(_ handoff: ChatViewModel.BookingMessagingThreadHandoff) -> some View {
+        MessagingConversationView(
+            conversationId: handoff.conversationId,
+            sessionManager: sessionManager,
+            coordinator: coordinator,
+            initialBooking: handoff.bookingSnapshot,
+            counterpartyAvatarURLString: handoff.counterpartyAvatarURLString,
+            counterpartyFallbackDisplayName: handoff.counterpartyFallbackName,
+            initialDraftText: handoff.initialDraft.isEmpty ? nil : handoff.initialDraft,
+            onNavigationVisibilityChanged: { visible, _ in
+                if !visible {
+                    chatViewModel.promoteOrInsertConversationFromHandoff(handoff)
+                    chatViewModel.clearBookingDetailMessagingThreadPresentation()
+                }
+            },
+            onResyncSharedHubInboxSilently: {
+                await chatViewModel.reloadInboxSilently(sessionManager: sessionManager)
+            },
+            counterpartyUserId: handoff.counterpartyMessagingUserId,
+            hasActiveConsumerBooking: hasActiveConsumerBooking,
+            onShowLogin: onShowLogin
+        )
+        #if os(iOS)
+        .interaNavigationShellBackgroundClear()
+        #endif
     }
 
     private var bookingDetailScrollContent: some View {
@@ -558,14 +587,9 @@ struct ConsumerBookingDetailView: View {
         guard !isOpeningMessaging else { return }
         isOpeningMessaging = true
         defer { isOpeningMessaging = false }
-        guard let append = appendBookingMessagingThreadOnNavigationPath else {
-            showMessagingUnavailableAlert = true
-            return
-        }
-        let opened = await chatViewModel.presentBookingMessagingFromDetail(
+        let opened = await chatViewModel.presentBookingDetailMessagingThread(
             row: bookingRow,
-            sessionManager: sessionManager,
-            appendToNavigationPath: append
+            sessionManager: sessionManager
         )
         if !opened {
             showMessagingUnavailableAlert = true

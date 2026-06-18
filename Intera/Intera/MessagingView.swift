@@ -1340,8 +1340,7 @@ struct MessagingConversationView: View {
                     coordinator: coordinator,
                     bookingDetailPresentationID: presentation.id,
                     hasActiveConsumerBooking: hasActiveConsumerBooking,
-                    onShowLogin: { onShowLogin?() },
-                    appendBookingMessagingThreadOnNavigationPath: nil
+                    onShowLogin: { onShowLogin?() }
                 )
                 .id(presentation.id)
                 #if os(iOS)

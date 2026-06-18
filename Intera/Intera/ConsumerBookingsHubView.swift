@@ -108,12 +108,6 @@ struct ConsumerBookingsHubView: View {
         }
     }
 
-    @MainActor
-    private func appendBookingsHubMessagingThread(_ handoff: ChatViewModel.BookingMessagingThreadHandoff) {
-        chatViewModel.clearPathBackedMessagingItemHandoffs()
-        detailNavigationPath.interaAppendBookingMessagingThread(handoff)
-    }
-
     @ViewBuilder
     private func hubBookingDetailDestination(_ row: ConsumerBookingSimpleRow, presentationID: UUID? = nil) -> some View {
         ConsumerBookingDetailView(
@@ -122,8 +116,7 @@ struct ConsumerBookingsHubView: View {
             coordinator: coordinator,
             bookingDetailPresentationID: presentationID,
             hasActiveConsumerBooking: hasActiveConsumerBooking,
-            onShowLogin: onShowLogin,
-            appendBookingMessagingThreadOnNavigationPath: appendBookingsHubMessagingThread
+            onShowLogin: onShowLogin
         )
         #if os(iOS)
         .interaNavigationShellBackgroundClear()
@@ -164,36 +157,9 @@ struct ConsumerBookingsHubView: View {
                     description: Text("Return to the list and try again after refresh.")
                 )
             }
-        case .messagingThread(let handoff):
-            bookingsHubMessagingThreadDestination(handoff)
+        case .messagingThread:
+            EmptyView()
         }
-    }
-
-    @ViewBuilder
-    private func bookingsHubMessagingThreadDestination(_ handoff: ChatViewModel.BookingMessagingThreadHandoff) -> some View {
-        MessagingConversationView(
-            conversationId: handoff.conversationId,
-            sessionManager: sessionManager,
-            coordinator: coordinator,
-            initialBooking: handoff.bookingSnapshot,
-            counterpartyAvatarURLString: handoff.counterpartyAvatarURLString,
-            counterpartyFallbackDisplayName: handoff.counterpartyFallbackName,
-            initialDraftText: handoff.initialDraft.isEmpty ? nil : handoff.initialDraft,
-            onNavigationVisibilityChanged: { visible, _ in
-                if !visible {
-                    chatViewModel.promoteOrInsertConversationFromHandoff(handoff)
-                }
-            },
-            onResyncSharedHubInboxSilently: {
-                await chatViewModel.reloadInboxSilently(sessionManager: sessionManager)
-            },
-            counterpartyUserId: handoff.counterpartyMessagingUserId,
-            hasActiveConsumerBooking: hasActiveConsumerBooking,
-            onShowLogin: onShowLogin
-        )
-        #if os(iOS)
-        .interaNavigationShellBackgroundClear()
-        #endif
     }
 
     private func reportBookingsNavigationDepth() {

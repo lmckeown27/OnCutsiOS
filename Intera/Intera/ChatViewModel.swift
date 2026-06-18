@@ -230,6 +230,9 @@ final class ChatViewModel: ObservableObject {
     @Published var homeStackMessagingHandoff: BookingMessagingThreadHandoff?
     /// Thread above home-pushed booking detail (`NavigationPath` has `.detail` only).
     @Published var homeBookingMessagingThreadHandoff: BookingMessagingThreadHandoff?
+    /// Booking detail → thread (`navigationDestination(item:)` on ``ConsumerBookingDetailView``); survives detail view rebuilds from inbox `@Published` updates.
+    @Published private(set) var bookingDetailMessagingThreadHandoff: BookingMessagingThreadHandoff?
+    @Published private(set) var bookingDetailMessagingThreadBookingId: String?
 
     private static func normalizedConversationKey(_ raw: String) -> String {
         raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -438,33 +441,77 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    /// Resolves the thread, clears item handoffs, then appends `.messagingThread` on the host `NavigationPath`.
-    /// Never use `navigationDestination(item:)` on the same stack as `NavigationStack(path:)` — that crashes on pop.
-    @MainActor
-    func presentBookingMessagingFromDetail(
-        row: ConsumerBookingSimpleRow,
-        sessionManager: AppSessionManager,
-        appendToNavigationPath: (ChatViewModel.BookingMessagingThreadHandoff) -> Void
-    ) async -> Bool {
-        guard let handoff = await presentMessagingThreadForBooking(
-            row: row,
-            sessionManager: sessionManager,
-            presentationStack: .bookingsTabNavigation
-        ) else {
-            return false
-        }
-        clearPathBackedMessagingItemHandoffs()
-        await Task.yield()
-        appendToNavigationPath(handoff)
-        return true
-    }
-
+    /// Resolves the thread and returns a handoff for **bookings-tab / booking-detail** presentation; **home shell** browse sets ``homeStackMessagingHandoff`` (item destination, path must stay empty).
     @MainActor
     func clearPathBackedMessagingItemHandoffs() {
         bookingsTabMessagingThreadHandoff = nil
-        homeBookingMessagingThreadHandoff = nil
         homeStackMessagingHandoff = nil
+        homeBookingMessagingThreadHandoff = nil
         hubMessagesThreadPresentation = nil
+        clearBookingDetailMessagingThreadPresentation()
+    }
+
+    @MainActor
+    func clearBookingDetailMessagingThreadPresentation() {
+        bookingDetailMessagingThreadHandoff = nil
+        bookingDetailMessagingThreadBookingId = nil
+    }
+
+    func bookingDetailMessagingThreadHandoffBinding(forBookingId rawBookingId: String) -> Binding<BookingMessagingThreadHandoff?> {
+        let bookingId = rawBookingId.trimmingCharacters(in: .whitespacesAndNewlines)
+        return Binding(
+            get: { [weak self] in
+                guard let self else { return nil }
+                guard self.bookingDetailMessagingThreadBookingId?.caseInsensitiveCompare(bookingId) == .orderedSame else {
+                    return nil
+                }
+                return self.bookingDetailMessagingThreadHandoff
+            },
+            set: { [weak self] new in
+                guard let self else { return }
+                if new == nil {
+                    if self.bookingDetailMessagingThreadBookingId?.caseInsensitiveCompare(bookingId) == .orderedSame {
+                        self.clearBookingDetailMessagingThreadPresentation()
+                    }
+                } else {
+                    self.bookingDetailMessagingThreadBookingId = bookingId
+                    self.bookingDetailMessagingThreadHandoff = new
+                }
+            }
+        )
+    }
+
+    /// Resolve thread, commit navigation on ``bookingDetailMessagingThreadHandoff`` **before** inbox `@Published` side effects (avoids stranding the first tap).
+    @MainActor
+    func presentBookingDetailMessagingThread(
+        row: ConsumerBookingSimpleRow,
+        sessionManager: AppSessionManager
+    ) async -> Bool {
+        guard let handoff = await resolveMessagingThreadHandoffForBooking(row: row, sessionManager: sessionManager) else {
+            return false
+        }
+        let bookingId = row.id.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !bookingId.isEmpty else { return false }
+
+        hubMessagesThreadPresentation = nil
+        homeStackMessagingHandoff = nil
+        homeBookingMessagingThreadHandoff = nil
+        bookingsTabMessagingThreadHandoff = nil
+
+        if bookingDetailMessagingThreadBookingId?.caseInsensitiveCompare(bookingId) == .orderedSame,
+           let open = bookingDetailMessagingThreadHandoff,
+           open.conversationId.caseInsensitiveCompare(handoff.conversationId) == .orderedSame {
+            bookingDetailMessagingThreadHandoff = nil
+            await Task.yield()
+        }
+
+        bookingDetailMessagingThreadBookingId = bookingId
+        bookingDetailMessagingThreadHandoff = handoff
+        await Task.yield()
+
+        promoteOrInsertConversationFromHandoff(handoff)
+        prefetchThreadMessages(conversationId: handoff.conversationId, sessionManager: sessionManager)
+        return true
     }
 
     @MainActor
@@ -499,7 +546,7 @@ final class ChatViewModel: ObservableObject {
         return true
     }
 
-    /// Resolves the thread and returns a handoff. **Home shell** (inbox empty-state) sets ``homeStackMessagingHandoff``; booking detail uses ``presentBookingMessagingFromDetail``.
+    /// Resolves the thread and returns a handoff. **Home shell** (inbox empty-state) sets ``homeStackMessagingHandoff``; booking detail uses ``presentBookingDetailMessagingThread``.
     @MainActor
     @discardableResult
     func presentMessagingThreadForBooking(
@@ -507,15 +554,27 @@ final class ChatViewModel: ObservableObject {
         sessionManager: AppSessionManager,
         presentationStack: BookingMessagingThreadPresentationStack
     ) async -> BookingMessagingThreadHandoff? {
+        guard let handoff = await resolveMessagingThreadHandoffForBooking(row: row, sessionManager: sessionManager) else {
+            return nil
+        }
+        return applyBookingMessagingThreadPresentation(
+            handoff: handoff,
+            presentationStack: presentationStack,
+            sessionManager: sessionManager
+        )
+    }
+
+    @MainActor
+    private func resolveMessagingThreadHandoffForBooking(
+        row: ConsumerBookingSimpleRow,
+        sessionManager: AppSessionManager
+    ) async -> BookingMessagingThreadHandoff? {
         guard sessionManager.isAuthenticated else { return nil }
         let trimmedBarber = row.barberId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         if trimmedBarber.isEmpty {
             await reloadInboxSilently(sessionManager: sessionManager)
-            if let handoff = buildBookingMessagingHandoffFromInboxIfPossible(bookingRow: row) {
-                return applyBookingMessagingThreadPresentation(handoff: handoff, presentationStack: presentationStack, sessionManager: sessionManager)
-            }
-            return nil
+            return buildBookingMessagingHandoffFromInboxIfPossible(bookingRow: row)
         }
 
         do {
@@ -528,7 +587,7 @@ final class ChatViewModel: ObservableObject {
             let snapshot = row.messagingBookingSnapshot
             let trimmedName = row.barberName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let fallbackName: String? = trimmedName.isEmpty ? nil : trimmedName
-            let handoff = BookingMessagingThreadHandoff(
+            return BookingMessagingThreadHandoff(
                 nonce: UUID(),
                 conversationId: cid,
                 initialDraft: "",
@@ -537,18 +596,13 @@ final class ChatViewModel: ObservableObject {
                 counterpartyFallbackName: fallbackName,
                 counterpartyMessagingUserId: resolved.otherUserId
             )
-
-            return applyBookingMessagingThreadPresentation(handoff: handoff, presentationStack: presentationStack, sessionManager: sessionManager)
         } catch {
             if MessagingAPIService.isUnauthorizedHTTPError(error) {
                 await sessionManager.recoverSessionAfterUnauthorized()
                 return nil
             }
             await reloadInboxSilently(sessionManager: sessionManager)
-            if let handoff = buildBookingMessagingHandoffFromInboxIfPossible(bookingRow: row) {
-                return applyBookingMessagingThreadPresentation(handoff: handoff, presentationStack: presentationStack, sessionManager: sessionManager)
-            }
-            return nil
+            return buildBookingMessagingHandoffFromInboxIfPossible(bookingRow: row)
         }
     }
 
