@@ -52,12 +52,12 @@ struct MessagesEmptyState: View {
             Spacer(minLength: 12)
 
             VStack(spacing: 10) {
-                Text("Find your next service")
+                Text("Find your barber")
                     .font(InteraFont.title3.weight(.semibold))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Color.lavaShellCream)
 
-                Text("Book with a service provider to start a private conversation here. Explore people and services near you.")
+                Text("Book with a barber to start a private conversation here.")
                     .font(InteraFont.subheadline)
                     .foregroundStyle(Color.lavaShellCreamSecondary)
                     .multilineTextAlignment(.center)
@@ -66,7 +66,7 @@ struct MessagesEmptyState: View {
             .padding(.horizontal, 8)
 
             Button(action: onBrowseServiceProviders) {
-                Text("Browse service providers")
+                Text("Browse barbers")
                     .font(InteraFont.headline.weight(.semibold))
                     .foregroundStyle(Color.white)
                     .frame(maxWidth: .infinity)
@@ -92,12 +92,12 @@ struct MessagesEmptyState: View {
         .buttonStyle(EmptyInboxBookingCardPressStyle())
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint("Opens messages with this provider for your booking.")
+        .accessibilityHint("Opens messages with this barber for your booking.")
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func providerSummaryCard(booking: ConsumerBookingSimpleRow) -> some View {
-        let name = booking.barberName?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? "Your provider"
+        let name = booking.barberName?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? "Your barber"
         let timeLine = Self.formattedRequestTime(booking.scheduledTime)
         let service = booking.displayServiceName
 

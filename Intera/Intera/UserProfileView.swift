@@ -535,6 +535,54 @@ private struct UserProfileReviewsList: View {
 
 // MARK: - Edit profile overlay (glass tabs)
 
+#if os(iOS)
+private struct ProfileUtilityPillPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.95 : 1)
+            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: configuration.isPressed)
+    }
+}
+
+private enum ProfileUtilityPillHaptics {
+    private static let light = UIImpactFeedbackGenerator(style: .light)
+    private static let selection = UISelectionFeedbackGenerator()
+
+    static func lightTap() {
+        light.prepare()
+        light.impactOccurred()
+    }
+
+    static func selectionChanged() {
+        selection.prepare()
+        selection.selectionChanged()
+    }
+}
+#endif
+
+/// Feeds hub bar collapse + Account utility pill hide/show from one scroll observer.
+private struct ProfileAccountScrollReportingModifier: ViewModifier {
+    let reportsProfileUtilityPillCollapse: Bool
+    let hubPageIndex: Int
+    let onProfileScrollOffset: (CGFloat) -> Void
+    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, macOS 15.0, *) {
+            content.onScrollGeometryChange(for: CGFloat.self) { geo in
+                geo.contentOffset.y + geo.contentInsets.top
+            } action: { _, newValue in
+                hubBarScrollHandler.onOffsetChange?(hubPageIndex, newValue)
+                if reportsProfileUtilityPillCollapse {
+                    onProfileScrollOffset(newValue)
+                }
+            }
+        } else {
+            content
+        }
+    }
+}
+
 private enum EditProfileMainTab: String, CaseIterable, Identifiable {
     case profileInfo
     case security
@@ -605,7 +653,9 @@ private struct UserProfileSettingsDrawerOverlay: View {
     @State private var lastPersistedLast: String = ""
     @State private var profileNameAutosaveTask: Task<Void, Never>?
     @Environment(\.interaHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
-    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @State private var profileScrollContentOffsetY: CGFloat = 0
+    @State private var profileUtilityPillCollapseOffset: CGFloat = 0
     @State private var isDeleting = false
     @State private var formError: String?
     @State private var showDeleteConfirm = false
@@ -619,7 +669,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
 
     /// Shown in the Account → Apple Pay & payments sheet (numbered checklist for reviewers and users).
     private static let applePayInstructionSteps: [String] = [
-        "Your service provider marks the service Completed in the CampusCuts Provider platform (their provider-facing CampusCuts Provider app).",
+        "Your barber marks the service Completed in the CampusCuts Provider platform (their provider-facing CampusCuts Provider app).",
         "\(AppBranding.displayName) may open the payment screen automatically; you can tap Pay later to return to the app, then go to Bookings → open that booking → Pay for this service.",
         "On the payment screen, use the Apple Pay button (or Card / Cash). Apple Pay appears when Wallet has a card and merchant configuration is active.",
         "If checkout never appeared, open Bookings, select the completed booking, and tap Pay for this service.",
@@ -645,6 +695,59 @@ private struct UserProfileSettingsDrawerOverlay: View {
         #endif
     }
 
+    private static let profileUtilityPillBarHeight: CGFloat = 56
+    private static let profileUtilityPillVerticalPadding: CGFloat = 20
+    private static let profileUtilityPillChromeHideRange: CGFloat = 88
+
+    private var profileUtilityPillReservedTopInset: CGFloat {
+        Self.profileUtilityPillBarHeight + Self.profileUtilityPillVerticalPadding
+    }
+
+    private var shouldTrackProfileUtilityPillScrollCollapse: Bool {
+        guard showsIntegratedAccountMenu else { return false }
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad { return false }
+        #endif
+        if focusedProfileNameField != nil { return false }
+        if accessibilityReduceMotion { return false }
+        return true
+    }
+
+    /// 1 = utility pill fully visible; 0 = slid off-screen (matches home browse chrome).
+    private var profileUtilityChromeProgress: CGFloat {
+        guard shouldTrackProfileUtilityPillScrollCollapse else { return 1 }
+        let range = Self.profileUtilityPillChromeHideRange
+        guard range > 0 else { return 1 }
+        return min(1, max(0, 1 - profileUtilityPillCollapseOffset / range))
+    }
+
+    private var profileUtilityPillHideTravel: CGFloat {
+        profileUtilityPillReservedTopInset * (1 - profileUtilityChromeProgress)
+    }
+
+    private var profileScrollTopInset: CGFloat {
+        guard showsIntegratedAccountMenu else { return 0 }
+        let minTop: CGFloat = 10
+        return minTop + (profileUtilityPillReservedTopInset - minTop) * profileUtilityChromeProgress
+    }
+
+    private func handleProfileScrollOffsetChange(_ offsetY: CGFloat) {
+        let previousOffsetY = profileScrollContentOffsetY
+        profileScrollContentOffsetY = offsetY
+
+        guard shouldTrackProfileUtilityPillScrollCollapse else {
+            profileUtilityPillCollapseOffset = 0
+            return
+        }
+        if offsetY <= 0 {
+            profileUtilityPillCollapseOffset = 0
+            return
+        }
+        let range = Self.profileUtilityPillChromeHideRange
+        let delta = offsetY - previousOffsetY
+        profileUtilityPillCollapseOffset = min(range, max(0, profileUtilityPillCollapseOffset + delta))
+    }
+
     var body: some View {
         Group {
             if isLoadingRemote {
@@ -665,12 +768,19 @@ private struct UserProfileSettingsDrawerOverlay: View {
                         }
                     }
                     .padding(.horizontal, 20)
+                    .padding(.top, profileScrollTopInset)
                     .padding(.bottom, 28 + hubBarOverlayBottomInset)
                 }
                 #if os(iOS)
                 .scrollDismissesKeyboard(.interactively)
                 #endif
-                .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
+                .modifier(
+                    ProfileAccountScrollReportingModifier(
+                        reportsProfileUtilityPillCollapse: showsIntegratedAccountMenu,
+                        hubPageIndex: 3,
+                        onProfileScrollOffset: handleProfileScrollOffsetChange
+                    )
+                )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -684,27 +794,38 @@ private struct UserProfileSettingsDrawerOverlay: View {
             .allowsHitTesting(focusedProfileNameField != nil && !isLoadingRemote)
         }
         #endif
+        .overlay(alignment: .top) {
+            if showsIntegratedAccountMenu, !isLoadingRemote {
+                profileUtilityPillChrome
+            }
+        }
         .safeAreaInset(edge: .top, spacing: 0) {
-            editTabBar
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .padding(.bottom, 10)
-                .frame(maxWidth: .infinity)
-                .background {
-                    #if canImport(UIKit)
-                    Color(uiColor: .systemGroupedBackground)
-                    #else
-                    Color.gray.opacity(0.08)
-                    #endif
-                }
+            if !showsIntegratedAccountMenu, !isLoadingRemote {
+                editTabBar
+                    .padding(.horizontal, .space4)
+                    .padding(.top, 10)
+                    .padding(.bottom, 10)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        #if canImport(UIKit)
+                        Color(uiColor: .systemGroupedBackground)
+                        #else
+                        Color.gray.opacity(0.08)
+                        #endif
+                    }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
-            #if canImport(UIKit)
-            Color(uiColor: .systemGroupedBackground)
-            #else
-            Color.gray.opacity(0.08)
-            #endif
+            if showsIntegratedAccountMenu {
+                Color.clear
+            } else {
+                #if canImport(UIKit)
+                Color(uiColor: .systemGroupedBackground)
+                #else
+                Color.gray.opacity(0.08)
+                #endif
+            }
         }
         .task {
             await loadRemoteProfile()
@@ -714,6 +835,9 @@ private struct UserProfileSettingsDrawerOverlay: View {
         }
         .onChange(of: focusedProfileNameField) { _, new in
             hubBottomBarSuppressionWhileFocused?.wrappedValue = (new != nil)
+            if new != nil {
+                profileUtilityPillCollapseOffset = 0
+            }
             if new == nil {
                 flushProfileNameAutosave()
             }
@@ -739,7 +863,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Pay with Apple Pay")
                             .font(InteraFont.title3.weight(.bold))
-                        Text("Typical flow after your provider completes the service:")
+                        Text("Typical flow after your barber completes the service:")
                             .font(InteraFont.subheadline)
                             .foregroundStyle(.secondary)
                             .padding(.bottom, 8)
@@ -924,57 +1048,85 @@ private struct UserProfileSettingsDrawerOverlay: View {
         }
     }
 
+    private var profileUtilityPillChrome: some View {
+        editTabBar
+            .padding(.horizontal, .space4)
+            .padding(.top, 10)
+            .padding(.bottom, 10)
+            .frame(maxWidth: .infinity)
+            .opacity(Double(profileUtilityChromeProgress))
+            .offset(y: -profileUtilityPillHideTravel)
+            .animation(nil, value: profileUtilityChromeProgress)
+            .allowsHitTesting(profileUtilityChromeProgress > 0.12)
+    }
+
     private var editTabBar: some View {
         HStack(spacing: 0) {
-            ForEach(EditProfileMainTab.allCases) { t in
-                Button {
-                    dismissProfileNameKeyboard()
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
-                        tab = t
-                    }
-                } label: {
-                    let isSelected = tab == t
-                    VStack(spacing: 6) {
-                        Text(t.title)
-                            .font(InteraFont.subheadline.weight(.semibold))
-                            .multilineTextAlignment(.center)
-                    }
-                    .foregroundStyle(editTabForegroundColor(for: t, isSelected: isSelected))
-                    .frame(maxWidth: .infinity, minHeight: 52, alignment: .center)
-                    .padding(.vertical, 10)
-                    .background {
-                        if isSelected {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(editTabSelectionFill(for: t))
-                        }
-                    }
-                    .contentShape(Rectangle())
+            ForEach(Array(EditProfileMainTab.allCases.enumerated()), id: \.element.id) { index, item in
+                if index > 0 {
+                    profileUtilityPillDivider
                 }
-                .buttonStyle(.plain)
+                profileUtilityPillSegment(item)
             }
         }
-        .padding(4)
+        .padding(.leading, 10)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .center)
         .background {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            Capsule()
                 .fill(.ultraThinMaterial)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.14), lineWidth: 0.5)
+            Capsule()
+                .stroke(Color.lavaShellCream, lineWidth: 1)
+                .allowsHitTesting(false)
         }
     }
 
-    private func editTabForegroundColor(for tab: EditProfileMainTab, isSelected: Bool) -> Color {
-        switch tab {
-        case .security: return .red
-        case .profileInfo: return isSelected ? .primary : .secondary
-        }
+    private var profileUtilityPillDivider: some View {
+        Rectangle()
+            .fill(Color.lavaShellCream.opacity(0.5))
+            .frame(width: 1, height: 22)
+            .padding(.horizontal, 4)
     }
 
-    private func editTabSelectionFill(for tab: EditProfileMainTab) -> Color {
-        switch tab {
-        case .profileInfo: return Color.primary.opacity(0.08)
-        case .security: return Color.red.opacity(0.18)
+    private func profileUtilityPillSegment(_ item: EditProfileMainTab) -> some View {
+        let isSelected = tab == item
+        return Button {
+            dismissProfileNameKeyboard()
+            guard !isSelected else { return }
+            #if os(iOS)
+            ProfileUtilityPillHaptics.selectionChanged()
+            #endif
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                tab = item
+            }
+        } label: {
+            Text(item.title)
+                .font(InteraFont.system(size: 14, weight: isSelected ? .semibold : .medium, design: .default))
+                .foregroundStyle(profileUtilityPillSegmentForeground(item, isSelected: isSelected))
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 4)
+                .contentShape(Rectangle())
+        }
+        #if os(iOS)
+        .buttonStyle(ProfileUtilityPillPressStyle())
+        #else
+        .buttonStyle(.plain)
+        #endif
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    private func profileUtilityPillSegmentForeground(_ item: EditProfileMainTab, isSelected: Bool) -> Color {
+        switch item {
+        case .security:
+            return isSelected ? .red : .red.opacity(0.55)
+        case .profileInfo:
+            return isSelected ? Color.lavaShellCream : Color.lavaShellCream.opacity(0.55)
         }
     }
 

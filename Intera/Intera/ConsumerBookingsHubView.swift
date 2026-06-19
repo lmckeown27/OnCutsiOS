@@ -74,6 +74,7 @@ struct ConsumerBookingsHubView: View {
                         .interaHubBarScrollContentBottomInset()
                     }
                     .scrollBounceBehavior(.always, axes: .vertical)
+                    .interaHubBarScrollOffsetReporting(pageIndex: 2)
                     .refreshable { await reloadBookingsListForPullToRefresh() }
                 } else if !hasAnyBooking {
                     ScrollView {
@@ -87,6 +88,7 @@ struct ConsumerBookingsHubView: View {
                         .interaHubBarScrollContentBottomInset()
                     }
                     .scrollBounceBehavior(.always, axes: .vertical)
+                    .interaHubBarScrollOffsetReporting(pageIndex: 2)
                     .refreshable { await reloadBookingsListForPullToRefresh() }
                 } else {
                     UnifiedTimelineView(

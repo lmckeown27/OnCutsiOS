@@ -77,6 +77,10 @@ struct ConsumerHomeScreen: View {
     @State private var selectedProvider: ServiceProvider?
     /// When `false`, the browse list receives taps even if the detail overlay is still animating out.
     @State private var isProviderDetailCapturingTouches = false
+    /// Stays `true` from open until overlay `onDisappear` (or fallback) so browse scroll/geometry stay locked through dismiss animation.
+    @State private var isProviderDetailOverlayBlockingBrowse = false
+    /// Fresh identity per open so overlay subtrees fully dismantle (avoids ghost hit blockers).
+    @State private var providerDetailPresentationID = UUID()
     @State private var navigationPath = NavigationPath()
     @State private var selectedCategory: ServiceProvider.ServiceCategory? = nil // For filtering (pre–iOS 26 browse)
     @State private var searchText = ""
@@ -412,6 +416,7 @@ struct ConsumerHomeScreen: View {
             }
             .overlay {
                 if let provider = selectedProvider {
+                    let overlayPresentationID = providerDetailPresentationID
                     if #available(iOS 26.0, macOS 26.0, *) {
                         ServiceProviderGlassMatchedDetailOverlay(
                             provider: provider,
@@ -423,8 +428,12 @@ struct ConsumerHomeScreen: View {
                             onShowLogin: {
                                 showOAuthSignInSheet = true
                             },
-                            onBookingRequestCompleted: { dismissProviderDetail() }
+                            onBookingRequestCompleted: { dismissProviderDetail() },
+                            onOverlayDidDisappear: {
+                                finalizeProviderDetailOverlayTeardown(expectedPresentationID: overlayPresentationID)
+                            }
                         )
+                        .id(overlayPresentationID)
                         .zIndex(100)
                     } else {
                         ServiceProviderDetailPresentationOverlay(
@@ -436,8 +445,12 @@ struct ConsumerHomeScreen: View {
                             onShowLogin: {
                                 showOAuthSignInSheet = true
                             },
-                            onBookingRequestCompleted: { dismissProviderDetail() }
+                            onBookingRequestCompleted: { dismissProviderDetail() },
+                            onOverlayDidDisappear: {
+                                finalizeProviderDetailOverlayTeardown(expectedPresentationID: overlayPresentationID)
+                            }
                         )
+                        .id(overlayPresentationID)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .zIndex(100)
                     }
@@ -644,6 +657,7 @@ struct ConsumerHomeScreen: View {
             mainCoordinator: coordinator,
             hasActiveConsumerBooking: hasActiveConsumerBooking,
             isProviderDetailCapturingTouches: isProviderDetailCapturingTouches,
+            isProviderDetailOverlayPresented: isProviderDetailOverlayBlockingBrowse,
             homeHubPageIndex: .constant(0)
         )
         .onChange(of: providerVM.selectedServiceType) { _, _ in
@@ -762,6 +776,7 @@ struct ConsumerHomeScreen: View {
                 #if os(iOS)
                 .scrollBounceBehavior(.always, axes: .vertical)
                 #endif
+                .scrollDisabled(isProviderDetailOverlayBlockingBrowse)
                 .refreshable {
                     await loadProvidersForPullToRefresh()
                 }
@@ -920,7 +935,9 @@ struct ConsumerHomeScreen: View {
     }
     
     private func presentProviderDetail(_ provider: ServiceProvider) {
+        providerDetailPresentationID = UUID()
         isProviderDetailCapturingTouches = true
+        isProviderDetailOverlayBlockingBrowse = true
         if #available(iOS 26.0, macOS 26.0, *) {
             withAnimation(LiquidGlassMotion.fluidSpring) {
                 selectedProvider = provider
@@ -934,6 +951,7 @@ struct ConsumerHomeScreen: View {
 
     private func dismissProviderDetail() {
         isProviderDetailCapturingTouches = false
+        NotificationCenter.default.post(name: .homeHubBrowseShouldResyncUtilityPill, object: nil)
         if #available(iOS 26.0, macOS 26.0, *) {
             withAnimation(LiquidGlassMotion.fluidSpring) {
                 selectedProvider = nil
@@ -942,6 +960,27 @@ struct ConsumerHomeScreen: View {
             withAnimation(ServiceProviderDetailOverlayAnimation.spring) {
                 selectedProvider = nil
             }
+        }
+        scheduleProviderDetailOverlayTeardownFallback()
+    }
+
+    private func finalizeProviderDetailOverlayTeardown(expectedPresentationID: UUID) {
+        guard expectedPresentationID == providerDetailPresentationID else { return }
+        guard selectedProvider == nil else { return }
+        isProviderDetailOverlayBlockingBrowse = false
+        isProviderDetailCapturingTouches = false
+        NotificationCenter.default.post(name: .homeHubBrowseShouldResyncUtilityPill, object: nil)
+    }
+
+    private func scheduleProviderDetailOverlayTeardownFallback() {
+        let closingPresentationID = providerDetailPresentationID
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 620_000_000)
+            guard closingPresentationID == providerDetailPresentationID else { return }
+            guard selectedProvider == nil else { return }
+            isProviderDetailOverlayBlockingBrowse = false
+            isProviderDetailCapturingTouches = false
+            NotificationCenter.default.post(name: .homeHubBrowseShouldResyncUtilityPill, object: nil)
         }
     }
 
@@ -962,6 +1001,7 @@ private struct ServiceProviderGlassMatchedDetailOverlay: View {
     let onDismiss: () -> Void
     let onShowLogin: () -> Void
     var onBookingRequestCompleted: (() -> Void)? = nil
+    var onOverlayDidDisappear: (() -> Void)? = nil
 
     var body: some View {
         ZStack {
@@ -972,7 +1012,8 @@ private struct ServiceProviderGlassMatchedDetailOverlay: View {
                     guard capturesTouches else { return }
                     onDismiss()
                 }
-            
+                .transition(.opacity)
+
             ServiceProviderLiquidGlassDetailPanel(
                 provider: provider,
                 namespace: namespace,
@@ -986,13 +1027,18 @@ private struct ServiceProviderGlassMatchedDetailOverlay: View {
                 onShowLogin: onShowLogin,
                 onBookingRequestCompleted: onBookingRequestCompleted
             )
-            .matchedGeometryEffect(id: provider.id, in: namespace)
             .padding(.horizontal, .space4)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .transition(
+                .opacity.combined(with: .scale(scale: 0.96, anchor: .top))
+            )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .allowsHitTesting(capturesTouches)
         .zIndex(100)
+        .onDisappear {
+            onOverlayDidDisappear?()
+        }
     }
 }
 
@@ -1173,6 +1219,7 @@ private struct ServiceProviderDetailPresentationOverlay: View {
     let onDismiss: () -> Void
     let onShowLogin: () -> Void
     var onBookingRequestCompleted: (() -> Void)? = nil
+    var onOverlayDidDisappear: (() -> Void)? = nil
 
     var body: some View {
         GeometryReader { geometry in
@@ -1213,6 +1260,9 @@ private struct ServiceProviderDetailPresentationOverlay: View {
         .allowsHitTesting(capturesTouches)
         .ignoresSafeArea()
         .zIndex(100)
+        .onDisappear {
+            onOverlayDidDisappear?()
+        }
     }
 }
 
@@ -1526,19 +1576,13 @@ struct ServiceProviderDetailSheet: View {
                     }
                     .frame(maxWidth: .infinity)
 
-                    // Bio directly under the name — no rating / social / stats in between.
-                    if let bio = provider.bio {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("About")
-                                .font(InteraFont.headlineSmall)
-                                .foregroundStyle(detailHeadlineColor)
-                            
-                            Text(bio)
-                                .font(InteraFont.bodyMedium)
-                                .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary : Color.white.opacity(0.85))
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
+                    // Services stacked above About on the front of the detail card.
+                    ProviderDetailAboutServicesSection(
+                        provider: provider,
+                        detailHeadlineColor: detailHeadlineColor,
+                        detailEmphasisColor: detailEmphasisColor,
+                        useVibrantLiquidGlassStyling: useVibrantLiquidGlassStyling
+                    )
 
                     // Average stars only after at least one completed booking; hidden when preview rows exist below.
                     if displayReviews.isEmpty, providerHasCompletedBookings, let rating = provider.rating {
@@ -1604,36 +1648,6 @@ struct ServiceProviderDetailSheet: View {
                         }
 
                         Divider()
-                    }
-                    
-                    // Services (if available)
-                    if let services = provider.services, !services.isEmpty {
-                        VStack(alignment: .center, spacing: 16) {
-                            Text("Services")
-                                .font(InteraFont.headlineSmall)
-                                .foregroundStyle(detailHeadlineColor)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            
-                            VStack(spacing: 12) {
-                                ForEach(services) { service in
-                                    HStack(spacing: 4) {
-                                        Text(service.name)
-                                            .font(InteraFont.bodyMedium)
-                                            .foregroundStyle(detailEmphasisColor)
-                                        
-                                        Text("•")
-                                            .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary.opacity(0.6) : Color.white.opacity(0.5))
-                                            .padding(.leading, 4)
-                                        
-                                        Text(service.formattedPrice)
-                                            .font(InteraFont.bodyMedium)
-                                            .fontWeight(.medium)
-                                            .foregroundStyle(detailEmphasisColor)
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                }
-                            }
-                        }
                     }
                     
                     // Availability (if available)
@@ -1727,6 +1741,7 @@ struct ServiceProviderDetailSheet: View {
                         }
                     }
                     
+                    /*
                     // Locations (if available)
                     if let locations = provider.locations, !locations.isEmpty {
                         VStack(alignment: .leading, spacing: 16) {
@@ -1743,6 +1758,7 @@ struct ServiceProviderDetailSheet: View {
                             }
                         }
                     }
+                    */
                     
                     // Reviews: preview rows from API (or list embed); tap to open full list
                     ProviderDetailReviewsPreviewSection(
@@ -1862,6 +1878,106 @@ struct ServiceProviderDetailSheet: View {
             isBookActionPending = true
             showingBookingFlow = true
         }
+    }
+}
+
+// MARK: - Provider detail: Services + About (stacked on front-facing card)
+
+/// Services listed first, About bio below — both visible when present.
+private struct ProviderDetailAboutServicesSection: View {
+    let provider: ServiceProvider
+    let detailHeadlineColor: Color
+    let detailEmphasisColor: Color
+    var useVibrantLiquidGlassStyling: Bool = false
+
+    private var bioText: String? {
+        provider.bio?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+    }
+
+    private var orderedServices: [ServiceProvider.Service] {
+        provider.displayOrderedServices
+    }
+
+    private var hasAbout: Bool { bioText != nil }
+    private var hasServices: Bool { !orderedServices.isEmpty }
+
+    var body: some View {
+        Group {
+            if hasAbout || hasServices {
+                VStack(alignment: .leading, spacing: 20) {
+                    if hasServices {
+                        servicesSection
+                    }
+                    if hasAbout, let bioText {
+                        aboutSection(bioText)
+                    }
+                }
+            }
+        }
+    }
+
+    private var servicesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Services")
+                .font(InteraFont.headlineSmall)
+                .foregroundStyle(detailHeadlineColor)
+
+            VStack(spacing: 12) {
+                ForEach(orderedServices) { service in
+                    serviceRow(service)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    private func isPrimaryHaircutService(_ service: ServiceProvider.Service) -> Bool {
+        service.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .caseInsensitiveCompare("Haircut") == .orderedSame
+    }
+
+    private func serviceRow(_ service: ServiceProvider.Service) -> some View {
+        let isPrimaryHaircut = isPrimaryHaircutService(service)
+        let nameFont = isPrimaryHaircut ? InteraFont.headlineSmall : InteraFont.bodySmall
+        let priceFont = isPrimaryHaircut
+            ? InteraFont.headlineSmall.weight(.medium)
+            : InteraFont.bodySmall.weight(.medium)
+
+        return HStack(spacing: 4) {
+            Text(service.name)
+                .font(nameFont)
+                .foregroundStyle(detailEmphasisColor)
+
+            Text("•")
+                .font(isPrimaryHaircut ? InteraFont.headlineSmall : InteraFont.bodySmall)
+                .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary.opacity(0.6) : Color.white.opacity(0.5))
+                .padding(.leading, 4)
+
+            Text(service.formattedPrice)
+                .font(priceFont)
+                .foregroundStyle(detailEmphasisColor)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func aboutSection(_ bioText: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("About")
+                .font(InteraFont.headlineSmall)
+                .foregroundStyle(detailHeadlineColor)
+
+            Text(bioText)
+                .font(InteraFont.bodyMedium)
+                .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary : Color.white.opacity(0.85))
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
     }
 }
 
@@ -2198,6 +2314,10 @@ struct UnifiedProviderHomeScreen: View {
     @State private var selectedProvider: ServiceProvider?
     /// When `false`, the browse list receives taps even if the detail overlay is still animating out.
     @State private var isProviderDetailCapturingTouches = false
+    /// Stays `true` from open until overlay `onDisappear` (or fallback) so browse scroll/geometry stay locked through dismiss animation.
+    @State private var isProviderDetailOverlayBlockingBrowse = false
+    /// Fresh identity per open so overlay subtrees fully dismantle (avoids ghost hit blockers).
+    @State private var providerDetailPresentationID = UUID()
     @State private var navigationPath = NavigationPath()
     @State private var searchText = ""
     @State private var providerListShuffleSeed: UInt64 = UInt64.random(in: 1 ... UInt64.max)
@@ -2245,6 +2365,8 @@ struct UnifiedProviderHomeScreen: View {
     @State private var hubBarLastScrollOffsetY: CGFloat = 0
     /// While a Messages thread is open on the hub Messages tab, horizontal hub tab swiping is disabled (conversation edge swipe is isolated).
     @State private var messagesThreadPresentedForHubPaging = false
+    /// 0 = hub bar fully visible; 1 = slid away for utility chrome (mile slider, search, tags).
+    @State private var hubBarUtilitySuppressionProgress: CGFloat = 0
     /// Bumped when a message push opens a thread so the Messages `NavigationStack` is recreated — avoids stacking two `MessagingConversationView`s after resume from background.
     @State private var messagesHubNavigationStackEpoch = 0
     /// Sticky browse chrome overlays the scroll view pre–iOS 26, hiding the system refresh spinner — mirror the glass path with an explicit wheel.
@@ -2570,8 +2692,8 @@ struct UnifiedProviderHomeScreen: View {
     }
     
     @MainActor
-    private func handleHubPageVerticalScrollOffset(_ offsetY: CGFloat, resyncLastSample: Bool = false) {
-        guard hubPageIndex == 0 else { return }
+    private func handleHubPageVerticalScrollOffset(pageIndex: Int, offsetY: CGFloat, resyncLastSample: Bool = false) {
+        guard pageIndex == hubPageIndex else { return }
         #if os(iOS)
         if !resyncLastSample, hubPagingCoordinator.isUserScrolling {
             let w = max(1, hubPagingCoordinator.pageWidth)
@@ -2614,16 +2736,23 @@ struct UnifiedProviderHomeScreen: View {
 
     private var hubBarOverlayBottomInset: CGFloat {
         guard hubShellAllowsBottomChromeInset else { return 0 }
-        if browseProviderSearchSuppressesHubBar { return 0 }
-        if guestHubNavigationLocked {
-            return GuestHubSignInMetrics.overlayContentBottomInset(collapseProgress: hubBarCollapseProgress)
-        }
-        return ConsumerStickyHubMetrics.overlayContentBottomInset(collapseProgress: hubBarCollapseProgress)
+        let expandedInset: CGFloat = {
+            if guestHubNavigationLocked {
+                return GuestHubSignInMetrics.overlayContentBottomInset(collapseProgress: hubBarCollapseProgress)
+            }
+            return ConsumerStickyHubMetrics.overlayContentBottomInset(collapseProgress: hubBarCollapseProgress)
+        }()
+        return expandedInset * (1.0 - hubBarUtilitySuppressionProgress)
+    }
+
+    /// Matches the home utility-pill mile-slider morph spring so chrome moves in sync.
+    private static var hubBarUtilitySuppressionSpring: Animation {
+        .spring(response: 0.4, dampingFraction: 0.7)
     }
 
     @ViewBuilder
     private var hubStickyBarOverlay: some View {
-        if hubShellAllowsBottomChromeInset, !browseProviderSearchSuppressesHubBar {
+        if hubShellAllowsBottomChromeInset {
             Group {
                 if unifiedShowsGuestSignInBar {
                     GuestHubSignInBar(
@@ -2658,11 +2787,15 @@ struct UnifiedProviderHomeScreen: View {
                     #endif
                 }
             }
-            .opacity(unifiedShowsHubBottomChrome ? 1 : 0)
-            .allowsHitTesting(unifiedShowsHubBottomChrome)
-            .accessibilityHidden(!unifiedShowsHubBottomChrome)
+            .scaleEffect(1.0 - 0.12 * hubBarUtilitySuppressionProgress, anchor: .bottom)
+            .offset(y: 24 * hubBarUtilitySuppressionProgress)
+            .opacity((unifiedShowsHubBottomChrome ? 1 : 0) * (1.0 - 0.96 * hubBarUtilitySuppressionProgress))
+            .allowsHitTesting(unifiedShowsHubBottomChrome && hubBarUtilitySuppressionProgress < 0.04)
+            .accessibilityHidden(!unifiedShowsHubBottomChrome || hubBarUtilitySuppressionProgress > 0.96)
             .padding(.horizontal, 20)
             .padding(.bottom, 8)
+            .animation(Self.hubBarUtilitySuppressionSpring, value: hubBarUtilitySuppressionProgress)
+            .animation(.spring(response: 0.32, dampingFraction: 0.86), value: unifiedShowsHubBottomChrome)
         }
     }
 
@@ -2699,18 +2832,26 @@ struct UnifiedProviderHomeScreen: View {
             #endif
             .environment(\.interaHubBarOverlayBottomInset, hubBarOverlayBottomInset)
             .environment(\.interaHubBarScrollOffsetHandler, InteraHubBarScrollOffsetHandler(
-                onOffsetChange: { handleHubPageVerticalScrollOffset($0) },
-                onResyncLastSample: { handleHubPageVerticalScrollOffset($0, resyncLastSample: true) }
+                onOffsetChange: { pageIndex, offsetY in
+                    handleHubPageVerticalScrollOffset(pageIndex: pageIndex, offsetY: offsetY)
+                },
+                onResyncLastSample: { pageIndex, offsetY in
+                    handleHubPageVerticalScrollOffset(pageIndex: pageIndex, offsetY: offsetY, resyncLastSample: true)
+                }
             ))
             #if os(iOS)
             .environment(\.interaHubPagingCoordinator, hubPagingCoordinator)
             #endif
-            .animation(.spring(response: 0.32, dampingFraction: 0.86), value: isBrowseUtilitySearchFocused)
+            .animation(Self.hubBarUtilitySuppressionSpring, value: hubBarUtilitySuppressionProgress)
             #if os(iOS)
             .onAppear {
+                hubBarUtilitySuppressionProgress = browseProviderSearchSuppressesHubBar ? 1 : 0
                 hubPagingCoordinator.setHubBarBubblePresentationEnabled(!browseProviderSearchSuppressesHubBar)
             }
             .onChange(of: browseProviderSearchSuppressesHubBar) { _, suppressed in
+                withAnimation(Self.hubBarUtilitySuppressionSpring) {
+                    hubBarUtilitySuppressionProgress = suppressed ? 1 : 0
+                }
                 hubPagingCoordinator.setHubBarBubblePresentationEnabled(!suppressed)
                 if suppressed {
                     hubBubbleAnchoredToPageIndex = true
@@ -3055,6 +3196,7 @@ struct UnifiedProviderHomeScreen: View {
             }
             .overlay {
                 if let provider = selectedProvider {
+                    let overlayPresentationID = providerDetailPresentationID
                     if #available(iOS 26.0, macOS 26.0, *) {
                         ServiceProviderGlassMatchedDetailOverlay(
                             provider: provider,
@@ -3066,8 +3208,12 @@ struct UnifiedProviderHomeScreen: View {
                             onShowLogin: {
                                 showOAuthSignInSheet = true
                             },
-                            onBookingRequestCompleted: { dismissProviderDetail() }
+                            onBookingRequestCompleted: { dismissProviderDetail() },
+                            onOverlayDidDisappear: {
+                                finalizeProviderDetailOverlayTeardown(expectedPresentationID: overlayPresentationID)
+                            }
                         )
+                        .id(overlayPresentationID)
                         .zIndex(100)
                     } else {
                         ServiceProviderDetailPresentationOverlay(
@@ -3079,8 +3225,12 @@ struct UnifiedProviderHomeScreen: View {
                             onShowLogin: {
                                 showOAuthSignInSheet = true
                             },
-                            onBookingRequestCompleted: { dismissProviderDetail() }
+                            onBookingRequestCompleted: { dismissProviderDetail() },
+                            onOverlayDidDisappear: {
+                                finalizeProviderDetailOverlayTeardown(expectedPresentationID: overlayPresentationID)
+                            }
                         )
+                        .id(overlayPresentationID)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .zIndex(100)
                     }
@@ -3304,12 +3454,15 @@ struct UnifiedProviderHomeScreen: View {
             mainCoordinator: coordinator,
             hasActiveConsumerBooking: hasActiveConsumerBooking,
             isProviderDetailCapturingTouches: isProviderDetailCapturingTouches,
+            isProviderDetailOverlayPresented: isProviderDetailOverlayBlockingBrowse,
             homeHubPageIndex: $hubPageIndex
         )
     }
 
     private func presentProviderDetail(_ provider: ServiceProvider) {
+        providerDetailPresentationID = UUID()
         isProviderDetailCapturingTouches = true
+        isProviderDetailOverlayBlockingBrowse = true
         withAnimation(LiquidGlassMotion.fluidSpring) {
             selectedProvider = provider
         }
@@ -3317,11 +3470,45 @@ struct UnifiedProviderHomeScreen: View {
 
     private func dismissProviderDetail() {
         isProviderDetailCapturingTouches = false
+        #if os(iOS)
+        hubPagingCoordinator.releaseSuspendedVerticalScrollsIfNeeded()
+        hubPagingCoordinator.refreshPageInteractionLocksAfterSelectionChange()
+        #endif
+        NotificationCenter.default.post(name: .homeHubBrowseShouldResyncUtilityPill, object: nil)
         withAnimation(LiquidGlassMotion.fluidSpring) {
             selectedProvider = nil
         }
+        scheduleProviderDetailOverlayTeardownFallback()
     }
-    
+
+    private func finalizeProviderDetailOverlayTeardown(expectedPresentationID: UUID) {
+        #if os(iOS)
+        hubPagingCoordinator.releaseSuspendedVerticalScrollsIfNeeded()
+        hubPagingCoordinator.refreshPageInteractionLocksAfterSelectionChange()
+        #endif
+        guard expectedPresentationID == providerDetailPresentationID else { return }
+        guard selectedProvider == nil else { return }
+        isProviderDetailOverlayBlockingBrowse = false
+        isProviderDetailCapturingTouches = false
+        NotificationCenter.default.post(name: .homeHubBrowseShouldResyncUtilityPill, object: nil)
+    }
+
+    private func scheduleProviderDetailOverlayTeardownFallback() {
+        let closingPresentationID = providerDetailPresentationID
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 620_000_000)
+            guard closingPresentationID == providerDetailPresentationID else { return }
+            guard selectedProvider == nil else { return }
+            isProviderDetailOverlayBlockingBrowse = false
+            isProviderDetailCapturingTouches = false
+            #if os(iOS)
+            hubPagingCoordinator.releaseSuspendedVerticalScrollsIfNeeded()
+            hubPagingCoordinator.refreshPageInteractionLocksAfterSelectionChange()
+            #endif
+            NotificationCenter.default.post(name: .homeHubBrowseShouldResyncUtilityPill, object: nil)
+        }
+    }
+
     private func unifiedBrowseStack(
         useGlassMorphCards: Bool = false,
         useInteractiveLiquidGlassCards: Bool = false,
@@ -3439,7 +3626,8 @@ struct UnifiedProviderHomeScreen: View {
                 #if os(iOS)
                 .scrollBounceBehavior(.always, axes: .vertical)
                 #endif
-                .interaHubBarScrollOffsetReporting { handleHubPageVerticalScrollOffset($0) }
+                .scrollDisabled(isProviderDetailOverlayBlockingBrowse)
+                .interaHubBarScrollOffsetReporting(pageIndex: 0)
                 .refreshable {
                     await refreshUnifiedHomeSurfaceForPullToRefresh()
                 }

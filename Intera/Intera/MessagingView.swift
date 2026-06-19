@@ -95,7 +95,7 @@ struct MessagingView: View {
                     ContentUnavailableView(
                         "No messages",
                         systemImage: "bubble.left.and.bubble.right",
-                        description: Text("When you book with a service provider, your conversation will show up here.")
+                        description: Text("When you book with a barber, your conversation will show up here.")
                     )
                 } else {
                     ScrollView {

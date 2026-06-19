@@ -25,7 +25,6 @@ struct ConversationListView: View {
 
     @EnvironmentObject private var chatViewModel: ChatViewModel
     @Environment(\.interaHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
-    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
 
     @State private var consumerBookings: [ConsumerBookingSimpleRow] = []
     /// Cancels superseded push-open work when `pendingPushConversationId` changes or the hub stack is reset.
@@ -83,7 +82,7 @@ struct ConversationListView: View {
             #if os(iOS)
             .scrollBounceBehavior(.always, axes: .vertical)
             #endif
-            .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
+            .interaHubBarScrollOffsetReporting(pageIndex: 1)
             .refreshable { await reloadInboxForPullToRefresh() }
         } else {
             inboxConversationRowsScroll
@@ -122,7 +121,7 @@ struct ConversationListView: View {
         .scrollContentBackground(.hidden)
         .scrollBounceBehavior(.always, axes: .vertical)
         #endif
-        .interaHubBarScrollOffsetReporting { hubBarScrollHandler.onOffsetChange?($0) }
+        .interaHubBarScrollOffsetReporting(pageIndex: 1)
         .refreshable { await reloadInboxForPullToRefresh() }
     }
 

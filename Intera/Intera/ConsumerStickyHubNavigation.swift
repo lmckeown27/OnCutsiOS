@@ -113,9 +113,10 @@ extension Color {
 
 /// Tracks vertical scroll from hub tab content to collapse the floating navigation rail.
 struct InteraHubBarScrollOffsetHandler {
-    var onOffsetChange: ((CGFloat) -> Void)? = nil
+    /// `pageIndex` matches hub `TabView` tags: 0 Home, 1 Messages, 2 Bookings, 3 Profile.
+    var onOffsetChange: ((Int, CGFloat) -> Void)? = nil
     /// UIKit resync after hub tab switches — only realigns the delta baseline (see ``InteraHubBarCollapseController/resyncLastOffsetY``).
-    var onResyncLastSample: ((CGFloat) -> Void)? = nil
+    var onResyncLastSample: ((Int, CGFloat) -> Void)? = nil
 }
 
 private struct InteraHubBarScrollOffsetHandlerKey: EnvironmentKey {
@@ -143,8 +144,8 @@ extension EnvironmentValues {
 
 extension View {
     /// Reports vertical scroll offset to the hub bar collapse logic (iOS 18+).
-    func interaHubBarScrollOffsetReporting(_ onOffsetChange: @escaping (CGFloat) -> Void) -> some View {
-        modifier(InteraHubBarScrollOffsetReporter(onOffsetChange: onOffsetChange))
+    func interaHubBarScrollOffsetReporting(pageIndex: Int) -> some View {
+        modifier(InteraHubBarScrollOffsetReporter(pageIndex: pageIndex))
     }
 
     /// Reads ``EnvironmentValues/interaHubBarOverlayBottomInset`` when wired from the hub shell.
@@ -154,14 +155,15 @@ extension View {
 }
 
 private struct InteraHubBarScrollOffsetReporter: ViewModifier {
-    let onOffsetChange: (CGFloat) -> Void
+    let pageIndex: Int
+    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
 
     func body(content: Content) -> some View {
         if #available(iOS 18.0, macOS 15.0, *) {
             content.onScrollGeometryChange(for: CGFloat.self) { geo in
                 geo.contentOffset.y + geo.contentInsets.top
             } action: { _, newValue in
-                onOffsetChange(newValue)
+                hubBarScrollHandler.onOffsetChange?(pageIndex, newValue)
             }
         } else {
             content

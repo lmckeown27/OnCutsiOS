@@ -375,7 +375,7 @@ private struct ServiceProviderCardShadowModifier: ViewModifier {
 private struct ServiceProviderCardMatchedGeometryModifier: ViewModifier {
     let namespace: Namespace.ID?
     let geometryId: String
-    
+
     func body(content: Content) -> some View {
         if let ns = namespace {
             content.matchedGeometryEffect(id: geometryId, in: ns)
@@ -496,9 +496,9 @@ struct ServiceProvider: Identifiable, Codable {
             category: .haircuts,
             specialty: "Barber",
             services: [
+                Service(id: "s3", name: "Haircut", price: 20, duration: 30, description: nil),
                 Service(id: "s1", name: "Buzz Cut", price: 15, duration: 20, description: nil),
                 Service(id: "s2", name: "Fade", price: 25, duration: 30, description: nil),
-                Service(id: "s3", name: "Haircut", price: 20, duration: 30, description: nil),
                 Service(id: "s4", name: "Haircut & Fade", price: 30, duration: 45, description: nil),
                 Service(id: "s5", name: "Line Up", price: 15, duration: 15, description: nil),
                 Service(id: "s6", name: "Taper", price: 25, duration: 30, description: nil)
@@ -753,6 +753,26 @@ extension ServiceProvider.PriceRange {
             return "$\(min)"
         }
         return "$\(min) - $\(max)"
+    }
+}
+
+extension ServiceProvider {
+    /// Consumer detail / card copy: exact **Haircut** first, then remaining services alphabetically.
+    var displayOrderedServices: [Service] {
+        guard let services, !services.isEmpty else { return [] }
+        return Self.orderServicesForDisplay(services)
+    }
+
+    static func orderServicesForDisplay(_ services: [Service]) -> [Service] {
+        services.sorted { lhs, rhs in
+            func haircutRank(_ name: String) -> Int {
+                name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .caseInsensitiveCompare("Haircut") == .orderedSame ? 0 : 1
+            }
+            let left = haircutRank(lhs.name), right = haircutRank(rhs.name)
+            if left != right { return left < right }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
     }
 }
 

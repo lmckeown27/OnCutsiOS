@@ -470,6 +470,13 @@ final class HubPagingCoordinator: NSObject {
         refreshPageInteractionLocks()
     }
 
+    /// Browse overlay present/dismiss can leave vertical `UIScrollView`s disabled if hub paging KVO fired mid-transition.
+    func releaseSuspendedVerticalScrollsIfNeeded() {
+        restoreSuspendedVerticalScrolls()
+        wasUserScrolling = false
+        isUserScrolling = false
+    }
+
     private func scheduleRetry(anchoredTo uiView: UIView) {
         attempts += 1
         guard attempts < maxAttempts else { return }

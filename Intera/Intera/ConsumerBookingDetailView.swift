@@ -1294,9 +1294,9 @@ struct ConsumerBookingDetailView: View {
 
     private var payForServiceSubtitle: String {
         if let p = formattedPrice {
-            return "Your provider marked this visit complete. Pay \(p) with Apple Pay, card, or cash (in person)."
+            return "Your barber marked this visit complete. Pay \(p) with Apple Pay, card, or cash (in person)."
         }
-        return "Your provider marked this visit complete. Pay with Apple Pay, card, or cash (in person)."
+        return "Your barber marked this visit complete. Pay with Apple Pay, card, or cash (in person)."
     }
 
     // MARK: - Edit mode actions
@@ -1449,7 +1449,7 @@ struct ConsumerBookingDetailView: View {
             #endif
             AlertManager.shared.present(
                 scheduleDraftChanged
-                    ? "Schedule change requested. Your provider will review it."
+                    ? "Schedule change requested. Your barber will review it."
                     : "Booking details updated."
             )
             NotificationCenter.default.post(name: .consumerBookingsListShouldRefresh, object: nil)

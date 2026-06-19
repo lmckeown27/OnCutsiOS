@@ -171,15 +171,19 @@ private extension CampusCutsBarberDTO {
         let uid = userId.map(\.value).flatMap { $0.trimmedNonEmpty } ?? pid
         let business = name.flatMap { $0.trimmedNonEmpty } ?? "Barber"
 
-        let services: [ServiceProvider.Service]? = pricing?.enumerated().map { index, p in
-            ServiceProvider.Service(
-                id: p.id.flatMap { $0.trimmedNonEmpty } ?? "svc-\(fallbackIndex)-\(index)",
-                name: p.name,
-                price: p.price.value,
-                duration: p.durationMinutes,
-                description: nil
-            )
-        }
+        let services: [ServiceProvider.Service]? = {
+            let mapped = pricing?.enumerated().map { index, p in
+                ServiceProvider.Service(
+                    id: p.id.flatMap { $0.trimmedNonEmpty } ?? "svc-\(fallbackIndex)-\(index)",
+                    name: p.name,
+                    price: p.price.value,
+                    duration: p.durationMinutes,
+                    description: nil
+                )
+            }
+            guard let mapped, !mapped.isEmpty else { return nil }
+            return ServiceProvider.orderServicesForDisplay(mapped)
+        }()
 
         let prices = pricing?.map(\.price.value) ?? []
         let range: ServiceProvider.PriceRange? = {

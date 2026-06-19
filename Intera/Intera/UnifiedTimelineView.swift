@@ -72,6 +72,7 @@ struct UnifiedTimelineView: View {
                 timelineLazyStack
             }
             .scrollBounceBehavior(.always, axes: .vertical)
+            .interaHubBarScrollOffsetReporting(pageIndex: 2)
             .refreshable {
                 await onPullToRefresh()
             }
@@ -80,6 +81,7 @@ struct UnifiedTimelineView: View {
                 timelineLazyStack
             }
             .scrollBounceBehavior(.always, axes: .vertical)
+            .interaHubBarScrollOffsetReporting(pageIndex: 2)
         }
     }
 
