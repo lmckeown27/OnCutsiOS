@@ -88,6 +88,10 @@ struct LiveBookingView: View {
     @State private var isLoadingSlots = false
     @State private var slotsLoadError: String?
 
+    @State private var openDaysByMonthKey: [String: Set<Date>] = [:]
+    @State private var loadingOpenDaysMonthKeys: Set<String> = []
+    @State private var calendarDisplayedMonth = Date()
+
     @State private var serviceError: String?
     @State private var timeError: String?
 
@@ -122,6 +126,22 @@ struct LiveBookingView: View {
     private var bookingDateRange: ClosedRange<Date> {
         let end = Calendar.current.date(byAdding: .day, value: 90, to: Date()) ?? Date()
         return Date() ... end
+    }
+
+    private var calendarAllowedDayStarts: Set<Date>? {
+        let monthKey = BookingPacificSchedule.monthCacheKey(for: calendarDisplayedMonth)
+        let weekly = provider.weeklyTemplateDayStarts(in: bookingDateRange)
+
+        if let apiDays = openDaysByMonthKey[monthKey] {
+            if let weekly { return apiDays.intersection(weekly) }
+            return apiDays
+        }
+
+        if loadingOpenDaysMonthKeys.contains(monthKey) {
+            return weekly
+        }
+
+        return weekly
     }
 
     /// Top-leading dismiss: layered blur + cream stroke so the glyph stays sharp on the lava lamp.
@@ -372,7 +392,12 @@ struct LiveBookingView: View {
                 selectedDate: $selectedDate,
                 selectionCommitted: $calendarSelectionCommitted,
                 range: bookingDateRange,
-                onDaySelected: scheduleSlotReloadForPickedDay
+                allowedDayStarts: calendarAllowedDayStarts,
+                onDaySelected: scheduleSlotReloadForPickedDay,
+                onDisplayedMonthChange: { month in
+                    calendarDisplayedMonth = month
+                    Task { await loadOpenDays(forMonth: month) }
+                }
             )
         }
     }
@@ -456,6 +481,25 @@ struct LiveBookingView: View {
         } catch {
             packageServiceRows = []
         }
+    }
+
+    @MainActor
+    private func loadOpenDays(forMonth month: Date) async {
+        let monthKey = BookingPacificSchedule.monthCacheKey(for: month)
+        guard !monthKey.isEmpty, openDaysByMonthKey[monthKey] == nil else { return }
+
+        loadingOpenDaysMonthKeys.insert(monthKey)
+        defer { loadingOpenDaysMonthKeys.remove(monthKey) }
+
+        let days = BookingPacificSchedule.dayStartsInMonth(containing: month, clippedTo: bookingDateRange)
+        let open = await BookingOpenDaysLoader.loadOpenDayStarts(
+            days: days,
+            barberId: provider.id,
+            campusCutsBarberIntId: campusCutsBarberIntId,
+            bearerToken: sessionManager.currentSession?.token,
+            campusCutsClient: campusCutsClient
+        )
+        openDaysByMonthKey[monthKey] = open
     }
 
     private func loadSlots() async {

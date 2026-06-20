@@ -59,6 +59,9 @@ struct ConsumerBookingDetailView: View {
     @State private var scheduleEditSlotRows: [BookingRibbonSlot] = []
     @State private var scheduleEditAvailableTimeKeys: Set<String> = []
     @State private var scheduleEditSlotsLoading = false
+    @State private var scheduleEditOpenDaysByMonthKey: [String: Set<Date>] = [:]
+    @State private var scheduleEditLoadingOpenDaysMonthKeys: Set<String> = []
+    @State private var scheduleEditDisplayedMonth = Date()
 
     @State private var alternativeServiceNames: [String] = []
     @State private var alternativeLocationNames: [String] = []
@@ -248,6 +251,25 @@ struct ConsumerBookingDetailView: View {
     private var scheduleEditRange: ClosedRange<Date> {
         let end = Calendar.current.date(byAdding: .day, value: 90, to: Date()) ?? Date()
         return Date() ... end
+    }
+
+    private var scheduleEditAllowedDayStarts: Set<Date>? {
+        let cal = Calendar.current
+        let monthKey = BookingPacificSchedule.monthCacheKey(for: scheduleEditDisplayedMonth)
+        let preservedDays: Set<Date> = [
+            cal.startOfDay(for: requestChangeBaselineScheduledAt),
+            cal.startOfDay(for: draftScheduledAt),
+        ]
+
+        if let apiDays = scheduleEditOpenDaysByMonthKey[monthKey] {
+            return apiDays.union(preservedDays)
+        }
+
+        if scheduleEditLoadingOpenDaysMonthKeys.contains(monthKey) {
+            return nil
+        }
+
+        return nil
     }
 
     private var campusCutsClient: CampusCutsClient {
@@ -1519,6 +1541,31 @@ struct ConsumerBookingDetailView: View {
     // MARK: - Schedule edit availability (provider-published slots)
 
     @MainActor
+    private func loadScheduleEditOpenDays(forMonth month: Date) async {
+        let monthKey = BookingPacificSchedule.monthCacheKey(for: month)
+        guard !monthKey.isEmpty, scheduleEditOpenDaysByMonthKey[monthKey] == nil else { return }
+
+        scheduleEditLoadingOpenDaysMonthKeys.insert(monthKey)
+        defer { scheduleEditLoadingOpenDaysMonthKeys.remove(monthKey) }
+
+        let barberId = bookingRow.barberId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !barberId.isEmpty else {
+            scheduleEditOpenDaysByMonthKey[monthKey] = []
+            return
+        }
+
+        let days = BookingPacificSchedule.dayStartsInMonth(containing: month, clippedTo: scheduleEditRange)
+        let open = await BookingOpenDaysLoader.loadOpenDayStarts(
+            days: days,
+            barberId: barberId,
+            campusCutsBarberIntId: Int(barberId),
+            bearerToken: sessionManager.currentSession?.token,
+            campusCutsClient: campusCutsClient
+        )
+        scheduleEditOpenDaysByMonthKey[monthKey] = open
+    }
+
+    @MainActor
     private func loadScheduleEditDaySlots() async {
         scheduleEditSlotsLoading = true
         scheduleEditSlotsError = nil
@@ -1636,7 +1683,14 @@ struct ConsumerBookingDetailView: View {
             selectedDate: $draftScheduledAt,
             selectionCommitted: $draftCalendarCommitted,
             range: scheduleEditRange,
-            onDaySelected: {}
+            allowedDayStarts: scheduleEditAllowedDayStarts,
+            onDaySelected: {
+                Task { await loadScheduleEditDaySlots() }
+            },
+            onDisplayedMonthChange: { month in
+                scheduleEditDisplayedMonth = month
+                Task { await loadScheduleEditOpenDays(forMonth: month) }
+            }
         )
     }
 
@@ -1804,8 +1858,11 @@ struct ConsumerBookingDetailView: View {
                 .padding(.bottom, 28)
             }
             .task(id: scheduleEditEntry) {
-                guard scheduleEditEntry == .time else { return }
-                await loadScheduleEditDaySlots()
+                if scheduleEditEntry == .time {
+                    await loadScheduleEditDaySlots()
+                } else {
+                    await loadScheduleEditOpenDays(forMonth: scheduleEditDisplayedMonth)
+                }
             }
             .navigationTitle(scheduleEditEntry == .date ? "Request Schedule Change" : "Choose a Time")
             #if os(iOS)

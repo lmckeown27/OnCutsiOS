@@ -204,4 +204,62 @@ enum BookingPacificSchedule {
               ) else { return }
         selected = instant
     }
+
+    /// Every start-of-day in `monthAnchor`'s month that also falls inside `range` (`Calendar.current`).
+    static func dayStartsInMonth(containing monthAnchor: Date, clippedTo range: ClosedRange<Date>) -> [Date] {
+        let cal = Calendar.current
+        guard let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: monthAnchor)),
+              let dayCount = cal.range(of: .day, in: .month, for: monthStart)?.count else { return [] }
+        let rangeLower = cal.startOfDay(for: range.lowerBound)
+        let rangeUpper = cal.startOfDay(for: range.upperBound)
+        var days: [Date] = []
+        for offset in 0 ..< dayCount {
+            guard let date = cal.date(byAdding: .day, value: offset, to: monthStart) else { continue }
+            let start = cal.startOfDay(for: date)
+            if start >= rangeLower, start <= rangeUpper {
+                days.append(date)
+            }
+        }
+        return days
+    }
+
+    static func monthCacheKey(for monthAnchor: Date) -> String {
+        let cal = Calendar.current
+        let c = cal.dateComponents([.year, .month], from: monthAnchor)
+        guard let y = c.year, let m = c.month else { return "" }
+        return String(format: "%04d-%02d", y, m)
+    }
+}
+
+enum BookingWeekdaySchedule {
+    private static let weekdayToAbbrev: [Int: String] = [
+        1: "Sun", 2: "Mon", 3: "Tue", 4: "Wed", 5: "Thu", 6: "Fri", 7: "Sat",
+    ]
+
+    /// Maps `"Mon"`, `"Tue"`, … to `Calendar.current` start-of-day dates inside `range`.
+    static func dayStarts(matchingWeekdayAbbrevs abbrevs: Set<String>, in range: ClosedRange<Date>) -> Set<Date> {
+        guard !abbrevs.isEmpty else { return [] }
+        let cal = Calendar.current
+        var day = cal.startOfDay(for: range.lowerBound)
+        let upper = cal.startOfDay(for: range.upperBound)
+        var matches = Set<Date>()
+        while day <= upper {
+            let wd = cal.component(.weekday, from: day)
+            if let abbrev = weekdayToAbbrev[wd], abbrevs.contains(abbrev) {
+                matches.insert(day)
+            }
+            guard let next = cal.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+        return matches
+    }
+}
+
+extension ServiceProvider {
+    /// Weekly template days from profile availability, or `nil` when the provider has no schedule on file.
+    func weeklyTemplateDayStarts(in range: ClosedRange<Date>) -> Set<Date>? {
+        guard let availability, !availability.isEmpty else { return nil }
+        let openAbbrevs = Set(availability.filter(\.isAvailable).map(\.dayOfWeek))
+        return BookingWeekdaySchedule.dayStarts(matchingWeekdayAbbrevs: openAbbrevs, in: range)
+    }
 }

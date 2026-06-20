@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // MARK: - Date (calendar grid)
 
@@ -18,6 +21,8 @@ struct BookingCalendarGridSelector: View {
     var allowedDayStarts: Set<Date>? = nil
     /// Called after the user picks a selectable day (including the first commitment).
     var onDaySelected: () -> Void = {}
+    /// Called when the visible month changes (including on appear).
+    var onDisplayedMonthChange: (Date) -> Void = { _ in }
 
     @State private var displayedMonth: Date
 
@@ -36,13 +41,15 @@ struct BookingCalendarGridSelector: View {
         selectionCommitted: Binding<Bool>,
         range: ClosedRange<Date>,
         allowedDayStarts: Set<Date>? = nil,
-        onDaySelected: @escaping () -> Void = {}
+        onDaySelected: @escaping () -> Void = {},
+        onDisplayedMonthChange: @escaping (Date) -> Void = { _ in }
     ) {
         self._selectedDate = selectedDate
         self._selectionCommitted = selectionCommitted
         self.range = range
         self.allowedDayStarts = allowedDayStarts
         self.onDaySelected = onDaySelected
+        self.onDisplayedMonthChange = onDisplayedMonthChange
         let cal = Calendar.current
         let start = cal.date(from: cal.dateComponents([.year, .month], from: selectedDate.wrappedValue))
             ?? selectedDate.wrappedValue
@@ -72,6 +79,7 @@ struct BookingCalendarGridSelector: View {
         }
         .onAppear {
             displayedMonth = startOfMonth(selectedDate)
+            onDisplayedMonthChange(displayedMonth)
         }
         .onChange(of: selectedDate) { _, newValue in
             displayedMonth = startOfMonth(newValue)
@@ -85,6 +93,7 @@ struct BookingCalendarGridSelector: View {
                 withAnimation(BookingSelectorTheme.selectionSpring) {
                     displayedMonth = addMonths(-1, to: displayedMonth)
                 }
+                onDisplayedMonthChange(displayedMonth)
             } label: {
                 Image(systemName: "chevron.left")
                     .font(InteraFont.body.weight(.semibold))
@@ -112,6 +121,7 @@ struct BookingCalendarGridSelector: View {
                 withAnimation(BookingSelectorTheme.selectionSpring) {
                     displayedMonth = addMonths(1, to: displayedMonth)
                 }
+                onDisplayedMonthChange(displayedMonth)
             } label: {
                 Image(systemName: "chevron.right")
                     .font(InteraFont.body.weight(.semibold))
@@ -383,8 +393,8 @@ struct BookingMinuteTimePicker: View {
     /// Minutes always treated as selectable (typically the appointment currently being edited).
     var alwaysAllowedTimeKeys: Set<String> = []
 
-    @State private var wheelDate = Date()
-    @State private var isSyncingWheel = false
+    @State private var selectedSlotKey = ""
+    @State private var isSyncingSelection = false
 
     private var pacificDay: Date {
         BookingPacificSchedule.pacificStartOfDay(for: calendarDay)
@@ -392,6 +402,10 @@ struct BookingMinuteTimePicker: View {
 
     private var allowedKeys: Set<String> {
         availableTimeKeys.union(alwaysAllowedTimeKeys)
+    }
+
+    private var sortedSlotKeys: [String] {
+        allowedKeys.sorted()
     }
 
     private var hasOpenTimes: Bool {
@@ -418,46 +432,170 @@ struct BookingMinuteTimePicker: View {
                     .font(InteraFont.body)
                     .foregroundStyle(.secondary)
             } else {
-                DatePicker(
-                    "Time",
-                    selection: $wheelDate,
-                    displayedComponents: [.hourAndMinute]
-                )
-                .datePickerStyle(.wheel)
-                .labelsHidden()
-                .frame(maxWidth: .infinity)
-                .onAppear { syncWheelFromBinding() }
-                .onChange(of: selectedTime) { _, _ in syncWheelFromBinding() }
-                .onChange(of: availableTimeKeys) { _, _ in syncWheelFromBinding() }
-                .onChange(of: alwaysAllowedTimeKeys) { _, _ in syncWheelFromBinding() }
-                .onChange(of: wheelDate) { _, newWheel in
-                    guard !isSyncingWheel else { return }
-                    applyWheelChange(newWheel)
+                Group {
+                    #if canImport(UIKit)
+                    BookingAvailableTimeWheelUIKit(
+                        slotKeys: sortedSlotKeys,
+                        labels: sortedSlotKeys.map { slotDisplayLabel(for: $0) },
+                        selectedKey: $selectedSlotKey
+                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: BookingTimeWheelMetrics.pickerHeight)
+                    #else
+                    Picker("Time", selection: $selectedSlotKey) {
+                        ForEach(sortedSlotKeys, id: \.self) { key in
+                            Text(slotDisplayLabel(for: key))
+                                .font(BookingSelectorTheme.timeWheelFont)
+                                .tag(key)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity)
+                    #endif
+                }
+                .onAppear { syncSelectionFromBinding() }
+                .onChange(of: selectedTime) { _, _ in syncSelectionFromBinding() }
+                .onChange(of: availableTimeKeys) { _, _ in syncSelectionFromBinding() }
+                .onChange(of: alwaysAllowedTimeKeys) { _, _ in syncSelectionFromBinding() }
+                .onChange(of: calendarDay) { _, _ in syncSelectionFromBinding() }
+                .onChange(of: selectedSlotKey) { _, newKey in
+                    guard !isSyncingSelection, !newKey.isEmpty else { return }
+                    applySlotSelection(newKey)
                 }
             }
         }
     }
 
-    private func syncWheelFromBinding() {
-        isSyncingWheel = true
-        wheelDate = BookingPacificSchedule.localWheelDate(forPacificInstant: selectedTime)
-        isSyncingWheel = false
+    private func slotDisplayLabel(for key: String) -> String {
+        guard let instant = BookingPacificSchedule.pacificInstant(selectedDay: pacificDay, timeHHmm: key) else {
+            return key
+        }
+        return BookingPacificSchedule.displayTimeWithMinutes(from: instant)
     }
 
-    private func applyWheelChange(_ newWheel: Date) {
-        guard let merged = BookingPacificSchedule.pacificInstant(calendarDay: pacificDay, localWheelDate: newWheel) else { return }
-        let key = BookingPacificSchedule.pacificHHmmKey(from: merged)
-        if allowedKeys.contains(key) || !snapUnavailableToNearestOpen {
-            selectedTime = merged
+    private func syncSelectionFromBinding() {
+        isSyncingSelection = true
+        defer { isSyncingSelection = false }
+
+        let currentKey = BookingPacificSchedule.pacificHHmmKey(from: selectedTime)
+        if allowedKeys.contains(currentKey) {
+            selectedSlotKey = currentKey
             return
         }
-        var adjusted = merged
+
+        guard snapUnavailableToNearestOpen else {
+            if !currentKey.isEmpty {
+                selectedSlotKey = currentKey
+            } else if let first = sortedSlotKeys.first {
+                selectedSlotKey = first
+            }
+            return
+        }
+
+        var adjusted = selectedTime
         BookingPacificSchedule.reconcileAppointmentTime(
             &adjusted,
             calendarDay: pacificDay,
             availableKeys: allowedKeys
         )
         selectedTime = adjusted
-        syncWheelFromBinding()
+        selectedSlotKey = BookingPacificSchedule.pacificHHmmKey(from: adjusted)
+    }
+
+    private func applySlotSelection(_ key: String) {
+        guard let instant = BookingPacificSchedule.pacificInstant(selectedDay: pacificDay, timeHHmm: key) else { return }
+        if allowedKeys.contains(key) || !snapUnavailableToNearestOpen {
+            selectedTime = instant
+        }
     }
 }
+
+#if canImport(UIKit)
+
+private enum BookingTimeWheelMetrics {
+    static let pickerHeight: CGFloat = 216
+    static let rowHeight: CGFloat = 44
+}
+
+/// Wheel picker with explicit row typography (SwiftUI `.wheel` ignores `.font()` on many OS versions).
+private struct BookingAvailableTimeWheelUIKit: UIViewRepresentable {
+    let slotKeys: [String]
+    let labels: [String]
+    @Binding var selectedKey: String
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(selectedKey: $selectedKey)
+    }
+
+    func makeUIView(context: Context) -> UIPickerView {
+        let picker = UIPickerView()
+        picker.dataSource = context.coordinator
+        picker.delegate = context.coordinator
+        picker.backgroundColor = .clear
+        return picker
+    }
+
+    func updateUIView(_ pickerView: UIPickerView, context: Context) {
+        let coordinator = context.coordinator
+        let keysChanged = coordinator.slotKeys != slotKeys
+        coordinator.slotKeys = slotKeys
+        coordinator.labels = labels
+
+        if keysChanged {
+            pickerView.reloadAllComponents()
+            coordinator.lastSyncedRow = nil
+        }
+
+        guard let row = slotKeys.firstIndex(of: selectedKey) else { return }
+        guard coordinator.lastSyncedRow != row else { return }
+        coordinator.isProgrammaticScroll = true
+        pickerView.selectRow(row, inComponent: 0, animated: keysChanged ? false : true)
+        coordinator.isProgrammaticScroll = false
+        coordinator.lastSyncedRow = row
+    }
+
+    final class Coordinator: NSObject, UIPickerViewDataSource, UIPickerViewDelegate {
+        var slotKeys: [String] = []
+        var labels: [String] = []
+        @Binding var selectedKey: String
+        var isProgrammaticScroll = false
+        var lastSyncedRow: Int?
+
+        init(selectedKey: Binding<String>) {
+            _selectedKey = selectedKey
+        }
+
+        func numberOfComponents(in pickerView: UIPickerView) -> Int { 1 }
+
+        func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+            slotKeys.count
+        }
+
+        func pickerView(_ pickerView: UIPickerView, rowHeightForComponent component: Int) -> CGFloat {
+            BookingTimeWheelMetrics.rowHeight
+        }
+
+        func pickerView(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int, reusing view: UIView?) -> UIView {
+            let label = (view as? UILabel) ?? UILabel()
+            label.text = row < labels.count ? labels[row] : ""
+            label.font = InteraFont.uiFont(size: BookingSelectorTheme.timeWheelUIFontSize, weight: .semibold)
+            label.textAlignment = .center
+            label.textColor = UIColor(Color.lavaShellCream)
+            label.adjustsFontSizeToFitWidth = true
+            label.minimumScaleFactor = 0.85
+            return label
+        }
+
+        func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+            guard !isProgrammaticScroll, row < slotKeys.count else { return }
+            let key = slotKeys[row]
+            guard selectedKey != key else { return }
+            BookingSelectorTheme.triggerSelectionChangedIfNewSelection(wasSelected: false)
+            selectedKey = key
+            lastSyncedRow = row
+        }
+    }
+}
+
+#endif

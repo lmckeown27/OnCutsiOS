@@ -19,6 +19,9 @@ enum BookingSelectorTheme {
 
     /// Timeline **Today** bold (service title / shop name / day number).
     static let todayBoldFont = InteraFont.font(size: 28, weight: .bold)
+    /// Scroll wheel rows in **Choose a Time** (open-slot picker).
+    static let timeWheelFont = InteraFont.font(size: 24, weight: .semibold)
+    static let timeWheelUIFontSize: CGFloat = 24
 
     static func triggerSelectionChangedIfNewSelection(wasSelected: Bool) {
         guard !wasSelected else { return }
