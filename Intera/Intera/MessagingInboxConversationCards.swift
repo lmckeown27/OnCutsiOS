@@ -93,6 +93,7 @@ private enum ConversationInboxCardMetrics {
     static let cardShadowRadius: CGFloat = 6
     static let cardShadowY: CGFloat = 3
     static let unreadBorderWidth: CGFloat = 1.5
+    static let unreadAccentColor = Color.oliveLight
     static let providerNameFont = InteraFont.system(size: 22, weight: .bold, design: .default)
     static let previewFont = InteraFont.system(size: 16, weight: .regular, design: .serif)
     static let previewLineSpacing: CGFloat = 3
@@ -141,7 +142,7 @@ struct ConversationInboxThreadCard: View {
         .overlay {
             RoundedRectangle(cornerRadius: ConversationInboxCardMetrics.cornerRadius, style: .continuous)
                 .strokeBorder(
-                    model.isUnread ? Color.blue.opacity(0.3) : Color.lavaShellCream.opacity(0.12),
+                    model.isUnread ? ConversationInboxCardMetrics.unreadAccentColor.opacity(0.45) : Color.lavaShellCream.opacity(0.12),
                     lineWidth: model.isUnread ? ConversationInboxCardMetrics.unreadBorderWidth : 1
                 )
         }
@@ -236,11 +237,11 @@ struct ConversationInboxThreadCard: View {
                 if model.isUnread {
                     HStack(spacing: 8) {
                         Circle()
-                            .fill(Color.blue)
+                            .fill(ConversationInboxCardMetrics.unreadAccentColor)
                             .frame(width: 10, height: 10)
                         Text("New Message")
                             .font(InteraFont.subheadline.weight(.bold))
-                            .foregroundStyle(Color.blue)
+                            .foregroundStyle(ConversationInboxCardMetrics.unreadAccentColor)
                     }
                 }
                 Spacer(minLength: 0)

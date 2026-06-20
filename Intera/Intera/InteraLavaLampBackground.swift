@@ -51,5 +51,53 @@ extension View {
     func interaNavigationShellBackgroundClear() -> some View {
         modifier(InteraNavigationShellBackgroundClearModifier())
     }
+
+    /// Re-enables the edge swipe-to-pop gesture when the navigation bar is hidden (e.g. conversation chrome).
+    func interaEnableNavigationSwipeBack() -> some View {
+        background(InteraNavigationInteractivePopEnabler())
+    }
+}
+
+/// Keeps `UINavigationController`'s interactive pop alive when SwiftUI hides the navigation bar.
+private struct InteraNavigationInteractivePopEnabler: UIViewControllerRepresentable {
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIViewController(context: Context) -> UIViewController {
+        let controller = UIViewController()
+        controller.view.isUserInteractionEnabled = false
+        controller.view.backgroundColor = .clear
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        context.coordinator.enable(from: uiViewController)
+    }
+
+    final class Coordinator {
+        private let popDelegate = PopGestureDelegate()
+
+        func enable(from viewController: UIViewController) {
+            DispatchQueue.main.async { [weak viewController, popDelegate] in
+                guard let viewController,
+                      let nav = viewController.navigationController,
+                      let pop = nav.interactivePopGestureRecognizer else { return }
+                pop.isEnabled = true
+                popDelegate.navigationController = nav
+                if pop.delegate !== popDelegate {
+                    pop.delegate = popDelegate
+                }
+            }
+        }
+    }
+
+    private final class PopGestureDelegate: NSObject, UIGestureRecognizerDelegate {
+        weak var navigationController: UINavigationController?
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            (navigationController?.viewControllers.count ?? 0) > 1
+        }
+    }
 }
 #endif

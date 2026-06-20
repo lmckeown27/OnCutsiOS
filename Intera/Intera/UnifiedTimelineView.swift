@@ -17,6 +17,7 @@ struct UnifiedTimelineView: View {
     var scheduleLine: (ConsumerBookingSimpleRow) -> String
     var hasActiveConsumerBooking: Bool = false
     var onShowLogin: () -> Void = {}
+    var onOpenBookingDetail: ((ConsumerBookingSimpleRow) -> Void)? = nil
     /// Past bookings only: remove from this device’s list via `hide-from-list` (optional so previews stay simple).
     var onRemovePastBooking: ((ConsumerBookingSimpleRow) -> Void)? = nil
     /// One-shot scroll target (e.g. Upcoming after a new booking request). Cleared after scrolling.
@@ -171,6 +172,7 @@ struct UnifiedTimelineView: View {
                             scheduleLine: scheduleLine(row),
                             hasActiveConsumerBooking: hasActiveConsumerBooking,
                             onShowLogin: onShowLogin,
+                            onOpenBookingDetail: onOpenBookingDetail,
                             onRemovePastBooking: onRemovePastBooking
                         )
                         .id(item.itemId)
@@ -178,6 +180,7 @@ struct UnifiedTimelineView: View {
                         PastProviderBookingsGroupView(
                             group: group,
                             scheduleLine: scheduleLine,
+                            onOpenBookingDetail: onOpenBookingDetail,
                             onRemovePastBooking: onRemovePastBooking
                         )
                         .id(item.itemId)
@@ -216,6 +219,7 @@ struct UnifiedTimelineView: View {
                         scheduleLine: scheduleLine(row),
                         hasActiveConsumerBooking: hasActiveConsumerBooking,
                         onShowLogin: onShowLogin,
+                        onOpenBookingDetail: onOpenBookingDetail,
                         onRemovePastBooking: onRemovePastBooking
                     )
                     .id(row.id)

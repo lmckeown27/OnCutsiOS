@@ -31,6 +31,13 @@ enum ProfileImageURLResolver {
         return url(from: t)
     }
 
+    /// Stores a fetchable absolute URL string on models (list + detail share the same value).
+    static func normalizedStorageString(from raw: String?) -> String? {
+        let t = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if t.isEmpty { return nil }
+        return urlForAsyncImage(from: t)?.absoluteString ?? t
+    }
+
     private static func absoluteHTTPURL(from t: String) -> URL? {
         if t.hasPrefix("//"), let u = URL(string: "https:" + t) { return u }
         if t.hasPrefix("http://") || t.hasPrefix("https://") {
@@ -40,6 +47,57 @@ enum ProfileImageURLResolver {
             }
         }
         return nil
+    }
+}
+
+/// Square provider thumb for browse cards (resolves app-relative avatar URLs + reloads reliably in `LazyVStack`).
+struct ServiceProviderProfileThumbnail: View {
+    let imageUrl: String?
+    let businessName: String
+    var size: CGFloat = 80
+    var cornerRadius: CGFloat = 12
+
+    private var resolvedURL: URL? {
+        ProfileImageURLResolver.urlForAsyncImage(from: imageUrl)
+    }
+
+    var body: some View {
+        Group {
+            if let resolvedURL {
+                AsyncImage(url: resolvedURL) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    case .failure, .empty:
+                        initialsPlaceholder
+                    @unknown default:
+                        initialsPlaceholder
+                    }
+                }
+                .id(resolvedURL.absoluteString)
+            } else {
+                initialsPlaceholder
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .accessibilityHidden(true)
+    }
+
+    private var initialsPlaceholder: some View {
+        Rectangle()
+            .fill(Color.brand.opacity(0.2))
+            .overlay {
+                Text(businessName.prefix(2).uppercased())
+                    .font(
+                        size >= 100
+                            ? InteraFont.title
+                            : (size >= 72 ? InteraFont.headline : InteraFont.caption.weight(.bold))
+                    )
+                    .foregroundStyleOliveGreen()
+            }
     }
 }
 

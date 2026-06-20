@@ -377,6 +377,16 @@ struct MessagingInboxRowLabel: View {
 
 // MARK: - Conversation view model (socket + uploads mutate published state)
 
+#if canImport(UIKit)
+/// Staged attachment in the message composer (not sent until the user taps Send).
+struct MessagingComposerDraftImage: Identifiable {
+    let id = UUID()
+    let uploadData: Data
+    let mimeType: String
+    let preview: UIImage
+}
+#endif
+
 @MainActor
 final class MessagingConversationViewModel: ObservableObject {
     let conversationId: String
@@ -389,6 +399,11 @@ final class MessagingConversationViewModel: ObservableObject {
     /// Bumped when clearing or restoring the composer so multi-line `TextField` remounts (SwiftUI often keeps stale text otherwise).
     @Published var composerRefreshID = UUID()
     @Published var pendingImageThumbs: [UUID: UIImage] = [:]
+    #if canImport(UIKit)
+    /// Photo chosen from library or camera — previewed in the composer until Send.
+    @Published var composerDraftImage: MessagingComposerDraftImage?
+    #endif
+    @Published private(set) var isSendingComposer = false
     /// Messaging user UUID for the other party (reports / block).
     @Published var counterpartyMessagingUserId: String?
     /// Populated from `GET …/messages/conversations/:id` when the API includes `otherUser` (display + avatar often present while `booking.barber_*` is still empty).
@@ -426,6 +441,52 @@ final class MessagingConversationViewModel: ObservableObject {
     }
 
     var currentUserId: String { sessionManager.currentSession?.userId ?? "" }
+
+    private static func normalizedMediaKey(_ url: URL?) -> String? {
+        guard let url else { return nil }
+        let raw = url.absoluteString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else { return nil }
+        if var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            parts.query = nil
+            parts.fragment = nil
+            return parts.url?.absoluteString ?? raw
+        }
+        return raw
+    }
+
+    /// Inserts or upgrades a thread row without duplicating outgoing image bubbles (local optimistic vs socket/REST echo).
+    private func integrateThreadMessage(_ message: ChatThreadMessage, hapticOnInsert: Bool = false) -> Bool {
+        if messages.contains(where: { $0.id == message.id }) { return false }
+        if let sid = message.serverMessageIdForReport?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !sid.isEmpty,
+           messages.contains(where: { $0.serverMessageIdForReport == sid }) {
+            return false
+        }
+
+        if message.isFromCurrentUser, let mediaKey = Self.normalizedMediaKey(message.mediaUrl) {
+            if let idx = messages.firstIndex(where: { existing in
+                existing.isFromCurrentUser
+                    && Self.normalizedMediaKey(existing.mediaUrl) == mediaKey
+                    && (existing.serverMessageIdForReport ?? "").isEmpty
+            }) {
+                messages[idx] = message
+                publishHubInboxPreviewFromThread()
+                return true
+            }
+            if messages.contains(where: {
+                $0.isFromCurrentUser && Self.normalizedMediaKey($0.mediaUrl) == mediaKey
+            }) {
+                return false
+            }
+        }
+
+        if hapticOnInsert {
+            MessagingFlowHaptics.sentMessage()
+        }
+        messages.append(message)
+        publishHubInboxPreviewFromThread()
+        return true
+    }
 
     var showWaitingForBarber: Bool {
         guard let ctx = bookingContext else { return false }
@@ -522,9 +583,8 @@ final class MessagingConversationViewModel: ObservableObject {
             MessagingFlowHaptics.receivedMessage()
         }
         withAnimation(MessagingFlowMotion.messageAppearSpring) {
-            messages.append(m)
+            _ = integrateThreadMessage(m)
         }
-        publishHubInboxPreviewFromThread()
     }
 
     private static func preferredCounterpartyFallbackForBookingContext(
@@ -672,13 +732,6 @@ final class MessagingConversationViewModel: ObservableObject {
                 conversationId: conversationId,
                 bearerToken: sessionManager.currentSession?.token
             )
-            var existing = Set<String>()
-            for m in messages {
-                existing.insert(m.id)
-                if let sid = m.serverMessageIdForReport, !sid.isEmpty {
-                    existing.insert(sid)
-                }
-            }
             var appended: [ChatThreadMessage] = []
             #if DEBUG
             var mergeBlocked = 0
@@ -691,10 +744,18 @@ final class MessagingConversationViewModel: ObservableObject {
                     #endif
                     continue
                 }
-                if existing.contains(m.id) { continue }
-                if let sid = m.serverMessageIdForReport, !sid.isEmpty, existing.contains(sid) { continue }
-                existing.insert(m.id)
-                if let sid = m.serverMessageIdForReport, !sid.isEmpty { existing.insert(sid) }
+                if messages.contains(where: { $0.id == m.id }) { continue }
+                if let sid = m.serverMessageIdForReport, !sid.isEmpty,
+                   messages.contains(where: { $0.serverMessageIdForReport == sid }) {
+                    continue
+                }
+                if m.isFromCurrentUser,
+                   let mediaKey = Self.normalizedMediaKey(m.mediaUrl),
+                   messages.contains(where: {
+                       $0.isFromCurrentUser && Self.normalizedMediaKey($0.mediaUrl) == mediaKey
+                   }) {
+                    continue
+                }
                 appended.append(m)
             }
             #if DEBUG
@@ -734,49 +795,92 @@ final class MessagingConversationViewModel: ObservableObject {
     }
 
     func sendText() async {
-        let t = draftText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return }
-        if InteraMessagingContentFilter.textViolatesCommunityRules(t) {
+        await sendComposer()
+    }
+
+    var canSendComposer: Bool {
+        #if canImport(UIKit)
+        if composerDraftImage != nil { return true }
+        #endif
+        return !draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    #if canImport(UIKit)
+    func stageComposerPhoto(data: Data, uiImage: UIImage) {
+        let prepared = InteraChatImagePreparation.dataForChatUpload(image: uiImage, originalData: data)
+        composerDraftImage = MessagingComposerDraftImage(
+            uploadData: prepared.data,
+            mimeType: prepared.mimeType,
+            preview: prepared.preview
+        )
+    }
+
+    func clearComposerDraftImage() {
+        composerDraftImage = nil
+    }
+    #endif
+
+    func sendComposer() async {
+        guard !isSendingComposer else { return }
+        let caption = draftText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        #if canImport(UIKit)
+        if let draft = composerDraftImage {
+            if !caption.isEmpty, InteraMessagingContentFilter.textViolatesCommunityRules(caption) {
+                loadError = "This message can’t be sent because it may violate our community guidelines."
+                return
+            }
+            isSendingComposer = true
+            defer { isSendingComposer = false }
+            draftText = ""
+            composerRefreshID = UUID()
+            composerDraftImage = nil
+            await uploadAndSendImage(
+                uploadData: draft.uploadData,
+                mimeType: draft.mimeType,
+                preview: draft.preview,
+                caption: caption.isEmpty ? nil : caption
+            )
+            return
+        }
+        #endif
+
+        guard !caption.isEmpty else { return }
+        if InteraMessagingContentFilter.textViolatesCommunityRules(caption) {
             loadError = "This message can’t be sent because it may violate our community guidelines."
             return
         }
+        isSendingComposer = true
+        defer { isSendingComposer = false }
         draftText = ""
         composerRefreshID = UUID()
         do {
             if let dto = try await MessagingAPIService.sendTextMessage(
                 conversationId: conversationId,
-                text: t,
+                text: caption,
                 bearerToken: sessionManager.currentSession?.token
             ) {
                 let m = MessagingDTOMapper.chatMessage(from: dto, index: messages.count, currentUserId: currentUserId)
-                if !messages.contains(where: { $0.id == m.id }) {
-                    MessagingFlowHaptics.sentMessage()
-                    withAnimation(MessagingFlowMotion.messageAppearSpring) {
-                        messages.append(m)
-                    }
-                    publishHubInboxPreviewFromThread()
+                withAnimation(MessagingFlowMotion.messageAppearSpring) {
+                    _ = integrateThreadMessage(m, hapticOnInsert: true)
                 }
             }
         } catch {
             if !InteraRefreshCancellation.isBenignCancellation(error) {
                 loadError = error.localizedDescription
             }
-            draftText = t
+            draftText = caption
             composerRefreshID = UUID()
         }
     }
 
-    func handlePickedPhoto(data: Data, uiImage: UIImage) async {
-        #if canImport(UIKit)
-        let prepared = InteraChatImagePreparation.dataForChatUpload(image: uiImage, originalData: data)
-        let uploadData = prepared.data
-        let mime = prepared.mimeType
-        let thumb = prepared.preview
-        #else
-        let uploadData = data
-        let mime: String = data.isProbablyPNG ? "image/png" : "image/jpeg"
-        let thumb = uiImage
-        #endif
+    #if canImport(UIKit)
+    private func uploadAndSendImage(
+        uploadData: Data,
+        mimeType: String,
+        preview: UIImage,
+        caption: String?
+    ) async {
         let client = UUID()
         let pending = ChatThreadMessage(
             id: "pending-\(client.uuidString)",
@@ -784,40 +888,55 @@ final class MessagingConversationViewModel: ObservableObject {
             clientUUID: client,
             senderId: currentUserId,
             isFromCurrentUser: true,
-            text: "",
+            text: caption ?? "",
             mediaUrl: nil,
             createdAt: Date(),
             uploadProgress: 0.05
         )
-        pendingImageThumbs[client] = thumb
+        pendingImageThumbs[client] = preview
         withAnimation(MessagingFlowMotion.messageAppearSpring) {
             messages.append(pending)
         }
         do {
             let urlString = try await MessagingAPIService.uploadChatImage(
-                conversationId: conversationId,
                 imageData: uploadData,
-                mimeType: mime,
+                mimeType: mimeType,
                 bearerToken: sessionManager.currentSession?.token
             )
             messages.removeAll { $0.clientUUID == client }
             pendingImageThumbs[client] = nil
-            let dto = MessagingMessageDTO.syntheticImageMessage(mediaUrl: urlString, senderId: currentUserId)
-            let m = MessagingDTOMapper.chatMessage(from: dto, index: messages.count, currentUserId: currentUserId)
-            MessagingFlowHaptics.sentMessage()
-            withAnimation(MessagingFlowMotion.messageAppearSpring) {
-                messages.append(m)
+            if let dto = try await MessagingAPIService.sendImageMessage(
+                conversationId: conversationId,
+                mediaUrl: urlString,
+                caption: caption,
+                bearerToken: sessionManager.currentSession?.token
+            ) {
+                let m = MessagingDTOMapper.chatMessage(from: dto, index: messages.count, currentUserId: currentUserId)
+                withAnimation(MessagingFlowMotion.messageAppearSpring) {
+                    _ = integrateThreadMessage(m, hapticOnInsert: true)
+                }
+            } else {
+                await mergeNewMessagesFromServer()
             }
-            publishHubInboxPreviewFromThread()
         } catch {
             messages.removeAll { $0.clientUUID == client }
             pendingImageThumbs[client] = nil
             if !InteraRefreshCancellation.isBenignCancellation(error) {
                 loadError = error.localizedDescription
             }
+            composerDraftImage = MessagingComposerDraftImage(
+                uploadData: uploadData,
+                mimeType: mimeType,
+                preview: preview
+            )
+            if let caption, !caption.isEmpty {
+                draftText = caption
+                composerRefreshID = UUID()
+            }
             publishHubInboxPreviewFromThread()
         }
     }
+    #endif
 
     func deleteThread(onSuccess: @escaping () -> Void) async {
         do {
@@ -959,6 +1078,8 @@ struct MessagingConversationView: View {
     /// Suppresses bubble insert transitions and animated scroll until the navigation push settles.
     @State private var allowsThreadContentMotion = false
     @State private var threadContentMotionTask: Task<Void, Never>?
+    @FocusState private var isMessageComposerFocused: Bool
+    @State private var conversationPopDragOffset: CGFloat = 0
 
     /// Snap / cancel physics aligned with hub tab paging (not a single-flick commit).
     private static let edgeGestureSnapSpring = Animation.spring(response: 0.33, dampingFraction: 0.86, blendDuration: 0.12)
@@ -1014,6 +1135,13 @@ struct MessagingConversationView: View {
         } else {
             dismiss()
         }
+    }
+
+    private func dismissMessageComposerKeyboard() {
+        isMessageComposerFocused = false
+        #if canImport(UIKit)
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        #endif
     }
 
     /// Keeps `ConversationListTimelineRow` avatars in sync after booking-detail threads hydrate provider photos from REST.
@@ -1262,7 +1390,7 @@ struct MessagingConversationView: View {
                 CameraImagePicker(isPresented: $showCameraCapture) { image in
                     Task { @MainActor in
                         let data = image.jpegData(compressionQuality: 0.88) ?? (image.pngData() ?? Data())
-                        await vm.handlePickedPhoto(data: data, uiImage: image)
+                        vm.stageComposerPhoto(data: data, uiImage: image)
                     }
                 }
                 .ignoresSafeArea()
@@ -1306,6 +1434,15 @@ struct MessagingConversationView: View {
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbar(.hidden, for: .navigationBar)
+            .interaEnableNavigationSwipeBack()
+            .background {
+                ConversationSwipeBackPanEnabler(
+                    dragOffset: $conversationPopDragOffset,
+                    isEnabled: conversationSwipeToDismissEnabled,
+                    onDismiss: { leaveConversation() }
+                )
+            }
             #endif
             .tint(Color.oliveGreen)
             .onAppear {
@@ -1357,6 +1494,7 @@ struct MessagingConversationView: View {
                 messagingConversationMainColumn
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .offset(x: conversationPopDragOffset)
 
             if showBookingDetails || bookingDetailsEdgePull > 0 {
                 bookingDetailsTrailingDrawerOverlay
@@ -1364,6 +1502,10 @@ struct MessagingConversationView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var conversationSwipeToDismissEnabled: Bool {
+        !showBookingDetails && bookingDetailsEdgePull <= 0
     }
 
     @ViewBuilder
@@ -1378,6 +1520,7 @@ struct MessagingConversationView: View {
                     .padding(.vertical, 8)
                     .padding(.horizontal, 12)
                     .background(Color.oliveGreen.opacity(0.35))
+                    .simultaneousGesture(TapGesture().onEnded { dismissMessageComposerKeyboard() })
             }
             messagingThreadScrollRegion()
             messagingConversationComposerRow
@@ -1400,42 +1543,40 @@ struct MessagingConversationView: View {
     @ViewBuilder
     private func messagingThreadScrollRegion() -> some View {
         ScrollViewReader { proxy in
-            messagingThreadScrollContent(proxy: proxy)
+            GeometryReader { geo in
+                messagingThreadScrollContent(proxy: proxy, scrollViewportHeight: geo.size.height)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
-    private func messagingThreadScrollContent(proxy: ScrollViewProxy) -> some View {
+    private func messagingThreadScrollContent(proxy: ScrollViewProxy, scrollViewportHeight: CGFloat) -> some View {
         Group {
             if #available(iOS 17.0, *) {
                 ScrollView {
-                    messagesTimelineStack
+                    messagesTimelineStack(minHeight: scrollViewportHeight)
                 }
                 #if os(iOS)
                 .scrollContentBackground(.hidden)
                 #endif
-                .defaultScrollAnchor(.bottom)
+                .defaultScrollAnchor(.top)
             } else {
                 ScrollView {
-                    messagesTimelineStack
+                    messagesTimelineStack(minHeight: scrollViewportHeight)
                 }
                 #if os(iOS)
                 .scrollContentBackground(.hidden)
                 #endif
             }
         }
-        .onChange(of: vm.messages.last?.id) { _, _ in
-            guard !vm.messages.isEmpty else { return }
+        #if os(iOS)
+        .scrollDismissesKeyboard(.interactively)
+        #endif
+        .simultaneousGesture(TapGesture().onEnded { dismissMessageComposerKeyboard() })
+        .onChange(of: vm.messages.last?.id) { oldLastId, _ in
+            guard !vm.messages.isEmpty, oldLastId != nil else { return }
             scrollThreadToBottom(proxy: proxy, animated: allowsThreadContentMotion)
-        }
-        .onChange(of: vm.messages.count) { _, _ in
-            guard !vm.messages.isEmpty else { return }
-            scrollThreadToBottom(proxy: proxy, animated: allowsThreadContentMotion)
-        }
-        .onAppear {
-            guard !vm.messages.isEmpty else { return }
-            scrollThreadToBottom(proxy: proxy, animated: false)
         }
     }
 
@@ -1512,15 +1653,14 @@ struct MessagingConversationView: View {
         return "Conversation"
     }
 
-    /// `TimelineSectionHeader` “Today” — provider name in the sticky bar.
-    private static let headerNameFont = InteraFont.system(size: 28, weight: .bold, design: .default)
-    /// `TimelineSectionHeader` “Past” — tracked status line.
-    private static let headerStatusFont = InteraFont.system(size: 14, weight: .medium, design: .default)
-    private static let headerStatusKerning: CGFloat = 2.2
-    /// Square provider photo on top, then status, then name — matches inbox row size for morph from list.
-    private static let stickyHeaderAvatarSize: CGFloat = 104
-    private static let stickyHeaderAvatarCornerRadius: CGFloat = 15
-    private static let stickyHeaderAvatarInitialFont: CGFloat = 36
+    /// Provider name in the compact sticky bar (same row as back chevron + avatar).
+    private static let stickyHeaderNameFont = InteraFont.system(size: 17, weight: .bold, design: .default)
+    /// Status + service lines beside the avatar.
+    private static let stickyHeaderMetaFont = InteraFont.system(size: 12, weight: .medium, design: .default)
+    private static let stickyHeaderMetaKerning: CGFloat = 1.2
+    private static let stickyHeaderAvatarSize: CGFloat = 44
+    private static let stickyHeaderAvatarCornerRadius: CGFloat = 10
+    private static let stickyHeaderAvatarInitialFont: CGFloat = 18
 
     /// Booking status for sticky header + details drawer (never raw API enums like `PENDING`).
     private var headerBookingStatusPresentable: String {
@@ -1658,99 +1798,122 @@ struct MessagingConversationView: View {
         min(screenHeight * 0.42, 292)
     }
 
-    // MARK: - Instagram-style sticky header
+    // MARK: - Compact sticky header (back + avatar + provider summary)
 
-    private var instagramStickyHeader: some View {
-        ZStack {
-            HStack(spacing: 10) {
-                Spacer(minLength: 0)
+    private var conversationExitButton: some View {
+        Button {
+            leaveConversation()
+        } label: {
+            Image(systemName: "chevron.left")
+                .font(InteraFont.system(size: 17, weight: .semibold))
+                .foregroundStyleInteraShellIcon()
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Back")
+    }
 
-                Menu {
-                    if vm.bookingContext != nil {
-                        Button {
-                            withAnimation(MessagingFlowMotion.messageAppearSpring) {
-                                showBookingDetails = true
-                            }
-                        } label: {
-                            Text("Details")
-                        }
-                    }
-                    if vm.bookingContext?.consumerMayCancelActiveBooking == true {
-                        Button(role: .destructive) {
-                            showCancelBookingConfirm = true
-                        } label: {
-                            Text("Cancel booking")
-                        }
-                    } else {
-                        Button(role: .destructive) {
-                            showDeleteConversationConfirm = true
-                        } label: {
-                            Text("Delete conversation")
-                        }
-                    }
-                    Divider()
-                    Button {
-                        messagePendingReport = nil
-                        showReportMessageDialog = true
-                    } label: {
-                        Text("Report conversation")
-                    }
-                    Button(role: .destructive) {
-                        showBlockUserConfirm = true
-                    } label: {
-                        Text("Block user")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(InteraFont.system(size: 26, weight: .medium))
-                        .foregroundStyle(Color.lavaShellCream)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-            }
-
-            VStack(spacing: 10) {
+    private var conversationOverflowMenu: some View {
+        Menu {
+            if vm.bookingContext != nil {
                 Button {
                     withAnimation(MessagingFlowMotion.messageAppearSpring) {
                         showBookingDetails = true
                     }
                 } label: {
-                    stickyHeaderSquareAvatar
+                    Text("Details")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Details")
-
-                Text(threadCounterpartyDisplayName)
-                    .font(Self.headerNameFont)
-                    .foregroundStyle(Color.lavaShellCream)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.72)
-                    .multilineTextAlignment(.center)
-
-                if vm.bookingContext != nil {
-                    Text(headerBookingStatusPresentable)
-                        .font(Self.headerStatusFont)
-                        .foregroundStyle(Color.lavaShellCreamSecondary)
-                        .kerning(Self.headerStatusKerning)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                }
-
-                Text(threadHeaderRoleServiceLine)
-                    .font(Self.headerStatusFont)
-                    .foregroundStyle(Color.lavaShellCreamSecondary)
-                    .kerning(Self.headerStatusKerning)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
-                    .multilineTextAlignment(.center)
             }
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 6)
-            .opacity(threadHeaderDimTextColumn ? 0.6 : 1)
+            if vm.bookingContext?.consumerMayCancelActiveBooking == true {
+                Button(role: .destructive) {
+                    showCancelBookingConfirm = true
+                } label: {
+                    Text("Cancel booking")
+                }
+            } else {
+                Button(role: .destructive) {
+                    showDeleteConversationConfirm = true
+                } label: {
+                    Text("Delete conversation")
+                }
+            }
+            Divider()
+            Button {
+                messagePendingReport = nil
+                showReportMessageDialog = true
+            } label: {
+                Text("Report conversation")
+            }
+            Button(role: .destructive) {
+                showBlockUserConfirm = true
+            } label: {
+                Text("Block user")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(InteraFont.system(size: 24, weight: .medium))
+                .foregroundStyle(Color.lavaShellCream)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .accessibilityLabel("Conversation options")
+    }
+
+    private var stickyHeaderProviderSummary: some View {
+        Button {
+            guard vm.bookingContext != nil else { return }
+            withAnimation(MessagingFlowMotion.messageAppearSpring) {
+                showBookingDetails = true
+            }
+        } label: {
+            HStack(alignment: .center, spacing: 10) {
+                stickyHeaderSquareAvatar
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(threadCounterpartyDisplayName)
+                        .font(Self.stickyHeaderNameFont)
+                        .foregroundStyle(Color.lavaShellCream)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+
+                    if vm.bookingContext != nil, !headerBookingStatusPresentable.isEmpty {
+                        Text(headerBookingStatusPresentable)
+                            .font(Self.stickyHeaderMetaFont)
+                            .foregroundStyle(Color.lavaShellCreamSecondary)
+                            .kerning(Self.stickyHeaderMetaKerning)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
+
+                    if !threadHeaderRoleServiceLine.isEmpty {
+                        Text(threadHeaderRoleServiceLine)
+                            .font(Self.stickyHeaderMetaFont)
+                            .foregroundStyle(Color.lavaShellCreamSecondary)
+                            .kerning(Self.stickyHeaderMetaKerning)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Provider details")
+        .accessibilityHint(vm.bookingContext != nil ? "Opens booking details." : "")
+    }
+
+    private var instagramStickyHeader: some View {
+        HStack(alignment: .center, spacing: 2) {
+            conversationExitButton
+            stickyHeaderProviderSummary
+            conversationOverflowMenu
+        }
+        .opacity(threadHeaderDimTextColumn ? 0.6 : 1)
+        .padding(.leading, 4)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
         .background {
             ZStack {
                 Color.white.opacity(0.05)
@@ -1758,10 +1921,13 @@ struct MessagingConversationView: View {
             }
             .ignoresSafeArea(edges: .top)
         }
+        .simultaneousGesture(TapGesture().onEnded { dismissMessageComposerKeyboard() })
+        #if os(iOS)
+        .safeAreaPadding(.top, 2)
+        #endif
     }
 
-    /// Square crop; top of sticky header. Tapping opens details.
-    /// Intentionally no `matchedGeometryEffect`: pairing with the inbox row caused the header avatar to glitch during interactive navigation pop/cancel.
+    /// Square crop beside the back chevron in the sticky header.
     private var stickyHeaderSquareAvatar: some View {
         AvatarView(
             imageUrl: threadCounterpartyAvatarURL,
@@ -1774,7 +1940,7 @@ struct MessagingConversationView: View {
 
     // MARK: - Message list + timeline rail
 
-    private var messagesTimelineStack: some View {
+    private func messagesTimelineStack(minHeight: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(vm.messages) { msg in
                 messageBubble(msg)
@@ -1792,6 +1958,7 @@ struct MessagingConversationView: View {
                 .frame(height: 1)
                 .id(Self.messagingThreadBottomID)
         }
+        .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .top)
         .padding(.leading, 16)
         .padding(.trailing, 16)
         .padding(.vertical, 12)
@@ -1833,6 +2000,18 @@ struct MessagingConversationView: View {
     }
 
     private var composerChrome: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            #if canImport(UIKit)
+            if let draft = vm.composerDraftImage {
+                composerDraftImagePreview(draft)
+            }
+            #endif
+
+            composerInputRow
+        }
+    }
+
+    private var composerInputRow: some View {
         HStack(alignment: .bottom, spacing: 10) {
             PhotosPicker(selection: $pickerItem, matching: .images) {
                 Image(systemName: "photo.on.rectangle.angled")
@@ -1840,20 +2019,20 @@ struct MessagingConversationView: View {
                     .foregroundStyleInteraShellIcon()
                     .frame(width: 36, height: 36)
             }
+            .disabled(vm.isSendingComposer)
             .onChange(of: pickerItem) { _, new in
                 guard let new else { return }
                 Task { @MainActor in
                     defer { pickerItem = nil }
                     guard let data = try? await new.loadTransferable(type: Data.self),
                           let ui = UIImage(data: data) else { return }
-                    await vm.handlePickedPhoto(data: data, uiImage: ui)
+                    vm.stageComposerPhoto(data: data, uiImage: ui)
                 }
             }
 
             #if os(iOS)
             Button {
                 #if targetEnvironment(simulator)
-                // Simulator’s camera stack reports Fig / capture errors; `isSourceTypeAvailable` is often still true.
                 showCameraUnavailableAlert = true
                 #elseif canImport(UIKit)
                 if UIImagePickerController.isSourceTypeAvailable(.camera) {
@@ -1871,11 +2050,13 @@ struct MessagingConversationView: View {
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
+            .disabled(vm.isSendingComposer)
             .accessibilityLabel("Take a photo")
             #endif
 
             TextField("Message", text: $vm.draftText, axis: .vertical)
                 .id(vm.composerRefreshID)
+                .focused($isMessageComposerFocused)
                 .lineLimit(1 ... 5)
                 .foregroundStyle(Color.lavaShellCream)
                 .padding(10)
@@ -1883,17 +2064,71 @@ struct MessagingConversationView: View {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(.ultraThinMaterial)
                 }
+                .disabled(vm.isSendingComposer)
 
             Button {
-                Task { await vm.sendText() }
+                Task { await vm.sendComposer() }
             } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(InteraFont.system(size: 32))
-                    .foregroundStyleInteraShellIcon()
+                if vm.isSendingComposer {
+                    ProgressView()
+                        .tint(Color.lavaShellCream)
+                        .frame(width: 32, height: 32)
+                } else {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(InteraFont.system(size: 32))
+                        .foregroundStyleInteraShellIcon()
+                }
             }
-            .disabled(vm.draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(!vm.canSendComposer || vm.isSendingComposer)
         }
     }
+
+    #if canImport(UIKit)
+    private func composerDraftImagePreview(_ draft: MessagingComposerDraftImage) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(uiImage: draft.preview)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 72, height: 72)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.lavaShellCream.opacity(0.22), lineWidth: 0.75)
+                }
+                .accessibilityLabel("Photo attached")
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Photo attached")
+                    .font(InteraFont.caption.weight(.semibold))
+                    .foregroundStyle(Color.lavaShellCreamSecondary)
+                Text("Add a caption or tap send")
+                    .font(InteraFont.caption2)
+                    .foregroundStyle(Color.lavaShellCreamTertiary)
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                vm.clearComposerDraftImage()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(InteraFont.title3)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(Color.lavaShellCream.opacity(0.85))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(vm.isSendingComposer)
+            .accessibilityLabel("Remove photo")
+        }
+        .padding(10)
+        .background {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.ultraThinMaterial)
+        }
+    }
+    #endif
 
     @ViewBuilder
     private func messageBubble(_ msg: ChatThreadMessage) -> some View {
@@ -2217,19 +2452,167 @@ private struct MessagingThreadBookingDetailsView: View {
 typealias ConversationDetailView = MessagingConversationView
 
 #if canImport(UIKit) && os(iOS)
+/// Matches the Service Provider conversation back-swipe: rightward, mostly horizontal, 20% width or 300 pt/s flick.
+private enum ConversationSwipeBackMetrics {
+    /// Horizontal movement must be at least ~85% of vertical movement.
+    static let horizontalDominanceRatio: CGFloat = 0.85
+    static let dismissDistanceScreenFraction: CGFloat = 0.20
+    static let dismissVelocityPointsPerSecond: CGFloat = 300
+    static let maxDragOffsetScreenFraction: CGFloat = 0.85
+}
+
+/// Full-screen rightward swipe-to-pop that runs simultaneously with the thread `UIScrollView`.
+private struct ConversationSwipeBackPanEnabler: UIViewControllerRepresentable {
+    @Binding var dragOffset: CGFloat
+    var isEnabled: Bool
+    var onDismiss: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(dragOffset: $dragOffset, onDismiss: onDismiss)
+    }
+
+    func makeUIViewController(context: Context) -> UIViewController {
+        let controller = UIViewController()
+        controller.view.isUserInteractionEnabled = false
+        controller.view.backgroundColor = .clear
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        context.coordinator.isEnabled = isEnabled
+        context.coordinator.onDismiss = onDismiss
+        context.coordinator.attach(from: uiViewController)
+    }
+
+    static func dismantleUIViewController(_ uiViewController: UIViewController, coordinator: Coordinator) {
+        coordinator.detach()
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        @Binding var dragOffset: CGFloat
+        var onDismiss: () -> Void
+        var isEnabled = true
+
+        private weak var panRecognizer: UIPanGestureRecognizer?
+        private weak var hostView: UIView?
+        private var swipeEngaged = false
+
+        init(dragOffset: Binding<CGFloat>, onDismiss: @escaping () -> Void) {
+            _dragOffset = dragOffset
+            self.onDismiss = onDismiss
+        }
+
+        func attach(from viewController: UIViewController) {
+            DispatchQueue.main.async { [weak self, weak viewController] in
+                guard let self, let viewController else { return }
+                let host = viewController.navigationController?.view ?? viewController.view
+                guard let host else { return }
+                if self.panRecognizer?.view === host { return }
+                self.detach()
+                let pan = UIPanGestureRecognizer(target: self, action: #selector(self.handlePan(_:)))
+                pan.delegate = self
+                pan.cancelsTouchesInView = false
+                host.addGestureRecognizer(pan)
+                self.panRecognizer = pan
+                self.hostView = host
+            }
+        }
+
+        func detach() {
+            if let host = hostView, let pan = panRecognizer {
+                host.removeGestureRecognizer(pan)
+            }
+            panRecognizer = nil
+            hostView = nil
+            swipeEngaged = false
+        }
+
+        @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
+            guard isEnabled, let view = gesture.view else { return }
+            let translation = gesture.translation(in: view)
+            let velocity = gesture.velocity(in: view)
+            let width = translation.x
+            let height = translation.y
+            let screenWidth = max(view.bounds.width, 1)
+
+            switch gesture.state {
+            case .began:
+                swipeEngaged = false
+            case .changed:
+                guard width > 0, width >= abs(height) * ConversationSwipeBackMetrics.horizontalDominanceRatio else {
+                    if swipeEngaged {
+                        swipeEngaged = false
+                        snapBack()
+                    }
+                    return
+                }
+                swipeEngaged = true
+                dragOffset = min(width, screenWidth * ConversationSwipeBackMetrics.maxDragOffsetScreenFraction)
+            case .ended, .cancelled, .failed:
+                defer {
+                    swipeEngaged = false
+                    gesture.setTranslation(.zero, in: view)
+                }
+                guard swipeEngaged, width > 0 else {
+                    snapBack()
+                    return
+                }
+                let dismissDistance = screenWidth * ConversationSwipeBackMetrics.dismissDistanceScreenFraction
+                let shouldDismiss = width >= dismissDistance
+                    || velocity.x > ConversationSwipeBackMetrics.dismissVelocityPointsPerSecond
+                if shouldDismiss, width >= abs(height) * ConversationSwipeBackMetrics.horizontalDominanceRatio {
+                    dragOffset = 0
+                    onDismiss()
+                } else {
+                    snapBack()
+                }
+            default:
+                break
+            }
+        }
+
+        private func snapBack() {
+            Task { @MainActor in
+                withAnimation(.spring(response: 0.33, dampingFraction: 0.86, blendDuration: 0.12)) {
+                    dragOffset = 0
+                }
+            }
+        }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard isEnabled, gestureRecognizer === panRecognizer, let view = gestureRecognizer.view else { return false }
+            guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return false }
+            let velocity = pan.velocity(in: view)
+            // Slow rightward drags are allowed; dominance is enforced in `handlePan`.
+            if abs(velocity.x) < 40, abs(velocity.y) < 40 { return true }
+            guard velocity.x > 0 else { return false }
+            return abs(velocity.x) >= abs(velocity.y) * ConversationSwipeBackMetrics.horizontalDominanceRatio
+                || velocity.x > ConversationSwipeBackMetrics.dismissVelocityPointsPerSecond
+        }
+
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+        ) -> Bool {
+            gestureRecognizer === panRecognizer && otherGestureRecognizer.view is UIScrollView
+        }
+    }
+}
+
 /// Captures touches only on the **right** screen edge (below the header) so the booking panel can be pulled in
 /// without blocking the thread `ScrollView`, the system back swipe, or the **⋯** menu in the sticky header
 /// (the menu sits in the top-right ~52pt and would otherwise be covered by this overlay).
 private final class ConversationRightEdgePassthroughUIView: UIView {
     var edgeCaptureWidth: CGFloat = 52
-    /// Top: nav + sticky header — don’t steal taps meant for chrome.
-    private var headerChromeExclusionHeight: CGFloat { safeAreaInsets.top + 200 }
-    /// Bottom: message composer, **Send** button, and keyboard toolbar sit in the trailing strip; the 52pt
-    /// right-edge capture must not overlap them (otherwise `hitTest` eats taps and Send feels broken).
-    private var bottomComposerExclusionHeight: CGFloat { safeAreaInsets.bottom + 120 }
+    /// When false, the overlay is fully passthrough (no hit stealing on the trailing strip).
+    var capturesRightEdge = false
+    /// Top: nav + compact sticky header — don’t steal taps meant for chrome.
+    private var headerChromeExclusionHeight: CGFloat { safeAreaInsets.top + 88 }
+    /// Bottom: composer, staged-photo preview, Send, and keyboard — keep the trailing strip clear for taps.
+    private var bottomComposerExclusionHeight: CGFloat { safeAreaInsets.bottom + 220 }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        guard bounds.contains(point) else { return nil }
+        guard bounds.contains(point), capturesRightEdge else { return nil }
         if point.y < headerChromeExclusionHeight {
             return nil
         }
@@ -2260,6 +2643,7 @@ private struct ConversationBookingPanelEdgeOverlay: UIViewRepresentable {
         let v = ConversationRightEdgePassthroughUIView()
         v.backgroundColor = .clear
         v.isUserInteractionEnabled = true
+        v.capturesRightEdge = !showBookingDetails && hasBookingContext
         context.coordinator.attach(to: v)
         return v
     }
@@ -2268,6 +2652,7 @@ private struct ConversationBookingPanelEdgeOverlay: UIViewRepresentable {
         context.coordinator.showBookingDetails = showBookingDetails
         context.coordinator.hasBookingContext = hasBookingContext
         context.coordinator.onBookingPanelCommitted = onBookingPanelCommitted
+        uiView.capturesRightEdge = !showBookingDetails && hasBookingContext
     }
 
     static func dismantleUIView(_ uiView: ConversationRightEdgePassthroughUIView, coordinator: Coordinator) {

@@ -99,6 +99,9 @@ struct ConsumerBookingsHubView: View {
                         scheduleLine: formattedSchedule,
                         hasActiveConsumerBooking: hasActiveConsumerBooking,
                         onShowLogin: onShowLogin,
+                        onOpenBookingDetail: { row in
+                            openBookingDetailFromTimeline(row)
+                        },
                         onRemovePastBooking: { row in
                             Task { await removePastBookingFromList(row) }
                         },
@@ -344,6 +347,13 @@ struct ConsumerBookingsHubView: View {
     /// Push notification asked for a specific booking — prefer a fresh `GET /bookings-simple/:id` row so status
     /// matches the server (list can still show **PENDING** briefly after “Booking Confirmed” / accept).
     @MainActor
+    private func openBookingDetailFromTimeline(_ row: ConsumerBookingSimpleRow) {
+        rememberSupplementalDetailRow(row)
+        detailNavigationPath.append(ConsumerHomeBookingStackRoute.bookingsTabDetailPush(for: row))
+        reportBookingsNavigationDepth()
+    }
+
+    @MainActor
     private func openBookingDetailFromPendingPush(bookingId: String) async {
         let bid = bookingId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !bid.isEmpty else {
@@ -367,7 +377,7 @@ struct ConsumerBookingsHubView: View {
                 rows.append(fresh)
             }
             timelineScrollEpoch += 1
-            detailNavigationPath.append(ConsumerHomeBookingStackRoute.bookingsTabDetail(fresh))
+            detailNavigationPath.append(ConsumerHomeBookingStackRoute.bookingsTabDetailPush(for: fresh))
             // Reload after the stack commits; an immediate `await` here can rebuild `hubTimelineRoot` and
             // confuse `NavigationPath` / depth reporting so the unified hub bar never un-hides after back.
             Task { await reloadBookingsList() }
@@ -388,7 +398,7 @@ struct ConsumerBookingsHubView: View {
         }
         chatViewModel.pendingOpenBookingDetailId = nil
         rememberSupplementalDetailRow(row)
-        detailNavigationPath.append(ConsumerHomeBookingStackRoute.bookingsTabDetail(row))
+        detailNavigationPath.append(ConsumerHomeBookingStackRoute.bookingsTabDetailPush(for: row))
     }
 }
 

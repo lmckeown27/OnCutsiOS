@@ -55,14 +55,7 @@ struct RootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .interaOpenMessagingConversation)) { output in
             guard sessionManager.userRole == .student else { return }
-            guard let raw = output.userInfo?["conversationId"] else { return }
-            let cid: String? = {
-                if let s = raw as? String { return s.trimmingCharacters(in: .whitespacesAndNewlines) }
-                if let n = raw as? NSNumber { return n.stringValue }
-                if let i = raw as? Int { return String(i) }
-                return nil
-            }()
-            guard let cid, !cid.isEmpty else { return }
+            guard let cid = InteraPushNavigationPayload.conversationId(from: output.userInfo) else { return }
             chatViewModel.pendingPushConversationId = cid
         }
         .onChange(of: sessionManager.isAuthenticated) { wasAuthed, isAuthed in

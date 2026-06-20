@@ -196,9 +196,12 @@ struct BookingIntakeView: View {
                             }
                             SoftFieldErrorText(message: locationError)
 
-                            PrimaryButton(title: "Continue to Confirmation") {
-                                continueTapped(scrollProxy: proxy)
-                            }
+                            PrimaryButton(
+                                title: "Continue to Confirmation",
+                                action: { continueTapped(scrollProxy: proxy) },
+                                size: .prominent,
+                                titleUsesOutline: true
+                            )
                             .padding(.top, .space4)
                             .padding(.bottom, .space8)
                         }

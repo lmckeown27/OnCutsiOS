@@ -16,6 +16,7 @@ struct BookingTimelineRow: View {
     let scheduleLine: String
     var hasActiveConsumerBooking: Bool = false
     var onShowLogin: () -> Void = {}
+    var onOpenBookingDetail: ((ConsumerBookingSimpleRow) -> Void)? = nil
     var onRemovePastBooking: ((ConsumerBookingSimpleRow) -> Void)? = nil
 
     @State private var confirmRemoveFromList = false
@@ -44,7 +45,9 @@ struct BookingTimelineRow: View {
     }
 
     private var pastCard: some View {
-        NavigationLink(value: ConsumerHomeBookingStackRoute.bookingsTabDetail(row)) {
+        Button {
+            onOpenBookingDetail?(row)
+        } label: {
             compactLabels
                 .opacity(0.5)
                 .padding(14)
@@ -80,7 +83,7 @@ struct BookingTimelineRow: View {
         UpcomingBookingDetailsCard(
             booking: UpcomingBooking(row: row),
             isCollapsible: true,
-            detailRoute: ConsumerHomeBookingStackRoute.bookingsTabDetail(row)
+            onOpenBookingDetail: { onOpenBookingDetail?(row) }
         )
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -88,11 +91,13 @@ struct BookingTimelineRow: View {
     }
 
     private var todayCard: some View {
-        NavigationLink(value: ConsumerHomeBookingStackRoute.bookingsTabDetail(row)) {
+        Button {
+            onOpenBookingDetail?(row)
+        } label: {
             UpcomingBookingDetailsCard(
                 booking: UpcomingBooking(row: row),
                 isCollapsible: false,
-                detailRoute: nil
+                onOpenBookingDetail: nil
             )
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)

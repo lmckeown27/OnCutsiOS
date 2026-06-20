@@ -16,6 +16,8 @@ struct PrimaryButton: View {
     var size: Size = .medium
     var shape: Shape = .rounded
     var isFullWidth: Bool = true
+    /// Dark glyph outline around the label (primary variant: white fill on olive).
+    var titleUsesOutline: Bool = false
     
     enum Shape {
         case rounded
@@ -58,13 +60,14 @@ struct PrimaryButton: View {
     }
     
     enum Size {
-        case small, medium, large
+        case small, medium, large, prominent
         
         var horizontalPadding: CGFloat {
             switch self {
             case .small: return 12
             case .medium: return 16
             case .large: return 24
+            case .prominent: return 16
             }
         }
         
@@ -73,6 +76,7 @@ struct PrimaryButton: View {
             case .small: return 6
             case .medium: return 10
             case .large: return 14
+            case .prominent: return 12
             }
         }
         
@@ -81,6 +85,35 @@ struct PrimaryButton: View {
             case .small: return 14
             case .medium: return 16
             case .large: return 18
+            case .prominent: return 28
+            }
+        }
+
+        var fontWeight: Font.Weight {
+            switch self {
+            case .prominent: return .bold
+            default: return .medium
+            }
+        }
+
+        var fontDesign: Font.Design {
+            switch self {
+            case .prominent: return .default
+            default: return .serif
+            }
+        }
+
+        var minHeight: CGFloat? {
+            switch self {
+            case .prominent: return 54
+            default: return nil
+            }
+        }
+
+        var cornerRadius: CGFloat {
+            switch self {
+            case .prominent: return 14
+            default: return .radiusMedium
             }
         }
     }
@@ -89,10 +122,18 @@ struct PrimaryButton: View {
         Button(action: action) {
             buttonLabel
                 .interaOliveGreenTextOutline(when: !isDisabled && (variant == .outline || variant == .ghost))
-                .modifier(PrimaryButtonShapeModifier(shape: shape, borderColor: variant.borderColor))
+                .interaFilledPrimaryButtonLabelOutline(
+                    when: !isDisabled && titleUsesOutline && variant == .primary && size != .prominent
+                )
+                .modifier(PrimaryButtonShapeModifier(
+                    shape: shape,
+                    borderColor: variant.borderColor,
+                    cornerRadius: size.cornerRadius
+                ))
         }
         .buttonStyle(BookButtonStyle())
         .disabled(isDisabled || isLoading)
+        .fixedSize(horizontal: false, vertical: size == .prominent)
     }
 
     private var buttonLabel: some View {
@@ -103,33 +144,109 @@ struct PrimaryButton: View {
                     .scaleEffect(0.8)
             }
 
-            Text(title)
-                .font(InteraFont.system(size: size.fontSize, weight: .medium, design: .serif))
+            Group {
+                if titleUsesOutline && size == .prominent {
+                    prominentOutlinedTitleLabel
+                } else {
+                    Text(title)
+                        .font(InteraFont.system(size: size.fontSize, weight: size.fontWeight, design: size.fontDesign))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
         }
         .frame(maxWidth: isFullWidth ? .infinity : nil)
+        .frame(minHeight: size.minHeight)
         .padding(.horizontal, size.horizontalPadding)
         .padding(.vertical, size.verticalPadding)
         .background(isDisabled ? Color.borderMedium : variant.backgroundColor)
         .foregroundStyle(isDisabled ? Color.textDisabled : variant.foregroundColor)
+    }
+
+    private var prominentOutlinedTitleLabel: some View {
+        Text(title)
+            .font(InteraFont.system(size: size.fontSize, weight: size.fontWeight, design: size.fontDesign))
+            .lineLimit(2)
+            .minimumScaleFactor(0.78)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .interaFilledPrimaryButtonLabelOutline(when: true, width: 0.58, opacity: 0.96, strong: true)
+    }
+}
+
+private struct InteraFilledPrimaryButtonLabelOutlineModifier: ViewModifier {
+    var isEnabled: Bool
+    var width: CGFloat = 0.48
+    var opacity: CGFloat = 0.88
+    var strong: Bool = false
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isEnabled {
+            let outline = Color.black.opacity(opacity)
+            if strong {
+                content
+                    .modifier(InteraGlyphOutlineShadows(color: outline, width: width))
+                    .modifier(InteraGlyphOutlineShadows(color: outline, width: width * 0.62))
+            } else {
+                content
+                    .modifier(InteraGlyphOutlineShadows(color: outline, width: width))
+            }
+        } else {
+            content
+        }
+    }
+}
+
+private struct InteraGlyphOutlineShadows: ViewModifier {
+    let color: Color
+    let width: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .shadow(color: color, radius: 0, x: -width, y: 0)
+            .shadow(color: color, radius: 0, x: width, y: 0)
+            .shadow(color: color, radius: 0, x: 0, y: -width)
+            .shadow(color: color, radius: 0, x: 0, y: width)
+            .shadow(color: color, radius: 0, x: -width, y: -width)
+            .shadow(color: color, radius: 0, x: width, y: -width)
+            .shadow(color: color, radius: 0, x: -width, y: width)
+            .shadow(color: color, radius: 0, x: width, y: width)
+    }
+}
+
+private extension View {
+    func interaFilledPrimaryButtonLabelOutline(
+        when isEnabled: Bool,
+        width: CGFloat = 0.48,
+        opacity: CGFloat = 0.88,
+        strong: Bool = false
+    ) -> some View {
+        modifier(InteraFilledPrimaryButtonLabelOutlineModifier(
+            isEnabled: isEnabled,
+            width: width,
+            opacity: opacity,
+            strong: strong
+        ))
     }
 }
 
 private struct PrimaryButtonShapeModifier: ViewModifier {
     let shape: PrimaryButton.Shape
     let borderColor: Color?
+    var cornerRadius: CGFloat = .radiusMedium
 
     func body(content: Content) -> some View {
         switch shape {
         case .rounded:
             content
-                .clipShape(RoundedRectangle(cornerRadius: .radiusMedium))
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
                 .overlay {
                     if let borderColor {
-                        RoundedRectangle(cornerRadius: .radiusMedium)
+                        RoundedRectangle(cornerRadius: cornerRadius)
                             .strokeBorder(borderColor, lineWidth: 1.5)
                     }
                 }
-                .contentShape(RoundedRectangle(cornerRadius: .radiusMedium))
+                .contentShape(RoundedRectangle(cornerRadius: cornerRadius))
         case .pill:
             content
                 .clipShape(Capsule(style: .continuous))
@@ -170,6 +287,7 @@ private struct PrimaryButtonShapeModifier: ViewModifier {
         PrimaryButton(title: "Small Button", action: {}, size: .small)
         PrimaryButton(title: "Medium Button", action: {}, size: .medium)
         PrimaryButton(title: "Large Button", action: {}, size: .large)
+        PrimaryButton(title: "Prominent Button", action: {}, size: .prominent, titleUsesOutline: true)
     }
     .padding()
 }

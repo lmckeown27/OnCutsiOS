@@ -1452,37 +1452,12 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
 
     @ViewBuilder
     private func providerSuggestionAvatar(_ provider: ServiceProvider) -> some View {
-        let size: CGFloat = 36
-        if let imageUrl = provider.profileImageUrl, let url = URL(string: imageUrl) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                case .empty:
-                    Circle()
-                        .fill(Color.primary.opacity(0.12))
-                case .failure:
-                    Circle()
-                        .fill(Color.primary.opacity(0.12))
-                @unknown default:
-                    Circle()
-                        .fill(Color.primary.opacity(0.12))
-                }
-            }
-            .frame(width: size, height: size)
-            .clipShape(Circle())
-        } else {
-            Circle()
-                .fill(Color.brand.opacity(0.25))
-                .frame(width: size, height: size)
-                .overlay(
-                    Text(provider.businessName.prefix(1).uppercased())
-                        .font(InteraFont.caption.weight(.bold))
-                        .foregroundStyleOliveGreen()
-                )
-        }
+        ServiceProviderProfileThumbnail(
+            imageUrl: provider.profileImageUrl,
+            businessName: provider.businessName,
+            size: 36,
+            cornerRadius: 18
+        )
     }
 
     /// Collapsed: icon only. Expanded: `TextField` (placeholder “Search Barbers”) + close.

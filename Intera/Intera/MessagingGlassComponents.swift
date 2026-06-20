@@ -41,7 +41,7 @@ enum MessagingFlowHaptics {
 struct MessagingInboxIncomingUnreadDot: View {
     var body: some View {
         Circle()
-            .fill(Color.oliveGreen)
+            .fill(Color.oliveLight)
             .frame(width: 9, height: 9)
             .accessibilityLabel("Unread message")
     }

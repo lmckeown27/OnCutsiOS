@@ -68,6 +68,8 @@ final class ChatViewModel: ObservableObject {
 
     /// Set when the user opens a message push; `ConversationListView` consumes this to push the thread.
     @Published var pendingPushConversationId: String?
+    /// When terms block a push open, `ConversationListView` resumes here after acceptance.
+    @Published var pendingPushOpenBlockedByTerms: String?
     /// While a push deep-link is opening a hub thread, blocks duplicate work when the Messages `NavigationStack` identity resets.
     private(set) var pushConversationOpenInFlight: String?
 
@@ -185,6 +187,46 @@ final class ChatViewModel: ObservableObject {
         if pushConversationOpenInFlight?.caseInsensitiveCompare(cid) == .orderedSame {
             pushConversationOpenInFlight = nil
         }
+    }
+
+    /// Opens the hub Messages thread for a message push / notification tap (inbox row metadata when available).
+    @MainActor
+    func presentHubThreadFromMessagePush(conversationId: String, sessionManager: AppSessionManager) async {
+        let trimmed = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        pendingPushConversationId = nil
+
+        guard sessionManager.isAuthenticated else { return }
+
+        guard MessagingCommunitySafety.hasAcceptedMessagingTerms else {
+            pendingPushConversationId = trimmed
+            pendingPushOpenBlockedByTerms = trimmed
+            return
+        }
+
+        if let open = hubMessagesThreadPresentation,
+           open.conversationId.caseInsensitiveCompare(trimmed) == .orderedSame {
+            return
+        }
+
+        guard beginPushConversationOpenInFlight(trimmed) else { return }
+        defer { endPushConversationOpenInFlight(trimmed) }
+
+        if hubMessagesThreadPresentation == nil {
+            hubForegroundConversationId = nil
+        }
+
+        prefetchThreadMessages(conversationId: trimmed, sessionManager: sessionManager)
+        if rows.first(where: { $0.id.caseInsensitiveCompare(trimmed) == .orderedSame }) == nil {
+            await reloadInboxSilently(sessionManager: sessionManager)
+        }
+        let row = rows.first(where: { $0.id.caseInsensitiveCompare(trimmed) == .orderedSame })
+        presentHubMessagesThread(
+            HubMessagesThreadPresentation.minimal(
+                conversationId: trimmed,
+                rowIfKnown: row
+            )
+        )
     }
 
     /// Set when the user opens a booking-status push (confirmed, cancelled, reminder, etc.); `ConsumerBookingsHubView` pushes `ConsumerBookingDetailView`.

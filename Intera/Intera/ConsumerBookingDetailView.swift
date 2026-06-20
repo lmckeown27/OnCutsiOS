@@ -474,6 +474,10 @@ struct ConsumerBookingDetailView: View {
                bookingRow.notes?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty != nil {
                 supplementaryDetailsCard
             }
+
+            if !isRequestChangeEditing {
+                bookingReferenceFooter
+            }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 20)
@@ -1274,6 +1278,21 @@ struct ConsumerBookingDetailView: View {
     }
 
     // MARK: - Supplementary (notes)
+
+    private var bookingReferenceFooter: some View {
+        VStack(spacing: 6) {
+            Text("Booking Reference")
+                .bookingDetailFieldTitleStyle()
+            Text(bookingRow.displayBookingReference)
+                .font(InteraFont.subheadline.weight(.medium).monospaced())
+                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.82))
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Booking reference, \(bookingRow.displayBookingReference)")
+    }
 
     private var supplementaryDetailsCard: some View {
         VStack(alignment: .leading, spacing: 14) {

@@ -24,6 +24,35 @@ extension Notification.Name {
     static let consumerBookingsHubShouldPopToRoot = Notification.Name("consumerBookingsHubShouldPopToRoot")
 }
 
+/// Parses push / deep-link payload fields from `NotificationCenter` `userInfo`.
+enum InteraPushNavigationPayload {
+    static func conversationId(from userInfo: [AnyHashable: Any]?) -> String? {
+        guard let userInfo else { return nil }
+        var flat: [String: Any] = [:]
+        for (key, value) in userInfo {
+            if let key = key as? String {
+                flat[key] = value
+            }
+        }
+        if let nested = flat["data"] as? [String: Any] {
+            for (key, value) in nested {
+                flat[key] = value
+            }
+        }
+        for key in ["conversationId", "conversation_id"] {
+            let raw = flat[key]
+            let parsed: String? = {
+                if let s = raw as? String { return s.trimmingCharacters(in: .whitespacesAndNewlines) }
+                if let n = raw as? NSNumber { return n.stringValue }
+                if let i = raw as? Int { return String(i) }
+                return nil
+            }()
+            if let parsed, !parsed.isEmpty { return parsed }
+        }
+        return nil
+    }
+}
+
 enum ConsumerBrowseDistancePreference {
     private static let key = "consumer.browse.maxDistanceMiles"
     private static let constrainKey = "consumer.browse.constrainListByDistance"

@@ -61,7 +61,7 @@ extension UpcomingBooking {
 struct UpcomingBookingDetailsCard: View {
     let booking: UpcomingBooking
     var isCollapsible: Bool = true
-    var detailRoute: ConsumerHomeBookingStackRoute?
+    var onOpenBookingDetail: (() -> Void)? = nil
 
     @State private var isExpanded = false
 
@@ -116,8 +116,8 @@ struct UpcomingBookingDetailsCard: View {
         VStack(alignment: .leading, spacing: 12) {
             schedulePriceStatusRow
 
-            if let detailRoute {
-                NavigationLink(value: detailRoute) {
+            if let onOpenBookingDetail {
+                Button(action: onOpenBookingDetail) {
                     bookingDetailLinkRow
                 }
                 .buttonStyle(UpcomingBookingDetailLinkButtonStyle())
@@ -255,7 +255,7 @@ private extension String {
             price: "$35.00",
             isConfirmed: true
         ),
-        detailRoute: nil
+        onOpenBookingDetail: nil
     )
     .padding()
     .background(Color.black)

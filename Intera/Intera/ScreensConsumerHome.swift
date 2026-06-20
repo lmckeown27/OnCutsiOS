@@ -486,9 +486,18 @@ struct ConsumerHomeScreen: View {
                 openChatForBarberProfileId(id)
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaOpenMessagingConversation)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .interaOpenMessagingConversation)) { output in
             Task { @MainActor in
+                guard let cid = InteraPushNavigationPayload.conversationId(from: output.userInfo) else { return }
+                chatViewModel.pendingPushConversationId = cid
                 showMessagesInbox = true
+                await Task.yield()
+                await Task.yield()
+                await Task.yield()
+                await chatViewModel.presentHubThreadFromMessagePush(
+                    conversationId: cid,
+                    sessionManager: sessionManager
+                )
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .interaOpenBookingDetail)) { output in
@@ -507,7 +516,7 @@ struct ConsumerHomeScreen: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .interaNavigateToBookingsAfterBookingRequest)) { _ in
             Task { @MainActor in
-                showBookingChatsHub = true
+                showBookingChatsHub = false
                 await loadConsumerBookingsForHome()
             }
         }
@@ -641,7 +650,7 @@ struct ConsumerHomeScreen: View {
             onTodayBookingReminderTap: { (row: ConsumerBookingSimpleRow) in
                 if sessionManager.isAuthenticated {
                     navigationPath = NavigationPath()
-                    navigationPath.append(ConsumerHomeBookingStackRoute.bookingsTabDetail(row))
+                    navigationPath.append(ConsumerHomeBookingStackRoute.bookingsTabDetailPush(for: row))
                 } else {
                     showOAuthSignInSheet = true
                 }
@@ -1512,32 +1521,12 @@ struct ServiceProviderDetailSheet: View {
                     // Header
                     VStack(spacing: 20) {
                         // Profile Image
-                        if let imageUrl = provider.profileImageUrl, let url = URL(string: imageUrl) {
-                            AsyncImage(url: url) { image in
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                            } placeholder: {
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.brand.opacity(0.2))
-                                    .overlay(
-                                        Text(provider.businessName.prefix(2).uppercased())
-                                            .font(InteraFont.title)
-                                            .foregroundStyleOliveGreen()
-                                    )
-                            }
-                            .frame(width: 120, height: 120)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                        } else {
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.brand.opacity(0.2))
-                                .frame(width: 120, height: 120)
-                                .overlay(
-                                    Text(provider.businessName.prefix(2).uppercased())
-                                        .font(InteraFont.title)
-                                        .foregroundStyleOliveGreen()
-                                )
-                        }
+                        ServiceProviderProfileThumbnail(
+                            imageUrl: provider.profileImageUrl,
+                            businessName: provider.businessName,
+                            size: 120,
+                            cornerRadius: 16
+                        )
                         
                         // Name & availability only — rating lives in its own section below (not stacked on the hero).
                         VStack(spacing: 12) {
@@ -3280,9 +3269,22 @@ struct UnifiedProviderHomeScreen: View {
                 openUnifiedChatForBarberProfileId(id)
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaOpenMessagingConversation)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .interaOpenMessagingConversation)) { output in
             Task { @MainActor in
-                navigateHubPage(1, animated: true)
+                await handleOpenMessagingConversationFromNotification(userInfo: output.userInfo)
+            }
+        }
+        .onChange(of: hubPageIndex) { _, page in
+            guard page == 1 else { return }
+            guard let raw = chatViewModel.pendingPushConversationId?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                  !raw.isEmpty else { return }
+            Task { @MainActor in
+                await Task.yield()
+                await chatViewModel.presentHubThreadFromMessagePush(
+                    conversationId: raw,
+                    sessionManager: sessionManager
+                )
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .interaOpenBookingDetail)) { output in
@@ -3301,7 +3303,7 @@ struct UnifiedProviderHomeScreen: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .interaNavigateToBookingsAfterBookingRequest)) { _ in
             Task { @MainActor in
-                navigateHubPage(2, animated: true)
+                navigateHubPage(0, animated: true)
                 await loadUnifiedConsumerBookingsForHome()
             }
         }
@@ -3354,6 +3356,36 @@ struct UnifiedProviderHomeScreen: View {
         } else {
             navigateHubPage(1, animated: true)
         }
+    }
+
+    /// Message push tap → Messages tab + open thread with the provider who sent the notification.
+    @MainActor
+    private func handleOpenMessagingConversationFromNotification(userInfo: [AnyHashable: Any]?) async {
+        guard sessionManager.isAuthenticated else { return }
+        guard let cid = InteraPushNavigationPayload.conversationId(from: userInfo) else { return }
+
+        chatViewModel.pendingPushConversationId = cid
+
+        let needsStackReset = chatViewModel.hubMessagesThreadPresentation != nil
+            || chatViewModel.hubForegroundConversationId != nil
+        if needsStackReset {
+            chatViewModel.clearHubMessagesThreadPresentation()
+            messagesHubNavigationStackEpoch += 1
+            await Task.yield()
+            await Task.yield()
+            await Task.yield()
+        }
+
+        navigateHubPage(1, animated: true)
+
+        await Task.yield()
+        await Task.yield()
+        await Task.yield()
+
+        await chatViewModel.presentHubThreadFromMessagePush(
+            conversationId: cid,
+            sessionManager: sessionManager
+        )
     }
 
     @MainActor
@@ -3445,7 +3477,7 @@ struct UnifiedProviderHomeScreen: View {
                 }
                 navigateHubPage(0, animated: false)
                 navigationPath = NavigationPath()
-                navigationPath.append(ConsumerHomeBookingStackRoute.bookingsTabDetail(row))
+                navigationPath.append(ConsumerHomeBookingStackRoute.bookingsTabDetailPush(for: row))
             },
             onPendingPaymentReminderTap: { (row: ConsumerBookingSimpleRow) in
                 chatViewModel.presentPaymentTakeover(forBookingRow: row)

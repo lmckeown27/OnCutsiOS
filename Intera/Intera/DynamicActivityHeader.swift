@@ -53,10 +53,10 @@ struct HomeTodayBookingHighlight: Identifiable, Equatable, Sendable {
         self.barberAvatarURL = ProfileImageURLResolver.url(from: row.barberAvatar)
         self.serviceTitle = appt.serviceName
         self.scheduledAt = appt.scheduledAt
-        self.statusLabel = appt.statusNote ?? row.status
+        self.statusLabel = row.displayStatus
     }
 
-    /// Earliest **ACCEPTED** (provider-approved) booking in **Today** or **Upcoming** — any future slot, not only calendar-today.
+    /// Earliest **PENDING** or **ACCEPTED** booking in **Today** or **Upcoming** — any future slot, not only calendar-today.
     static func pickTodayHighlight(
         from rows: [ConsumerBookingSimpleRow],
         now: Date = Date(),
@@ -64,7 +64,7 @@ struct HomeTodayBookingHighlight: Identifiable, Equatable, Sendable {
     ) -> HomeTodayBookingHighlight? {
         let candidates = rows.filter { row in
             let u = row.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
-            guard u == "ACCEPTED" else { return false }
+            guard u == "PENDING" || u == "ACCEPTED" else { return false }
             switch row.scheduleSegment(now: now, calendar: calendar) {
             case .today, .upcoming:
                 return true
@@ -216,7 +216,7 @@ struct HomeTodayBookingReminderGlassCard: View {
                         .foregroundStyle(Color.lavaShellCream)
                         .lineLimit(1)
                         .minimumScaleFactor(0.45)
-                    Text(highlight.serviceTitle)
+                    Text(serviceAndStatusLine)
                         .font(InteraFont.headlineSmall)
                         .foregroundStyle(Color.lavaShellCream)
                         .lineLimit(2)
@@ -251,9 +251,17 @@ struct HomeTodayBookingReminderGlassCard: View {
         .contentShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
         .accessibilityLabel(
             highlight.isScheduledToday
-                ? "Today’s appointment, \(highlight.barberDisplayName), \(highlight.serviceTitle)"
-                : "Upcoming appointment, \(highlight.barberDisplayName), \(highlight.serviceTitle)"
+                ? "Today’s appointment, \(highlight.barberDisplayName), \(serviceAndStatusLine)"
+                : "Upcoming appointment, \(highlight.barberDisplayName), \(serviceAndStatusLine)"
         )
+    }
+
+    private var serviceAndStatusLine: String {
+        let service = highlight.serviceTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let status = highlight.statusLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !status.isEmpty else { return service }
+        guard !service.isEmpty else { return status }
+        return "\(service) · \(status)"
     }
 
     private var providerAvatar: some View {

@@ -117,6 +117,7 @@ final class ProviderViewModel {
 
                 lastSuccessfulProviders = providers
                 state = .success(providers)
+                prefetchProviderProfileImages(providers)
                 return
             } catch {
                 if InteraRefreshCancellation.isBenignCancellation(error) {
@@ -179,6 +180,19 @@ final class ProviderViewModel {
                 print("❌ \(label) decode failed: \(error.localizedDescription) — \(url.absoluteString) prefix: \(snippet)")
                 #endif
                 throw error
+            }
+        }
+    }
+
+    /// Warms URL cache so browse-card `AsyncImage` views resolve avatars reliably after cold launch.
+    private func prefetchProviderProfileImages(_ providers: [ServiceProvider]) {
+        let urls = providers.compactMap { ProfileImageURLResolver.urlForAsyncImage(from: $0.profileImageUrl) }
+        guard !urls.isEmpty else { return }
+        Task.detached(priority: .utility) {
+            for url in urls {
+                var request = URLRequest(url: url)
+                request.cachePolicy = .returnCacheDataElseLoad
+                _ = try? await URLSession.shared.data(for: request)
             }
         }
     }

@@ -17,6 +17,22 @@ import UIKit
 /// Past row kerning is 2.2pt; +15% tracking for the service title on this screen.
 private let paymentServiceTitleKerning: CGFloat = 2.2 * 1.15
 
+/// Service price on the payment summary card.
+private let paymentServicePriceFont = InteraFont.system(size: 48, weight: .bold, design: .default)
+
+/// Tip section typography (title + preset pills).
+private let paymentTipSectionTitleFont = InteraFont.system(size: 17, weight: .semibold, design: .default)
+private let paymentTipPillFont = InteraFont.system(size: 17, weight: .semibold, design: .default)
+private let paymentTipPillFontSelected = InteraFont.system(size: 17, weight: .bold, design: .default)
+
+private enum PaymentTipButtonMetrics {
+    static let pillHorizontalPadding: CGFloat = 20
+    static let pillHorizontalPaddingSelected: CGFloat = 22
+    static let pillVerticalPadding: CGFloat = 14
+    static let pillVerticalPaddingSelected: CGFloat = 15
+    static let pillSpacing: CGFloat = 12
+}
+
 /// Primary online payment CTAs (Apple Pay + Card).
 private let paymentPrimaryActionLabelFont = InteraFont.system(size: 19, weight: .bold, design: .default)
 private let paymentCashActionLabelFont = InteraFont.system(size: 16, weight: .semibold, design: .default)
@@ -24,8 +40,8 @@ private let paymentCashActionLabelFont = InteraFont.system(size: 16, weight: .se
 private enum PaymentMethodButtonMetrics {
     static let primaryHeight: CGFloat = 58
     static let primaryCornerRadius: CGFloat = 14
+    static let cashHorizontalPadding: CGFloat = 22
     static let cashVerticalPadding: CGFloat = 11
-    static let cashCornerRadius: CGFloat = 12
 }
 
 /// Percentage tip options; none selected until the user taps (tap again to clear).
@@ -153,7 +169,7 @@ struct ConsumerPaymentTakeoverView: View {
                     .padding(.vertical, 28)
                 }
             }
-            .navigationTitle("Pay for service")
+            .navigationTitle("")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -278,16 +294,16 @@ struct ConsumerPaymentTakeoverView: View {
                     }
 
                     Text(payload.priceFormatted)
-                        .font(InteraFont.system(size: 36, weight: .bold, design: .default))
+                        .font(paymentServicePriceFont)
                         .foregroundStyle(Color.lavaShellCream)
                         .multilineTextAlignment(.center)
 
-                    VStack(alignment: .center, spacing: 14) {
+                    VStack(alignment: .center, spacing: 16) {
                         Text("Tip")
-                            .font(InteraFont.caption.weight(.semibold))
-                            .foregroundStyle(Color.lavaShellCreamTertiary)
+                            .font(paymentTipSectionTitleFont)
+                            .foregroundStyle(Color.lavaShellCreamSecondary)
                             .textCase(.uppercase)
-                            .tracking(1.2)
+                            .tracking(1.4)
 
                         tipPillRow
                     }
@@ -382,9 +398,11 @@ struct ConsumerPaymentTakeoverView: View {
                         .font(InteraFont.title3.weight(.semibold))
                         .foregroundStyle(Color.paymentFilledButtonLabel)
                 }
-                Text(isPaying ? "Opening…" : "Card")
+                Text(isPaying ? "Opening…" : "Input Card Details")
                     .font(paymentPrimaryActionLabelFont)
                     .foregroundStyle(Color.paymentFilledButtonLabel)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
             .frame(maxWidth: .infinity)
             .frame(minHeight: PaymentMethodButtonMetrics.primaryHeight)
@@ -396,47 +414,51 @@ struct ConsumerPaymentTakeoverView: View {
     }
 
     private var cashSecondaryButton: some View {
-        Button {
-            showCashPaymentConfirm = true
-        } label: {
-            HStack(spacing: 8) {
-                if isConfirmingCash {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(Color.paymentOutlineButtonLabel)
-                } else {
-                    Image(systemName: "banknote")
-                        .font(InteraFont.subheadline.weight(.semibold))
+        HStack {
+            Spacer(minLength: 0)
+            Button {
+                showCashPaymentConfirm = true
+            } label: {
+                HStack(spacing: 8) {
+                    if isConfirmingCash {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(Color.paymentOutlineButtonLabel)
+                    } else {
+                        Image(systemName: "banknote")
+                            .font(InteraFont.subheadline.weight(.semibold))
+                    }
+                    Text(isConfirmingCash ? "Completing…" : "Cash")
+                        .font(paymentCashActionLabelFont)
                 }
-                Text(isConfirmingCash ? "Completing…" : "Cash")
-                    .font(paymentCashActionLabelFont)
+                .foregroundStyle(Color.paymentOutlineButtonLabel)
+                .padding(.horizontal, PaymentMethodButtonMetrics.cashHorizontalPadding)
+                .padding(.vertical, PaymentMethodButtonMetrics.cashVerticalPadding)
+                .background(Color.clear)
+                .clipShape(Capsule(style: .continuous))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(Color.paymentOutlineButtonLabel, lineWidth: 1)
+                )
+                .contentShape(Capsule(style: .continuous))
             }
-            .foregroundStyle(Color.paymentOutlineButtonLabel)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, PaymentMethodButtonMetrics.cashVerticalPadding)
-            .background(Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: PaymentMethodButtonMetrics.cashCornerRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: PaymentMethodButtonMetrics.cashCornerRadius, style: .continuous)
-                    .stroke(Color.paymentOutlineButtonLabel, lineWidth: 1)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: PaymentMethodButtonMetrics.cashCornerRadius, style: .continuous))
+            .disabled(isConfirmingCash || isPaying || isStartingApplePay)
+            .buttonStyle(BookButtonStyle())
+            Spacer(minLength: 0)
         }
-        .disabled(isConfirmingCash || isPaying || isStartingApplePay)
-        .buttonStyle(BookButtonStyle())
     }
 
     private var tipPillRow: some View {
         HStack {
             Spacer(minLength: 0)
-            HStack(spacing: 10) {
+            HStack(spacing: PaymentTipButtonMetrics.pillSpacing) {
                 ForEach(TipPreset.allCases, id: \.self) { preset in
                     tipPill(preset)
                 }
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
 
     private func tipPill(_ preset: TipPreset) -> some View {
@@ -452,10 +474,10 @@ struct ConsumerPaymentTakeoverView: View {
             }
         } label: {
             Text(preset.label)
-                .font(InteraFont.subheadline.weight(selected ? .bold : .semibold))
+                .font(selected ? paymentTipPillFontSelected : paymentTipPillFont)
                 .foregroundStyle(selected ? Color.paymentTipSelectedLabel : Color.paymentOutlineButtonLabel)
-                .padding(.horizontal, selected ? 18 : 16)
-                .padding(.vertical, selected ? 12 : 10)
+                .padding(.horizontal, selected ? PaymentTipButtonMetrics.pillHorizontalPaddingSelected : PaymentTipButtonMetrics.pillHorizontalPadding)
+                .padding(.vertical, selected ? PaymentTipButtonMetrics.pillVerticalPaddingSelected : PaymentTipButtonMetrics.pillVerticalPadding)
                 .background(
                     Capsule(style: .continuous)
                         .fill(selected ? Color.paymentTipSelectedFill : Color.clear)
@@ -464,11 +486,11 @@ struct ConsumerPaymentTakeoverView: View {
                     Capsule(style: .continuous)
                         .stroke(
                             selected ? Color.paymentTipSelectedFill : Color.paymentTipUnselectedStroke,
-                            lineWidth: selected ? 2.5 : 1.25
+                            lineWidth: selected ? 2.5 : 1.5
                         )
                 )
-                .shadow(color: selected ? Color.paymentTipSelectedFill.opacity(0.45) : .clear, radius: 8, y: 2)
-                .scaleEffect(selected ? 1.08 : 1.0)
+                .shadow(color: selected ? Color.paymentTipSelectedFill.opacity(0.45) : .clear, radius: 10, y: 3)
+                .scaleEffect(selected ? 1.06 : 1.0)
         }
         .buttonStyle(.plain)
         .animation(BookingSelectorTheme.selectionSpring, value: selected)

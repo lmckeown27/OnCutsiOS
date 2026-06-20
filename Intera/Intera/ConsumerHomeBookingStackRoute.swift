@@ -18,7 +18,12 @@ enum ConsumerHomeBookingStackRoute: Hashable {
 }
 
 extension ConsumerHomeBookingStackRoute {
-    /// Bookings timeline / shared “open detail” entry — deterministic `presentationID` for stable `NavigationLink(value:)`.
+    /// Programmatic push — **new** `presentationID` each time so re-opening the same booking after pop works.
+    static func bookingsTabDetailPush(for row: ConsumerBookingSimpleRow) -> ConsumerHomeBookingStackRoute {
+        .detail(bookingId: row.id, presentationID: UUID())
+    }
+
+    /// Stable link value (legacy `NavigationLink`); prefer ``bookingsTabDetailPush(for:)`` + path append.
     static func bookingsTabDetail(_ row: ConsumerBookingSimpleRow) -> ConsumerHomeBookingStackRoute {
         .detail(bookingId: row.id, presentationID: stablePresentationID(forBookingId: row.id))
     }

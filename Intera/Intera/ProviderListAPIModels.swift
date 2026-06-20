@@ -82,6 +82,7 @@ struct ProviderListAPIItem: Decodable, Sendable {
         bio = str(.bio)
         instagramHandle = str(.instagramHandle) ?? str(.instagram_handle)
         profileImageUrl = str(.profileImageUrl) ?? str(.profile_image_url) ?? str(.avatar) ?? str(.imageUrl)
+        profileImageUrl = ProfileImageURLResolver.normalizedStorageString(from: profileImageUrl)
 
         rating = try? c.decodeIfPresent(Double.self, forKey: .rating)
 

@@ -35,6 +35,9 @@ private struct CampusCutsBarberDTO: Decodable, Sendable {
     let userId: JSONStringOrInt?
     let name: String?
     let profilePictureUrl: String?
+    let profilePhotoUrl: String?
+    let avatarUrl: String?
+    let avatar: String?
     let bio: String?
     let specialties: [String]?
     let pricing: [CampusCutsPricingDTO]?
@@ -220,7 +223,11 @@ private extension CampusCutsBarberDTO {
             businessName: business,
             bio: bio.flatMap { $0.trimmedNonEmpty },
             instagramHandle: nil,
-            profileImageUrl: profilePictureUrl.flatMap { $0.trimmedNonEmpty },
+            profileImageUrl: ProfileImageURLResolver.normalizedStorageString(
+                from: [profilePictureUrl, profilePhotoUrl, avatarUrl, avatar]
+                    .compactMap { $0?.trimmedNonEmpty }
+                    .first
+            ),
             rating: averageRating,
             reviewCount: reviewCount,
             completedBookings: lifetimeBookings,

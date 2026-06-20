@@ -144,11 +144,9 @@ enum MessagingAPIService {
         return u
     }
 
-    private static func uploadURL(conversationId: String) throws -> URL {
-        let enc = conversationId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? conversationId
+    private static func uploadURL() throws -> URL {
         let base = AppConfiguration.messagingAPIRootTrimmed
-        // Matches typical CampusCuts `uploadChatImage` route; adjust if your server uses a different path.
-        guard let u = URL(string: base + "/messages/conversations/\(enc)/upload") else {
+        guard let u = URL(string: base + "/upload/chat-image") else {
             throw URLError(.badURL)
         }
         return u
@@ -560,9 +558,37 @@ enum MessagingAPIService {
         return nil
     }
 
-    /// Multipart image upload; returns absolute `mediaUrl` string from the API.
-    static func uploadChatImage(conversationId: String, imageData: Data, mimeType: String, bearerToken: String?) async throws -> String {
-        let url = try uploadURL(conversationId: conversationId)
+    /// Persists an image message after ``uploadChatImage`` (web parity: upload file, then POST message row).
+    static func sendImageMessage(
+        conversationId: String,
+        mediaUrl: String,
+        caption: String? = nil,
+        bearerToken: String?
+    ) async throws -> MessagingMessageDTO? {
+        let url = try conversationMessagesURL(id: conversationId)
+        let trimmed = mediaUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+        let content = caption?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let payload: [String: Any] = [
+            "content": content,
+            "messageType": "image",
+            "message_type": "image",
+            "mediaUrl": trimmed,
+            "media_url": trimmed,
+        ]
+        let body = try JSONSerialization.data(withJSONObject: payload, options: [])
+        let data = try await authorizedJSON(url: url, method: "POST", bearerToken: bearerToken, body: body)
+        if let env = try? jsonDecoder.decode(SuccessEnvelope<MessageSinglePayload>.self, from: data), let m = env.data?.message {
+            return m
+        }
+        if let env = try? jsonDecoder.decode(SuccessEnvelope<MessagingMessageDTO>.self, from: data), let m = env.data {
+            return m
+        }
+        return nil
+    }
+
+    /// Multipart image upload; returns absolute `mediaUrl` string from `POST /upload/chat-image`.
+    static func uploadChatImage(imageData: Data, mimeType: String, bearerToken: String?) async throws -> String {
+        let url = try uploadURL()
         let boundary = "Boundary-\(UUID().uuidString)"
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -586,6 +612,12 @@ enum MessagingAPIService {
             if let u = p.mediaUrl ?? p.url, !u.isEmpty { return u }
         }
         if let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let nested = dict["data"] as? [String: Any] {
+                if let u = nested["media_url"] as? String ?? nested["mediaUrl"] as? String ?? nested["url"] as? String,
+                   !u.isEmpty {
+                    return u
+                }
+            }
             if let u = dict["media_url"] as? String ?? dict["mediaUrl"] as? String ?? dict["url"] as? String, !u.isEmpty {
                 return u
             }

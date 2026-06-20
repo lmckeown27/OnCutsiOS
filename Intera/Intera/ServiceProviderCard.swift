@@ -114,34 +114,10 @@ struct ServiceProviderCard: View {
             onTap?()
         } label: {
             HStack(alignment: .top, spacing: .space4) {
-                // Square Profile Image
-                if let imageUrl = provider.profileImageUrl, let url = URL(string: imageUrl) {
-                    AsyncImage(url: url) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        Rectangle()
-                            .fill(Color.brand.opacity(0.2))
-                            .overlay(
-                                Text(provider.businessName.prefix(2).uppercased())
-                                    .font(InteraFont.headline)
-                                    .foregroundStyleOliveGreen()
-                            )
-                    }
-                    .frame(width: 80, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                } else {
-                    Rectangle()
-                        .fill(Color.brand.opacity(0.2))
-                        .frame(width: 80, height: 80)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(
-                            Text(provider.businessName.prefix(2).uppercased())
-                                .font(InteraFont.headline)
-                                .foregroundStyleOliveGreen()
-                        )
-                }
+                ServiceProviderProfileThumbnail(
+                    imageUrl: provider.profileImageUrl,
+                    businessName: provider.businessName
+                )
                 
                 // Info (top-aligned so text isn’t clipped to the image height)
                 VStack(alignment: .leading, spacing: .space2) {

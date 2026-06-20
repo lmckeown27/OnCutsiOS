@@ -7,6 +7,7 @@
 
 #if os(iOS)
 import SwiftUI
+import UIKit
 
 struct ConsumerPostPaymentReviewView: View {
     let context: PostPaymentReviewContext
@@ -19,6 +20,7 @@ struct ConsumerPostPaymentReviewView: View {
     @State private var comment: String = ""
     @State private var isSubmitting = false
     @State private var bannerError: String?
+    @FocusState private var isReviewCommentFocused: Bool
 
     var body: some View {
         ZStack {
@@ -32,6 +34,7 @@ struct ConsumerPostPaymentReviewView: View {
                                 .font(InteraFont.system(size: 22, weight: .bold, design: .default))
                                 .foregroundStyle(Color.lavaShellCream)
                                 .multilineTextAlignment(.center)
+                                .onTapGesture { dismissReviewKeyboard() }
 
                             interactiveStarRow
                                 .frame(maxWidth: .infinity)
@@ -41,6 +44,7 @@ struct ConsumerPostPaymentReviewView: View {
                                 Text("Written review (optional)")
                                     .font(InteraFont.subheadline.weight(.semibold))
                                     .foregroundStyle(Color.lavaShellCreamSecondary)
+                                    .onTapGesture { dismissReviewKeyboard() }
 
                                 ZStack(alignment: .topLeading) {
                                     if comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -55,6 +59,7 @@ struct ConsumerPostPaymentReviewView: View {
                                         .scrollContentBackground(.hidden)
                                         .font(InteraFont.body)
                                         .interaAdaptiveTextEditorForeground()
+                                        .focused($isReviewCommentFocused)
                                         .frame(minHeight: 120)
                                         .padding(10)
                                 }
@@ -77,6 +82,7 @@ struct ConsumerPostPaymentReviewView: View {
 
                             VStack(spacing: 12) {
                                 Button {
+                                    dismissReviewKeyboard()
                                     Task { await finishReviewFlow() }
                                 } label: {
                                     HStack {
@@ -99,6 +105,7 @@ struct ConsumerPostPaymentReviewView: View {
                                 .disabled(isSubmitting)
 
                                 Button("Not now") {
+                                    dismissReviewKeyboard()
                                     Task { await skipWithoutSubmitting() }
                                 }
                                 .font(InteraFont.subheadline.weight(.semibold))
@@ -111,7 +118,14 @@ struct ConsumerPostPaymentReviewView: View {
                     .padding(.horizontal, 20)
                     .padding(.vertical, 28)
                 }
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+                .simultaneousGesture(TapGesture().onEnded {
+                    guard isReviewCommentFocused else { return }
+                    dismissReviewKeyboard()
+                })
             }
+            .scrollDismissesKeyboard(isReviewCommentFocused ? .immediately : .interactively)
         }
         .interactiveDismissDisabled()
     }
@@ -120,6 +134,7 @@ struct ConsumerPostPaymentReviewView: View {
         HStack(spacing: 10) {
             ForEach(1 ... 5, id: \.self) { index in
                 Button {
+                    dismissReviewKeyboard()
                     if starRating == index {
                         starRating = 0
                     } else {
@@ -158,6 +173,11 @@ struct ConsumerPostPaymentReviewView: View {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(Color.interaShellGlassStroke, lineWidth: 1)
             )
+    }
+
+    private func dismissReviewKeyboard() {
+        isReviewCommentFocused = false
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     @MainActor

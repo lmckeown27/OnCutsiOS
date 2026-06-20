@@ -120,14 +120,7 @@ extension InteraAppDelegate: UNUserNotificationCenterDelegate {
         let flat = flattenRemoteNotificationUserInfo(userInfo)
         let type = (flat["type"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         guard type == "message" else { return }
-        let raw = flat["conversationId"]
-        let cid: String? = {
-            if let s = raw as? String { return s.trimmingCharacters(in: .whitespacesAndNewlines) }
-            if let n = raw as? NSNumber { return n.stringValue }
-            if let i = raw as? Int { return String(i) }
-            return nil
-        }()
-        guard let cid, !cid.isEmpty else { return }
+        guard let cid = InteraPushNavigationPayload.conversationId(from: userInfo) else { return }
         NotificationCenter.default.post(
             name: .interaOpenMessagingConversation,
             object: nil,

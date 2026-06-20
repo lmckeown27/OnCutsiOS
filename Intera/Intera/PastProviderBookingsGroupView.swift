@@ -11,6 +11,7 @@ import SwiftUI
 struct PastProviderBookingsGroupView: View {
     let group: ConsumerPastProviderGroup
     var scheduleLine: (ConsumerBookingSimpleRow) -> String
+    var onOpenBookingDetail: ((ConsumerBookingSimpleRow) -> Void)? = nil
     var onRemovePastBooking: ((ConsumerBookingSimpleRow) -> Void)? = nil
 
     @State private var isExpanded = false
@@ -109,7 +110,9 @@ struct PastProviderBookingsGroupView: View {
 
     @ViewBuilder
     private func nestedPastRow(row: ConsumerBookingSimpleRow) -> some View {
-        NavigationLink(value: ConsumerHomeBookingStackRoute.bookingsTabDetail(row)) {
+        Button {
+            onOpenBookingDetail?(row)
+        } label: {
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(row.displayServiceName)

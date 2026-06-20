@@ -539,6 +539,13 @@ extension ConsumerBookingSimpleRow {
         }
     }
 
+    /// Short reference shown on consumer booking detail (matches web: first 8 chars of booking id, uppercased).
+    var displayBookingReference: String {
+        let raw = id.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else { return "—" }
+        return String(raw.prefix(8)).uppercased()
+    }
+
     private static func titleCaseServiceTypeForDisplay(_ raw: String) -> String {
         raw
             .lowercased()

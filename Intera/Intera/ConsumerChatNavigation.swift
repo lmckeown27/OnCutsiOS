@@ -179,6 +179,13 @@ struct ConversationListView: View {
             }
             .onAppear {
                 Task { @MainActor in
+                    if let cid = chatViewModel.pendingPushOpenBlockedByTerms?
+                        .trimmingCharacters(in: .whitespacesAndNewlines),
+                       !cid.isEmpty {
+                        chatViewModel.pendingPushOpenBlockedByTerms = nil
+                        pendingConversationOpenAfterTerms = cid
+                        showMessagingTermsGate = true
+                    }
                     scheduleOpenConversationFromPushIfNeeded()
                 }
             }
@@ -283,38 +290,27 @@ struct ConversationListView: View {
                 await Task.yield()
             }
             guard !Task.isCancelled else { return }
-            await openConversationFromPushNotification(conversationId: cid)
+            await chatViewModel.presentHubThreadFromMessagePush(
+                conversationId: cid,
+                sessionManager: sessionManager
+            )
         }
     }
 
     @MainActor
     private func openConversationFromPushNotification(conversationId: String) async {
-        guard sessionManager.isAuthenticated else { return }
-        let trimmed = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        guard MessagingCommunitySafety.hasAcceptedMessagingTerms else {
-            pendingConversationOpenAfterTerms = trimmed
-            showMessagingTermsGate = true
-            return
-        }
-        if let open = chatViewModel.hubMessagesThreadPresentation,
-           open.conversationId.caseInsensitiveCompare(trimmed) == .orderedSame {
-            return
-        }
-        if chatViewModel.hubMessagesThreadPresentation == nil {
-            chatViewModel.hubForegroundConversationId = nil
-        }
-        chatViewModel.prefetchThreadMessages(conversationId: trimmed, sessionManager: sessionManager)
-        if chatViewModel.rows.first(where: { $0.id.caseInsensitiveCompare(trimmed) == .orderedSame }) == nil {
-            await chatViewModel.reloadInboxSilently(sessionManager: sessionManager)
-        }
-        let row = chatViewModel.rows.first(where: { $0.id.caseInsensitiveCompare(trimmed) == .orderedSame })
-        chatViewModel.presentHubMessagesThread(
-            ChatViewModel.HubMessagesThreadPresentation.minimal(
-                conversationId: trimmed,
-                rowIfKnown: row
-            )
+        await chatViewModel.presentHubThreadFromMessagePush(
+            conversationId: conversationId,
+            sessionManager: sessionManager
         )
+        if chatViewModel.pendingPushOpenBlockedByTerms != nil {
+            let cid = chatViewModel.pendingPushOpenBlockedByTerms?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !cid.isEmpty else { return }
+            chatViewModel.pendingPushOpenBlockedByTerms = nil
+            pendingConversationOpenAfterTerms = cid
+            showMessagingTermsGate = true
+        }
     }
 
     /// Matches `ScreensConsumerHome.openUnifiedChatForBarberProfileId` → `presentMessagingThreadForBooking(..., .homeShellNavigation)` (hub outer `NavigationStack`, empty initial draft).
