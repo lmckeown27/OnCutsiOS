@@ -814,26 +814,33 @@ struct ConsumerHomeScreen: View {
         }
     }
     
+    @ViewBuilder
     private var emptyBrowseState: some View {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return VStack(spacing: .space4) {
-            Spacer()
-            
-            Image(systemName: trimmed.isEmpty ? "scissors" : "magnifyingglass")
-                .font(InteraFont.system(size: 60))
-                .foregroundStyle(Color.lavaShellCreamTertiary)
-            
-            Text(trimmed.isEmpty ? "No providers available" : "No matching providers")
-                .font(InteraFont.headlineMedium)
-                .foregroundStyle(Color.lavaShellCream)
-            
-            Text(trimmed.isEmpty ? "Check back later for available service providers" : "Try a different search or category.")
-                .campusCutsStyle(.bodyMedium)
-                .multilineTextAlignment(.center)
-            
-            Spacer()
+        let noProvidersInRadius = providers.isEmpty
+
+        if trimmed.isEmpty, noProvidersInRadius {
+            HomeNoBarbersInRadiusEmptyLabel()
+        } else {
+            VStack(spacing: .space4) {
+                Spacer()
+
+                Image(systemName: trimmed.isEmpty ? "scissors" : "magnifyingglass")
+                    .font(InteraFont.system(size: 60))
+                    .foregroundStyle(Color.lavaShellCreamTertiary)
+
+                Text(trimmed.isEmpty ? "No providers available" : "No matching providers")
+                    .font(InteraFont.headlineMedium)
+                    .foregroundStyle(Color.lavaShellCream)
+
+                Text(trimmed.isEmpty ? "Check back later for available service providers" : "Try a different search or category.")
+                    .campusCutsStyle(.bodyMedium)
+                    .multilineTextAlignment(.center)
+
+                Spacer()
+            }
+            .padding()
         }
-        .padding()
     }
     
     // MARK: - Current Booking View
@@ -3697,21 +3704,28 @@ struct UnifiedProviderHomeScreen: View {
         }
     }
     
+    @ViewBuilder
     private var emptyState: some View {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return VStack(spacing: .space4) {
-            Spacer()
-            Image(systemName: trimmed.isEmpty ? "person.2" : "magnifyingglass")
-                .font(InteraFont.system(size: 60))
-                .foregroundStyle(Color.lavaShellCreamTertiary)
-            Text(trimmed.isEmpty ? "No providers available" : "No matching providers")
-                .font(InteraFont.headlineMedium)
-                .foregroundStyle(Color.lavaShellCream)
-            Text(trimmed.isEmpty ? "Check back later" : "Try a different search or category.")
-                .campusCutsStyle(.bodyMedium)
-            Spacer()
+        let noProvidersInRadius = serviceProviders.isEmpty
+
+        if trimmed.isEmpty, noProvidersInRadius {
+            HomeNoBarbersInRadiusEmptyLabel()
+        } else {
+            VStack(spacing: .space4) {
+                Spacer()
+                Image(systemName: trimmed.isEmpty ? "person.2" : "magnifyingglass")
+                    .font(InteraFont.system(size: 60))
+                    .foregroundStyle(Color.lavaShellCreamTertiary)
+                Text(trimmed.isEmpty ? "No providers available" : "No matching providers")
+                    .font(InteraFont.headlineMedium)
+                    .foregroundStyle(Color.lavaShellCream)
+                Text(trimmed.isEmpty ? "Check back later" : "Try a different search or category.")
+                    .campusCutsStyle(.bodyMedium)
+                Spacer()
+            }
+            .padding()
         }
-        .padding()
     }
     
     private func loadProviders() async {
@@ -3875,6 +3889,21 @@ struct CategoryChip: View {
             .opacity(isEnabled ? 1.0 : 0.6)
         }
         .disabled(!isEnabled)
+    }
+}
+
+/// Shown when `GET /barbers` returns no providers within the consumer’s distance preference.
+private struct HomeNoBarbersInRadiusEmptyLabel: View {
+    var body: some View {
+        Text("No barber's in your selectable radius")
+            .font(InteraFont.headlineMedium)
+            .foregroundStyle(Color.lavaShellCream)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 280)
+            .padding(.horizontal, .space4)
+            .padding(.bottom, .space6)
+            .frame(minHeight: 520, alignment: .top)
     }
 }
 
