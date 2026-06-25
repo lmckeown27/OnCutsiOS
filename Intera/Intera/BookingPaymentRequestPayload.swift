@@ -47,7 +47,7 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
         }()
         guard let paymentUrl else { return nil }
 
-        let barber = stringValue(dict["barberName"] ?? dict["barber_name"]) ?? "Your barber"
+        let barber = stringValue(dict["barberName"] ?? dict["barber_name"]) ?? "Your provider"
         let service = stringValue(dict["serviceName"] ?? dict["service_name"]) ?? "Service"
 
         let cents: Int = {
@@ -89,7 +89,7 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
         let u = bookingRow.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard u == "COMPLETED" else { return nil }
         guard let url = AppConfiguration.urlConsumerBookingPaymentWeb(bookingId: bookingRow.id) else { return nil }
-        let name = bookingRow.barberName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? "Your barber"
+        let name = bookingRow.barberName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? "Your provider"
         let cents = bookingRow.priceUsdCents ?? 0
         let formatted: String = {
             let d = Decimal(cents) / 100

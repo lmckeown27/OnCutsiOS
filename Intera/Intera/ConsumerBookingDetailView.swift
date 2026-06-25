@@ -357,7 +357,7 @@ struct ConsumerBookingDetailView: View {
         .alert("Stripe test mode", isPresented: $showLiveDataStripeAlert) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text("Live Data Mode is on. Booking and live checkout are disabled so you do not email real barbers or charge real cards. Use a build with this flag off and Stripe test keys to exercise the full flow.")
+            Text("Live Data Mode is on. Booking and live checkout are disabled so you do not email real service providers or charge real cards. Use a build with this flag off and Stripe test keys to exercise the full flow.")
         }
         .alert("Messages unavailable", isPresented: $showMessagingUnavailableAlert) {
             Button("OK", role: .cancel) { }
@@ -1335,9 +1335,9 @@ struct ConsumerBookingDetailView: View {
 
     private var payForServiceSubtitle: String {
         if let p = formattedPrice {
-            return "Your barber marked this visit complete. Pay \(p) with Apple Pay, card, or cash (in person)."
+            return "Your provider marked this visit complete. Pay \(p) with Apple Pay, card, or cash (in person)."
         }
-        return "Your barber marked this visit complete. Pay with Apple Pay, card, or cash (in person)."
+        return "Your provider marked this visit complete. Pay with Apple Pay, card, or cash (in person)."
     }
 
     // MARK: - Edit mode actions
@@ -1490,7 +1490,7 @@ struct ConsumerBookingDetailView: View {
             #endif
             AlertManager.shared.present(
                 scheduleDraftChanged
-                    ? "Schedule change requested. Your barber will review it."
+                    ? "Schedule change requested. Your provider will review it."
                     : "Booking details updated."
             )
             NotificationCenter.default.post(name: .consumerBookingsListShouldRefresh, object: nil)

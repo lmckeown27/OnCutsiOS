@@ -271,7 +271,7 @@ internal struct ConsumerBookingCard: View {
                 .clipShape(Circle())
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(booking.barberBusinessName ?? booking.barberName ?? "Barber")
+                    Text(booking.barberBusinessName ?? booking.barberName ?? "Provider")
                         .font(.headline)
                     Text(booking.serviceName ?? "Haircut")
                         .font(.subheadline)

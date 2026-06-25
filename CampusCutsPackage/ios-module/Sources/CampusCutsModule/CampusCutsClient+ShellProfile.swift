@@ -94,7 +94,7 @@ extension CampusCutsClient {
     private static func mapBookingToProfile(_ b: Booking) -> CampusCutsProfileBooking? {
         guard let at = scheduledDate(bookingDate: b.bookingDate, startTime: b.startTime) else { return nil }
         let service = trimmedNonEmpty(b.serviceName) ?? "Service"
-        let provider = trimmedNonEmpty(b.barberBusinessName) ?? trimmedNonEmpty(b.barberName) ?? "Barber"
+        let provider = trimmedNonEmpty(b.barberBusinessName) ?? trimmedNonEmpty(b.barberName) ?? "Provider"
         return CampusCutsProfileBooking(
             id: b.id,
             serviceName: service,

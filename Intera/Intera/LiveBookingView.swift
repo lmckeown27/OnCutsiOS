@@ -460,8 +460,8 @@ struct LiveBookingView: View {
             PrimaryButton(
                 title: "Continue to Confirmation",
                 action: { continueTapped(scrollProxy: scrollProxy) },
-                size: .prominent,
-                titleUsesOutline: true
+                variant: .shell,
+                size: .footer
             )
             .padding(.horizontal, 16)
             .padding(.vertical, 12)

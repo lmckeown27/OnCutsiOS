@@ -29,7 +29,7 @@ enum InteraLiquidGlassHaptics {
     #endif
 }
 
-// MARK: - Typography (Clarendon / Superclarendon)
+// MARK: - Typography (Inter Variable)
 
 enum InteraLiquidGlassTypography {
     static func title(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {

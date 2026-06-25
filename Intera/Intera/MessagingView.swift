@@ -95,7 +95,7 @@ struct MessagingView: View {
                     ContentUnavailableView(
                         "No messages",
                         systemImage: "bubble.left.and.bubble.right",
-                        description: Text("When you book with a barber, your conversation will show up here.")
+                        description: Text("When you book with a service provider, your conversation will show up here.")
                     )
                 } else {
                     ScrollView {
@@ -415,7 +415,7 @@ final class MessagingConversationViewModel: ObservableObject {
     var onThreadSnapshotCommitted: (([MessagingMessageDTO], MessagingBookingDTO?, MessagingConversationOtherUserDTO?) -> Void)?
 
     private var didStartSocketSession = false
-    /// From inbox `otherUser` / booking row when `booking` lacks barber display strings (keeps nav title off the generic **“Barber”** label).
+    /// From inbox `otherUser` / booking row when `booking` lacks provider display strings (keeps nav title off the generic role label).
     private let counterpartyFallbackDisplayName: String?
 
     init(

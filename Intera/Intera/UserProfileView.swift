@@ -592,7 +592,7 @@ private enum EditProfileMainTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .profileInfo: return "Profile Info"
-        case .security: return "Security"
+        case .security: return "Delete Account"
         }
     }
 }
@@ -669,7 +669,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
 
     /// Shown in the Account → Apple Pay & payments sheet (numbered checklist for reviewers and users).
     private static let applePayInstructionSteps: [String] = [
-        "Your barber marks the service Completed in the CampusCuts Provider platform (their provider-facing CampusCuts Provider app).",
+        "Your service provider marks the service Completed in the CampusCuts Provider platform (their provider-facing CampusCuts Provider app).",
         "\(AppBranding.displayName) may open the payment screen automatically; you can tap Pay later to return to the app, then go to Bookings → open that booking → Pay for this service.",
         "On the payment screen, use the Apple Pay button (or Card / Cash). Apple Pay appears when Wallet has a card and merchant configuration is active.",
         "If checkout never appeared, open Bookings, select the completed booking, and tap Pay for this service.",
@@ -685,7 +685,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
         session.signInProvider == .apple
     }
 
-    /// Keeps keyboard resize on the scroll surface only so the Profile / Security bar does not ride up with the keyboard.
+    /// Keeps keyboard resize on the scroll surface only so the Profile Info / Delete Account bar does not ride up with the keyboard.
     @FocusState private var focusedProfileNameField: ProfileNameField?
 
     private func dismissProfileNameKeyboard() {
@@ -805,6 +805,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                     .padding(.horizontal, .space4)
                     .padding(.top, 10)
                     .padding(.bottom, 10)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity)
                     .background {
                         #if canImport(UIKit)
@@ -863,7 +864,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Pay with Apple Pay")
                             .font(InteraFont.title3.weight(.bold))
-                        Text("Typical flow after your barber completes the service:")
+                        Text("Typical flow after your provider completes the service:")
                             .font(InteraFont.subheadline)
                             .foregroundStyle(.secondary)
                             .padding(.bottom, 8)
@@ -1053,7 +1054,8 @@ private struct UserProfileSettingsDrawerOverlay: View {
             .padding(.horizontal, .space4)
             .padding(.top, 10)
             .padding(.bottom, 10)
-            .frame(maxWidth: .infinity)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .top)
             .opacity(Double(profileUtilityChromeProgress))
             .offset(y: -profileUtilityPillHideTravel)
             .animation(nil, value: profileUtilityChromeProgress)
@@ -1061,18 +1063,14 @@ private struct UserProfileSettingsDrawerOverlay: View {
     }
 
     private var editTabBar: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(EditProfileMainTab.allCases.enumerated()), id: \.element.id) { index, item in
-                if index > 0 {
-                    profileUtilityPillDivider
-                }
+        HStack(spacing: 4) {
+            ForEach(EditProfileMainTab.allCases) { item in
                 profileUtilityPillSegment(item)
             }
         }
-        .padding(.leading, 10)
-        .padding(.trailing, 8)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, minHeight: 56, alignment: .center)
+        .padding(4)
+        .frame(maxWidth: .infinity)
+        .fixedSize(horizontal: false, vertical: true)
         .background {
             Capsule()
                 .fill(.ultraThinMaterial)
@@ -1084,11 +1082,13 @@ private struct UserProfileSettingsDrawerOverlay: View {
         }
     }
 
-    private var profileUtilityPillDivider: some View {
-        Rectangle()
-            .fill(Color.lavaShellCream.opacity(0.5))
-            .frame(width: 1, height: 22)
-            .padding(.horizontal, 4)
+    private func profileUtilityPillSegmentFill(_ item: EditProfileMainTab) -> Color {
+        switch item {
+        case .profileInfo:
+            return Color.lavaShellCream.opacity(0.22)
+        case .security:
+            return Color.red.opacity(0.24)
+        }
     }
 
     private func profileUtilityPillSegment(_ item: EditProfileMainTab) -> some View {
@@ -1107,11 +1107,18 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 .font(InteraFont.system(size: 14, weight: isSelected ? .semibold : .medium, design: .default))
                 .foregroundStyle(profileUtilityPillSegmentForeground(item, isSelected: isSelected))
                 .lineLimit(1)
-                .minimumScaleFactor(0.82)
+                .minimumScaleFactor(0.72)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 4)
-                .contentShape(Rectangle())
+                .padding(.vertical, 10)
+                .padding(.horizontal, 8)
+                .background {
+                    if isSelected {
+                        Capsule()
+                            .fill(profileUtilityPillSegmentFill(item))
+                    }
+                }
+                .contentShape(Capsule())
         }
         #if os(iOS)
         .buttonStyle(ProfileUtilityPillPressStyle())

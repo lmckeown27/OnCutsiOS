@@ -210,7 +210,7 @@ struct ConsumerPaymentTakeoverView: View {
                 Task { await completeCashPayment() }
             }
         } message: {
-            Text("Please ensure you have paid your barber in person.")
+            Text("Please ensure you have paid your provider in person.")
         }
     }
 
@@ -245,7 +245,7 @@ struct ConsumerPaymentTakeoverView: View {
 
     private var displayBarberName: String {
         let t = payload.barberName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return t.isEmpty ? "Your barber" : t
+        return t.isEmpty ? "Your provider" : t
     }
 
     private static let paymentAvatarCorner: CGFloat = 12

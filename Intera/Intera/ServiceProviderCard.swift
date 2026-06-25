@@ -9,14 +9,10 @@
 import SwiftUI
 
 private struct ServiceProviderCardPriceLabelStyle: ViewModifier {
-    let usesLiquidGlassMorphChrome: Bool
+    let color: Color
 
     func body(content: Content) -> some View {
-        if usesLiquidGlassMorphChrome {
-            content.foregroundStyle(Color.white)
-        } else {
-            content.foregroundStyleOliveGreen()
-        }
+        content.foregroundStyle(color)
     }
 }
 
@@ -89,12 +85,14 @@ struct ServiceProviderCard: View {
 
     private var kindPillForegroundColor: Color {
         if usesLiquidGlassMorphChrome { return .white }
-        return .brand
+        if usesOpaqueBrowseChrome { return .interaShellForegroundSecondary }
+        return .neutral600
     }
 
     private var kindPillBackgroundColor: Color {
         if usesLiquidGlassMorphChrome { return Color.white.opacity(0.22) }
-        return Color.brand.opacity(0.1)
+        if usesOpaqueBrowseChrome { return Color.interaShellForeground.opacity(0.1) }
+        return Color.neutral200
     }
 
     /// Hide stars until there’s some social proof: reviews, booking count, or embedded list reviews.
@@ -151,7 +149,6 @@ struct ServiceProviderCard: View {
                     }
                     
                     // Provider kind (Barber, Makeup, Nails, …) — not individual services / haircut names
-                    /*
                     Text(provider.providerKindDisplayName)
                         .font(InteraFont.caption)
                         .fontWeight(.medium)
@@ -160,7 +157,6 @@ struct ServiceProviderCard: View {
                         .padding(.vertical, 4)
                         .background(kindPillBackgroundColor)
                         .clipShape(Capsule())
-                    */
                     
                     // Instagram handle (visible only; open profile from detail sheet to visit)
                     if !provider.instagramDisplayHandle.isEmpty {
@@ -184,7 +180,7 @@ struct ServiceProviderCard: View {
                                 .multilineTextAlignment(.trailing)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .modifier(ServiceProviderCardPriceLabelStyle(
-                                    usesLiquidGlassMorphChrome: usesLiquidGlassMorphChrome
+                                    color: usesLiquidGlassMorphChrome ? Color.white : cardPrimaryTextColor
                                 ))
                         }
                         if let distanceLabel = provider.formattedDistanceFromUser {

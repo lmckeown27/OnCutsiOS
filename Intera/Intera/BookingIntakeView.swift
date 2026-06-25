@@ -199,8 +199,8 @@ struct BookingIntakeView: View {
                             PrimaryButton(
                                 title: "Continue to Confirmation",
                                 action: { continueTapped(scrollProxy: proxy) },
-                                size: .prominent,
-                                titleUsesOutline: true
+                                variant: .shell,
+                                size: .footer
                             )
                             .padding(.top, .space4)
                             .padding(.bottom, .space8)
@@ -397,7 +397,7 @@ struct BookingIntakeView: View {
                 #else
                 .foregroundStyle(.yellow)
                 #endif
-            Text("Add a meeting location so your barber knows where to find you.")
+            Text("Add a meeting location so your provider knows where to find you.")
                 .font(InteraFont.body)
                 .foregroundStyle(.primary)
         }

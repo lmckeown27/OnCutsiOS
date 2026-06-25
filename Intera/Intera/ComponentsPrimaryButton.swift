@@ -30,6 +30,8 @@ struct PrimaryButton: View {
         case outline
         case danger
         case ghost
+        /// Cream fill + dark label for CTAs on the lava booking shell (matches provider **Book**).
+        case shell
         
         var backgroundColor: Color {
             switch self {
@@ -38,6 +40,7 @@ struct PrimaryButton: View {
             case .outline: return .clear
             case .danger: return .oliveDark
             case .ghost: return .clear
+            case .shell: return .lavaShellCream
             }
         }
         
@@ -48,6 +51,7 @@ struct PrimaryButton: View {
             case .outline: return .oliveGreen
             case .danger: return .white
             case .ghost: return .oliveGreen
+            case .shell: return .interaShellBackground
             }
         }
         
@@ -60,13 +64,14 @@ struct PrimaryButton: View {
     }
     
     enum Size {
-        case small, medium, large, prominent
+        case small, medium, large, footer, prominent
         
         var horizontalPadding: CGFloat {
             switch self {
             case .small: return 12
             case .medium: return 16
             case .large: return 24
+            case .footer: return 16
             case .prominent: return 16
             }
         }
@@ -76,6 +81,7 @@ struct PrimaryButton: View {
             case .small: return 6
             case .medium: return 10
             case .large: return 14
+            case .footer: return 10
             case .prominent: return 12
             }
         }
@@ -85,6 +91,7 @@ struct PrimaryButton: View {
             case .small: return 14
             case .medium: return 16
             case .large: return 18
+            case .footer: return 18
             case .prominent: return 28
             }
         }
@@ -92,19 +99,21 @@ struct PrimaryButton: View {
         var fontWeight: Font.Weight {
             switch self {
             case .prominent: return .bold
+            case .footer: return .semibold
             default: return .medium
             }
         }
 
         var fontDesign: Font.Design {
             switch self {
-            case .prominent: return .default
+            case .prominent, .footer: return .default
             default: return .serif
             }
         }
 
         var minHeight: CGFloat? {
             switch self {
+            case .footer: return 48
             case .prominent: return 54
             default: return nil
             }
@@ -112,6 +121,7 @@ struct PrimaryButton: View {
 
         var cornerRadius: CGFloat {
             switch self {
+            case .footer: return 12
             case .prominent: return 14
             default: return .radiusMedium
             }
@@ -133,7 +143,7 @@ struct PrimaryButton: View {
         }
         .buttonStyle(BookButtonStyle())
         .disabled(isDisabled || isLoading)
-        .fixedSize(horizontal: false, vertical: size == .prominent)
+        .fixedSize(horizontal: false, vertical: size == .prominent || size == .footer)
     }
 
     private var buttonLabel: some View {

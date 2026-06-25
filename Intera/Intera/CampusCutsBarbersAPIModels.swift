@@ -172,7 +172,7 @@ private extension CampusCutsBarberDTO {
         let rawId = id.value.trimmingCharacters(in: .whitespacesAndNewlines)
         let pid = rawId.isEmpty ? "barber-\(fallbackIndex)" : rawId
         let uid = userId.map(\.value).flatMap { $0.trimmedNonEmpty } ?? pid
-        let business = name.flatMap { $0.trimmedNonEmpty } ?? "Barber"
+        let business = name.flatMap { $0.trimmedNonEmpty } ?? "Provider"
 
         let services: [ServiceProvider.Service]? = {
             let mapped = pricing?.enumerated().map { index, p in

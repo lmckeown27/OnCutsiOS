@@ -1267,8 +1267,6 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 .layoutPriority(isSearchExpanded ? 1 : 0)
                 .animation(Self.utilityPillSearchSpring, value: isSearchExpanded)
 
-            // Tags selector — hidden on main page for now.
-            /*
             utilityPillSearchToTagsDivider
                 .opacity(utilityPillSideSegmentsOpacity)
                 .frame(width: utilityPillSideSegmentsUseLayoutWidth ? nil : 0)
@@ -1324,7 +1322,6 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             .clipped()
             .allowsHitTesting(utilityPillSideSegmentsUseLayoutWidth || utilityPillSideSegmentsOpacity > 0.01)
             .animation(Self.utilityPillSearchSpring, value: isSearchExpanded)
-            */
         }
         .padding(.leading, 10)
         .padding(.trailing, 8)
@@ -1460,7 +1457,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         )
     }
 
-    /// Collapsed: icon only. Expanded: `TextField` (placeholder “Search Barbers”) + close.
+    /// Collapsed: icon only. Expanded: `TextField` (placeholder “Search providers”) + close.
     private var utilityPillSearchSegment: some View {
         Group {
             if isSearchExpanded {
@@ -1470,7 +1467,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                         .foregroundStyle(utilityPillSearchInputCharcoal)
                         .accessibilityHidden(true)
 
-                    TextField("Search Barbers", text: $searchText)
+                    TextField("Search providers", text: $searchText)
                         .font(utilityPillSearchInputFont)
                         .textFieldStyle(.plain)
                         .foregroundStyle(utilityPillSearchInputCharcoal)
@@ -1532,7 +1529,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 }
                 .buttonStyle(UtilityPillPhysicalPressStyle())
                 .fixedSize(horizontal: true, vertical: false)
-                .accessibilityLabel("Search Barbers")
+                .accessibilityLabel("Search providers")
             }
         }
     }

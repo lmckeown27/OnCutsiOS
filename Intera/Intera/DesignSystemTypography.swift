@@ -2,7 +2,7 @@
 //  DesignSystem+Typography.swift
 //  Intera
 //
-//  Intera typography — Clarendon (Superclarendon).
+//  Intera typography — Inter Variable.
 //
 
 import SwiftUI

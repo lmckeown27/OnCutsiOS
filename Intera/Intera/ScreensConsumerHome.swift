@@ -737,7 +737,7 @@ struct ConsumerHomeScreen: View {
                         selectedCategory: $selectedCategory,
                         providers: providers
                     )
-                    SearchBar(text: $searchText, placeholder: "Search Barbers")
+                    SearchBar(text: $searchText, placeholder: "Search providers")
                         .padding(.horizontal, .space4)
                         .padding(.top, .space3)
                         .padding(.bottom, .space2)
@@ -759,7 +759,7 @@ struct ConsumerHomeScreen: View {
                         selectedCategory: $selectedCategory,
                         providers: providers
                     )
-                    SearchBar(text: $searchText, placeholder: "Search Barbers")
+                    SearchBar(text: $searchText, placeholder: "Search providers")
                         .padding(.horizontal, .space4)
                         .padding(.top, .space3)
                         .padding(.bottom, .space2)
@@ -912,7 +912,7 @@ struct ConsumerHomeScreen: View {
                 .font(InteraFont.headlineMedium)
                 .foregroundStyle(Color.lavaShellCream)
             
-            Text("Select a barber to book your appointment")
+            Text("Select a service provider to book your appointment")
                 .campusCutsStyle(.bodyMedium)
                 .multilineTextAlignment(.center)
         }
@@ -1835,7 +1835,7 @@ struct ServiceProviderDetailSheet: View {
             .alert("Stripe test mode", isPresented: $showLiveDataStripeTestAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
-                Text("Live Data Mode is on. Booking and live checkout are disabled so you do not email real barbers or charge real cards. Use a build with this flag off and Stripe test keys to exercise the full flow.")
+                Text("Live Data Mode is on. Booking and live checkout are disabled so you do not email real service providers or charge real cards. Use a build with this flag off and Stripe test keys to exercise the full flow.")
             }
     }
 
@@ -2064,8 +2064,7 @@ private struct ProviderDetailReviewsPreviewSection: View {
                         if reviews.count > 2 {
                             Text("See all reviews")
                                 .font(InteraFont.subheadline.weight(.semibold))
-                                .foregroundStyle(useVibrantLiquidGlassStyling ? Color.oliveGreen : Color.white.opacity(0.95))
-                                .interaOliveGreenTextOutline(when: useVibrantLiquidGlassStyling)
+                                .foregroundStyle(detailEmphasisColor)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -3584,7 +3583,7 @@ struct UnifiedProviderHomeScreen: View {
                         selectedCategory: $selectedCategory,
                         providers: serviceProviders
                     )
-                    SearchBar(text: $searchText, placeholder: "Search Barbers")
+                    SearchBar(text: $searchText, placeholder: "Search providers")
                         .padding(.horizontal, .space4)
                         .padding(.top, .space3)
                         .padding(.bottom, .space2)
@@ -3622,7 +3621,7 @@ struct UnifiedProviderHomeScreen: View {
                         selectedCategory: $selectedCategory,
                         providers: serviceProviders
                     )
-                    SearchBar(text: $searchText, placeholder: "Search Barbers")
+                    SearchBar(text: $searchText, placeholder: "Search providers")
                         .padding(.horizontal, .space4)
                         .padding(.top, .space3)
                         .padding(.bottom, .space2)
@@ -3778,7 +3777,7 @@ private struct StickyProviderBrowseChrome: View {
             VStack(spacing: 0) {
                 SearchBar(
                     text: $searchText,
-                    placeholder: "Search Barbers",
+                    placeholder: "Search providers",
                     fillsSearchFieldBackground: false
                 )
                 .padding(.horizontal, .space4)
@@ -3895,7 +3894,7 @@ struct CategoryChip: View {
 /// Shown when `GET /barbers` returns no providers within the consumer’s distance preference.
 private struct HomeNoBarbersInRadiusEmptyLabel: View {
     var body: some View {
-        Text("No barber's in your selectable radius")
+        Text("No service providers in your selectable radius")
             .font(InteraFont.headlineMedium)
             .foregroundStyle(Color.lavaShellCream)
             .multilineTextAlignment(.center)

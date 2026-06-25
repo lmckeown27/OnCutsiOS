@@ -2,7 +2,7 @@
 //  InteraFont.swift
 //  Intera
 //
-//  App-wide Clarendon typography (Superclarendon family).
+//  App-wide Inter Variable typography (`Fonts/InterVariable.ttf`).
 //
 
 import SwiftUI
@@ -11,11 +11,8 @@ import UIKit
 #endif
 
 enum InteraFont {
-    /// PostScript names in `Fonts/SuperClarendon.ttc`.
-    private static let regularName = "Superclarendon-Regular"
-    private static let lightName = "Superclarendon-Light"
-    private static let boldName = "Superclarendon-Bold"
-    private static let blackName = "Superclarendon-Black"
+    /// PostScript name for the Inter Variable font file bundled under `Fonts/`.
+    private static let variableFontName = "InterVariable"
 
     static func installGlobalAppearanceIfNeeded() {
         #if canImport(UIKit)
@@ -42,24 +39,41 @@ enum InteraFont {
     private static var didInstallAppearance = false
 
     static func uiFont(size: CGFloat, weight: Font.Weight = .regular) -> UIFont {
-        let name = postScriptName(for: weight)
-        if let font = UIFont(name: name, size: size) {
+        let uiWeight = uiKitWeight(weight)
+        let descriptor = UIFontDescriptor(fontAttributes: [
+            .name: variableFontName,
+            UIFontDescriptor.AttributeName.traits: [
+                UIFontDescriptor.TraitKey.weight: uiWeight.rawValue,
+            ],
+        ])
+        let font = UIFont(descriptor: descriptor, size: size)
+        if font.familyName.localizedCaseInsensitiveContains("Inter") {
             return font
         }
-        return UIFont.systemFont(ofSize: size, weight: uiKitWeight(weight))
+        if let named = UIFont(name: variableFontName, size: size) {
+            let weighted = UIFontDescriptor(fontAttributes: [
+                .name: named.fontName,
+                UIFontDescriptor.AttributeName.traits: [
+                    UIFontDescriptor.TraitKey.weight: uiWeight.rawValue,
+                ],
+            ])
+            return UIFont(descriptor: weighted, size: size)
+        }
+        return UIFont.systemFont(ofSize: size, weight: uiWeight)
     }
     #endif
 
     static func font(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .custom(postScriptName(for: weight), size: size, relativeTo: relativeStyle(forSize: size))
+        Font.custom(variableFontName, size: size, relativeTo: relativeStyle(forSize: size))
+            .weight(weight)
     }
 
-    /// Drop-in for `Font.system(size:weight:design:)` — design is ignored; Clarendon is always used.
+    /// Drop-in for `Font.system(size:weight:design:)` — design is ignored; Inter Variable is always used.
     static func system(size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default) -> Font {
         font(size: size, weight: weight)
     }
 
-    /// Drop-in for `Font.system(_:design:)` — design is ignored; Clarendon is always used.
+    /// Drop-in for `Font.system(_:design:)` — design is ignored; Inter Variable is always used.
     static func system(_ style: Font.TextStyle, design: Font.Design = .default) -> Font {
         switch style {
         case .largeTitle: return largeTitle
@@ -107,19 +121,6 @@ enum InteraFont {
     static var labelSmall: Font { font(size: 10, weight: .medium) }
     static var captionSmall: Font { font(size: 10, weight: .regular) }
 
-    private static func postScriptName(for weight: Font.Weight) -> String {
-        switch weight {
-        case .ultraLight, .thin, .light:
-            return lightName
-        case .bold, .semibold, .heavy:
-            return boldName
-        case .black:
-            return blackName
-        default:
-            return regularName
-        }
-    }
-
     #if canImport(UIKit)
     private static func uiKitWeight(_ weight: Font.Weight) -> UIFont.Weight {
         switch weight {
@@ -151,10 +152,15 @@ enum InteraFont {
 }
 
 extension View {
-    /// Applies Clarendon as the default font for descendant `Text` and UIKit-backed controls.
-    func interaClarendonTypography() -> some View {
+    /// Applies Inter Variable as the default font for descendant `Text` and UIKit-backed controls.
+    func interaPlatformTypography() -> some View {
         self
             .environment(\.font, InteraFont.body)
             .onAppear { InteraFont.installGlobalAppearanceIfNeeded() }
+    }
+
+    /// Legacy name — use ``interaPlatformTypography()``.
+    func interaClarendonTypography() -> some View {
+        interaPlatformTypography()
     }
 }

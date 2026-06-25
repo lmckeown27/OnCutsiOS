@@ -142,10 +142,10 @@ enum MessagingNonEmptyURL {
 
 /// Trailing inbox / thread list line: provider role + booked service (replaces “Last active …”).
 enum MessagingProviderRoleLine {
-    /// CampusCuts conversations are with barbers; no separate occupation field on `MessagingBookingDTO`.
-    static let defaultOccupationTitle = "Barber"
+    /// Default provider kind when the booking payload has no explicit service-type tag.
+    static let defaultOccupationTitle = "Service provider"
 
-    /// Title-style line such as `Barber · Haircut` (no backend `SHOUTING_CASE`).
+    /// Title-style line such as `Service provider · Haircut` (no backend `SHOUTING_CASE`).
     static func occupationAndServicePresentable(booking: MessagingBookingDTO?) -> String {
         let occOut = occupationTitle(booking: booking)
         let svcRaw = (booking?.serviceName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -155,7 +155,7 @@ enum MessagingProviderRoleLine {
         return "\(occOut) · \(Self.presentableWordLine(svcRaw))"
     }
 
-    /// Provider kind tag only (e.g. `Barber`) — browse card pill / thread occupation without the booked service.
+    /// Provider kind tag only (e.g. `Barber`, `Makeup`) — browse card pill / thread occupation without the booked service.
     static func occupationTitle(booking: MessagingBookingDTO? = nil) -> String {
         _ = booking
         let occ = defaultOccupationTitle.trimmingCharacters(in: .whitespacesAndNewlines)
