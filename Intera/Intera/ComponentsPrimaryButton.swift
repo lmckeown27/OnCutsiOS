@@ -71,7 +71,7 @@ struct PrimaryButton: View {
             case .small: return 12
             case .medium: return 16
             case .large: return 24
-            case .footer: return 16
+            case .footer: return 14
             case .prominent: return 16
             }
         }
@@ -81,7 +81,7 @@ struct PrimaryButton: View {
             case .small: return 6
             case .medium: return 10
             case .large: return 14
-            case .footer: return 10
+            case .footer: return 5
             case .prominent: return 12
             }
         }
@@ -113,7 +113,7 @@ struct PrimaryButton: View {
 
         var minHeight: CGFloat? {
             switch self {
-            case .footer: return 48
+            case .footer: return 40
             case .prominent: return 54
             default: return nil
             }
@@ -121,7 +121,7 @@ struct PrimaryButton: View {
 
         var cornerRadius: CGFloat {
             switch self {
-            case .footer: return 12
+            case .footer: return 10
             case .prominent: return 14
             default: return .radiusMedium
             }
