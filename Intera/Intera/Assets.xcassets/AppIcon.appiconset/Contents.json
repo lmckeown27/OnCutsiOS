@@ -91,7 +91,7 @@
       "size" : "83.5x83.5"
     },
     {
-      "filename" : "New CampusCuts Logo.png",
+      "filename" : "AvilaPlatformsLogo.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -283,7 +283,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "New CampusCuts Logo 1.png",
+      "filename" : "AvilaPlatformsLogo 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -475,7 +475,7 @@
           "value" : "tinted"
         }
       ],
-      "filename" : "New CampusCuts Logo 2.png",
+      "filename" : "AvilaPlatformsLogo 2.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -526,7 +526,7 @@
       "size" : "512x512"
     },
     {
-      "filename" : "New CampusCuts Logo 3.png",
+      "filename" : "AvilaPlatformsLogo 3.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "512x512"

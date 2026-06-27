@@ -5,7 +5,7 @@
 //  Wires default package-provided sign-up flows. Call additional `register` hooks when new SPMs ship.
 //
 
-import CampusCutsModule
+import AvilaPlatformsModule
 import SwiftUI
 
 @MainActor
@@ -22,9 +22,9 @@ enum IntegratedSignUpBootstrap {
 
         IntegratedSignUpFlowRegistry.register(
             IntegratedSignUpFlow(
-                id: "campuscuts.email",
+                id: "avilaplatforms.email",
                 title: AppBranding.displayName,
-                subtitle: "Liquid Glass onboarding — CampusCuts APIs + verify email + profile."
+                subtitle: "Liquid Glass onboarding — AvilaPlatforms APIs + verify email + profile."
             ) { sessionManager, onFinished in
                 if #available(iOS 17.0, macOS 14.0, *) {
                     LiquidGlassSignupFlowView(
@@ -33,8 +33,8 @@ enum IntegratedSignUpBootstrap {
                         onFinished: onFinished
                     )
                 } else {
-                    CampusCutsSignUpView(apiV1BaseTrimmed: AppConfiguration.messagingAPIRootTrimmed) { verified in
-                        sessionManager.login(session: UserSession(campusCutsVerified: verified))
+                    AvilaPlatformsSignUpView(apiV1BaseTrimmed: AppConfiguration.messagingAPIRootTrimmed) { verified in
+                        sessionManager.login(session: UserSession(avilaPlatformsVerified: verified))
                         onFinished()
                     }
                 }

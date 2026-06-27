@@ -1,12 +1,12 @@
 # Intera Provider companion — backend & real-time appendix
 
-Curated from **`CampusCutsPackage/backend`** and the **Intera** iOS client in this workspace. Use with **`INTERA_CONSUMER_APP_SPEC_FOR_PROVIDER_COMPANION.md`**.
+Curated from **`AvilaPlatformsPackage/backend`** and the **Intera** iOS client in this workspace. Use with **`INTERA_CONSUMER_APP_SPEC_FOR_PROVIDER_COMPANION.md`**.
 
 ---
 
 ## 1. `bookings-simple` REST surface (`/api/v1/bookings-simple`)
 
-Source: **`CampusCutsPackage/backend/src/routes/booking-simple.routes.ts`** (all routes below use `authenticate` unless noted).
+Source: **`AvilaPlatformsPackage/backend/src/routes/booking-simple.routes.ts`** (all routes below use `authenticate` unless noted).
 
 | Method | Path | Purpose |
 |--------|------|---------|
@@ -72,7 +72,7 @@ From **`router.get('/', …)`**:
 
 ### 4.1 Server config
 
-- **`CampusCutsPackage/backend/src/index.ts`**: `Server(httpServer, { path: '/socket.io/', cors: …, transports: ['polling','websocket'] })`.
+- **`AvilaPlatformsPackage/backend/src/index.ts`**: `Server(httpServer, { path: '/socket.io/', cors: …, transports: ['polling','websocket'] })`.
 - **Intera client** uses **`AppConfiguration.messagingSocketOriginURL`** (scheme + host, **no** `/api/v1`) and path **`/socket.io/`** (see `MessagingRealtime.swift`).
 - **CORS**: allowed origins list includes `https://campuscut.com` and localhost variants — **staging origins must be added** here (and in REST CORS) or mobile web sockets will fail.
 
@@ -107,7 +107,7 @@ From **`router.get('/', …)`**:
 
 ## 5. Messages REST (path prefix in monolith)
 
-**`CampusCutsPackage/backend/src/routes/message.routes.ts`** uses paths like **`/conversations`** — confirm how **`app.use`** mounts this (e.g. `/api/v1/messages`). Intera’s **`MessagingAPIService`** should match your deployed router prefix.
+**`AvilaPlatformsPackage/backend/src/routes/message.routes.ts`** uses paths like **`/conversations`** — confirm how **`app.use`** mounts this (e.g. `/api/v1/messages`). Intera’s **`MessagingAPIService`** should match your deployed router prefix.
 
 ---
 
@@ -132,7 +132,7 @@ From **`router.get('/', …)`**:
 | `Intera/Intera/BookingPaymentRequestPayload.swift` | `booking-completed` payload decoding. |
 | `Intera/Intera/AppConfiguration.swift` | REST root + socket origin. |
 | `Intera/Intera/ConsumerBookingsHubView.swift` | Consumer `bookings-simple` list UX. |
-| `CampusCutsPackage/ios-module/Sources/Core/CheckoutViewModel.swift` | PaymentSheet + Apple Pay wiring. |
+| `AvilaPlatformsPackage/ios-module/Sources/Core/CheckoutViewModel.swift` | PaymentSheet + Apple Pay wiring. |
 
 ---
 

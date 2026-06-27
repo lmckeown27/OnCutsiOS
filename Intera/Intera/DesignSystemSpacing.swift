@@ -2,7 +2,7 @@
 //  DesignSystem+Spacing.swift
 //  Intera
 //
-//  CampusCuts spacing and layout system (8pt grid)
+//  AvilaPlatforms spacing and layout system (8pt grid)
 //
 
 import SwiftUI

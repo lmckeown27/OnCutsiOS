@@ -12,7 +12,7 @@ The category filter toggle arrow now **points in the direction of the action**:
 ### Filter Hidden (Default)
 ```
 ┌─────────────────────────────────────┐
-│ [↑]  CampusCuts         [Profile]  │  ← Up arrow = "tap to expand down"
+│ [↑]  AvilaPlatforms         [Profile]  │  ← Up arrow = "tap to expand down"
 ├─────────────────────────────────────┤
 │  Jordan Williams                    │
 │  Maya Chen                          │
@@ -25,7 +25,7 @@ The category filter toggle arrow now **points in the direction of the action**:
 ### Filter Visible
 ```
 ┌─────────────────────────────────────┐
-│ [↓]  CampusCuts         [Profile]  │  ← Down arrow = "tap to collapse up"
+│ [↓]  AvilaPlatforms         [Profile]  │  ← Down arrow = "tap to collapse up"
 ├─────────────────────────────────────┤
 │ [All] [✂️ Haircuts] [✨ Beauty]      │  ← Filter bar expanded
 ├─────────────────────────────────────┤

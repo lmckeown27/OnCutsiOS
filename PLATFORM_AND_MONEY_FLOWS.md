@@ -1,4 +1,4 @@
-# Intera / CampusCuts — Platform overview, money flows, and charges
+# Intera / AvilaPlatforms — Platform overview, money flows, and charges
 
 This document describes what the product is (as implemented in this repository), how money moves between consumers, providers, and the platform, and which **charges and fees** appear in code versus those levied by **Stripe** (third party). It is written for operators, support, and engineering; it is not legal or tax advice.
 
@@ -6,14 +6,14 @@ This document describes what the product is (as implemented in this repository),
 
 ## 1. What this platform is
 
-**Intera** (this repo’s iOS app) is the consumer-facing client for **CampusCuts** — a **campus marketplace for personal services** (primarily barbers / service providers). Students or guests can:
+**Intera** (this repo’s iOS app) is the consumer-facing client for **AvilaPlatforms** — a **campus marketplace for personal services** (primarily barbers / service providers). Students or guests can:
 
 - Browse providers on **Home**, book services, and manage **Bookings**.
 - Message providers through **in-app messaging** (REST + real-time).
 - **Pay for completed visits** after the provider marks the booking **complete** (post-service checkout), including optional **tips**.
 - Manage profile, **blocked people** in messaging, notifications, and related account flows.
 
-The **CampusCuts** backend (`CampusCutsPackage/backend`) is an **Express** API with **PostgreSQL**, **Stripe** (payments + **Stripe Connect** for providers), webhooks, and optional paths for legacy / experimental wallet features. The mobile app talks to **`/api/v1`** (see `AppConfiguration`).
+The **AvilaPlatforms** backend (`AvilaPlatformsPackage/backend`) is an **Express** API with **PostgreSQL**, **Stripe** (payments + **Stripe Connect** for providers), webhooks, and optional paths for legacy / experimental wallet features. The mobile app talks to **`/api/v1`** (see `AppConfiguration`).
 
 **Roles**
 
@@ -21,7 +21,7 @@ The **CampusCuts** backend (`CampusCutsPackage/backend`) is an **Express** API w
 |------|-----|
 | **Consumer** | Books and pays for services; receives messaging and payment UI. |
 | **Provider (barber)** | Accepts/completes bookings; may connect a **Stripe Connect** account to receive payouts. |
-| **Platform (CampusCuts)** | Operates the marketplace, sets **take rate** on the service portion of card payments, and holds the **Stripe platform account** used for PaymentIntents. |
+| **Platform (AvilaPlatforms)** | Operates the marketplace, sets **take rate** on the service portion of card payments, and holds the **Stripe platform account** used for PaymentIntents. |
 
 ---
 
@@ -91,7 +91,7 @@ The repo also contains **payment-v2**, **escrow**-style naming, **Sui / bridge**
 
 The consumer does **not** pay the **15% platform fee** as a separate line item; it is taken from the charge via **`application_fee_amount`** on Connect destination charges.
 
-### 4.2 Charges / revenue the **platform** (CampusCuts) receives
+### 4.2 Charges / revenue the **platform** (AvilaPlatforms) receives
 
 | Item | Rate / basis | Source in repo |
 |------|----------------|----------------|
@@ -126,7 +126,7 @@ The consumer does **not** pay the **15% platform fee** as a separate line item; 
 sequenceDiagram
     participant C as Consumer
     participant I as Intera app
-    participant API as CampusCuts API
+    participant API as AvilaPlatforms API
     participant S as Stripe
     participant P as Provider Connect account
 
@@ -148,7 +148,7 @@ sequenceDiagram
 sequenceDiagram
     participant C as Consumer
     participant I as Intera app
-    participant API as CampusCuts API
+    participant API as AvilaPlatforms API
 
     C->>I: Confirm cash paid
     I->>API: POST pay (paymentMethod: cash)
@@ -182,9 +182,9 @@ sequenceDiagram
 
 When you change take rate, tax, or payment routes, update:
 
-- `CampusCutsPackage/backend/src/routes/booking-simple.routes.ts` (create-payment-intent),
-- `CampusCutsPackage/backend/src/services/stripe-payment.service.ts`,
-- `CampusCutsPackage/backend/src/controllers/stripe-webhook-secure.controller.ts`,
+- `AvilaPlatformsPackage/backend/src/routes/booking-simple.routes.ts` (create-payment-intent),
+- `AvilaPlatformsPackage/backend/src/services/stripe-payment.service.ts`,
+- `AvilaPlatformsPackage/backend/src/controllers/stripe-webhook-secure.controller.ts`,
 - and this file so support and finance stay aligned.
 
-**Last reviewed against repository:** February 2026 (code search across `CampusCutsPackage/backend` and `Intera/Intera` payment flows).
+**Last reviewed against repository:** February 2026 (code search across `AvilaPlatformsPackage/backend` and `Intera/Intera` payment flows).

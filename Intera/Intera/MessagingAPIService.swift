@@ -2,7 +2,7 @@
 //  MessagingAPIService.swift
 //  Intera
 //
-//  REST client for CampusCuts messaging (conversations, read receipts, send, upload, delete).
+//  REST client for AvilaPlatforms messaging (conversations, read receipts, send, upload, delete).
 //
 
 import Foundation
@@ -12,7 +12,7 @@ private struct SuccessEnvelope<T: Decodable>: Decodable {
     let data: T?
 }
 
-/// CampusCuts `GET /messages/conversations` returns `{ success, data: { conversations: [...], pagination } }`.
+/// AvilaPlatforms `GET /messages/conversations` returns `{ success, data: { conversations: [...], pagination } }`.
 private struct ConversationsListDataPayload: Decodable, Sendable {
     let conversations: [MessagingConversationRowDTO]
 }
@@ -282,7 +282,7 @@ enum MessagingAPIService {
         return d
     }()
 
-    /// `GET /messages/blocks` payloads may use **snake_case** (`first_name`, `avatar_url`, …); CampusCuts Node may emit camelCase. This decoder accepts both.
+    /// `GET /messages/blocks` payloads may use **snake_case** (`first_name`, `avatar_url`, …); AvilaPlatforms Node may emit camelCase. This decoder accepts both.
     private static let blocksListJSONDecoder: JSONDecoder = {
         let d = JSONDecoder()
         d.keyDecodingStrategy = .convertFromSnakeCase
@@ -626,7 +626,7 @@ enum MessagingAPIService {
     }
     
     /// Fetch the messaging user ID for a barber given their **barber profile** id (`barbers.id`).
-    /// CampusCuts exposes this on `GET /api/v1/barbers/:id` as `data.user_id` (not a separate `/users/barber/...` route).
+    /// AvilaPlatforms exposes this on `GET /api/v1/barbers/:id` as `data.user_id` (not a separate `/users/barber/...` route).
     static func fetchBarberMessagingUserId(barberProfileId: String, bearerToken: String?) async throws -> String? {
         let base = AppConfiguration.messagingAPIRootTrimmed
         let encoded = barberProfileId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? barberProfileId

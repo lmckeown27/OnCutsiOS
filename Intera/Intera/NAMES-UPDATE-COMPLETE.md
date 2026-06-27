@@ -26,7 +26,7 @@ Updated all beauty specialist mock data to use **first and last names** instead 
 - Traditional barbershops often have business names
 - Examples: "Jordan's Cuts", "Elite Cuts", "Fresh Fades"
 - More established, shop-based model
-- From CampusCuts platform
+- From AvilaPlatforms platform
 
 ### Beauty Specialists → Personal Names
 - Many beauty professionals work independently
@@ -73,7 +73,7 @@ Beauty Card:
 
 This naming difference demonstrates how the shell app architecture handles different platform conventions:
 
-- **CampusCuts platform**: Uses business names (traditional model)
+- **AvilaPlatforms platform**: Uses business names (traditional model)
 - **Beauty platform**: Uses personal names (freelance model)
 - **Shell app**: Displays both seamlessly using `ServiceProvider`
 

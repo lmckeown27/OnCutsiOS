@@ -32,11 +32,11 @@ public enum AppEnvironment: String, Sendable {
     public var apiBaseURL: URL {
         switch self {
         case .development:
-            return URL(string: "https://dev-api.campuscuts.com")!
+            return URL(string: "https://dev-api.avilaplatforms.com")!
         case .staging:
-            return URL(string: "https://staging-api.campuscuts.com")!
+            return URL(string: "https://staging-api.avilaplatforms.com")!
         case .production:
-            return URL(string: "https://api.campuscuts.com")!
+            return URL(string: "https://api.avilaplatforms.com")!
         }
     }
     

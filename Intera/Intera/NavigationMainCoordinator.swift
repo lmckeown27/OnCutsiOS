@@ -72,7 +72,7 @@ final class MainCoordinator {
     /// Handle deep link
     func handleDeepLink(_ url: URL) {
         // TODO: Implement deep link parsing
-        // Example: campuscuts://booking/123
+        // Example: avilaplatforms://booking/123
         print("Handling deep link: \(url)")
     }
     
@@ -103,14 +103,14 @@ final class MainCoordinator {
     
     // MARK: - External Module Navigation
     
-    /// Navigate to the CampusCuts module
-    /// When you add the CampusCuts package, uncomment and use this:
+    /// Navigate to the AvilaPlatforms module
+    /// When you add the AvilaPlatforms package, uncomment and use this:
     /*
-    func showCampusCutsModule() {
+    func showAvilaPlatformsModule() {
         guard let session = sessionManager.currentSession else { return }
         
-        // This will be called when CampusCutsModuleBuilder is available
-        // let moduleView = CampusCutsModuleBuilder.build(with: session)
+        // This will be called when AvilaPlatformsModuleBuilder is available
+        // let moduleView = AvilaPlatformsModuleBuilder.build(with: session)
         // navigationPath.append(moduleView)
         
         // For now, navigate to marketplace tab

@@ -7,7 +7,7 @@
 //
 
 import SwiftUI
-import CampusCutsModule
+import AvilaPlatformsModule
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -45,14 +45,16 @@ struct UserProfileReviewSnippet: Identifiable, Hashable {
 // MARK: - Live data helpers
 
 private enum UserProfileBarberIdCache {
-    private static let prefix = "userProfile.barberNumericId."
+    private static let prefix = "userProfile.barberRecordId."
 
-    static func load(for userId: String) -> Int? {
-        let v = UserDefaults.standard.integer(forKey: prefix + userId)
-        return v > 0 ? v : nil
+    static func load(for userId: String) -> String? {
+        let raw = UserDefaults.standard.string(forKey: prefix + userId)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let raw, !raw.isEmpty else { return nil }
+        return raw
     }
 
-    static func save(_ barberId: Int, for userId: String) {
+    static func save(_ barberId: String, for userId: String) {
         UserDefaults.standard.set(barberId, forKey: prefix + userId)
     }
 
@@ -115,11 +117,11 @@ struct UserProfileView: View {
         }
     }
 
-    private func campusCutsClient() -> CampusCutsClient {
-        CampusCutsClient(
-            session: CampusCutsUserSessionAdapter(manager: sessionManager),
+    private func avilaPlatformsClient() -> AvilaPlatformsClient {
+        AvilaPlatformsClient(
+            session: AvilaPlatformsUserSessionAdapter(manager: sessionManager),
             environment: .production,
-            isProduction: AppConfiguration.campusCutsProductionLiveDataMode
+            isProduction: AppConfiguration.avilaPlatformsProductionLiveDataMode
         )
     }
 
@@ -133,7 +135,7 @@ struct UserProfileView: View {
             barberBioFromAPI = nil
 
         case .barber:
-            let client = campusCutsClient()
+            let client = avilaPlatformsClient()
             do {
                 var barberId = UserProfileBarberIdCache.load(for: session.userId)
                 if barberId == nil {
@@ -669,7 +671,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
 
     /// Shown in the Account → Apple Pay & payments sheet (numbered checklist for reviewers and users).
     private static let applePayInstructionSteps: [String] = [
-        "Your service provider marks the service Completed in the CampusCuts Provider platform (their provider-facing CampusCuts Provider app).",
+        "Your service provider marks the service Completed in the AvilaPlatforms Provider platform (their provider-facing AvilaPlatforms Provider app).",
         "\(AppBranding.displayName) may open the payment screen automatically; you can tap Pay later to return to the app, then go to Bookings → open that booking → Pay for this service.",
         "On the payment screen, use the Apple Pay button (or Card / Cash). Apple Pay appears when Wallet has a card and merchant configuration is active.",
         "If checkout never appeared, open Bookings, select the completed booking, and tap Pay for this service.",

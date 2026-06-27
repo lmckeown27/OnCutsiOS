@@ -14,7 +14,7 @@ private struct BarberDetailEnvelope: Decodable, Sendable {
 }
 
 private struct BarberDetailData: Decodable, Sendable {
-    let reviews: [CampusCutsReviewDTO]?
+    let reviews: [AvilaPlatformsReviewDTO]?
 }
 
 enum BarberReviewsAPI {
@@ -27,7 +27,7 @@ enum BarberReviewsAPI {
         decoder.keyDecodingStrategy = .convertFromSnakeCase
 
         // 1) Production: `GET /barbers/:id` embeds `data.reviews` (bookings-backed).
-        if let detailURL = AppConfiguration.urlCampusCutsBarber(barberId: trimmed) {
+        if let detailURL = AppConfiguration.urlAvilaPlatformsBarber(barberId: trimmed) {
             do {
                 let data = try await getJSON(from: detailURL, bearerToken: bearerToken)
                 let envelope = try decoder.decode(BarberDetailEnvelope.self, from: data)
@@ -59,7 +59,7 @@ enum BarberReviewsAPI {
         for candidate in candidates.compactMap({ $0 }) {
             do {
                 let data = try await getJSON(from: candidate, bearerToken: bearerToken)
-                let envelope = try decoder.decode(CampusCutsBarberReviewsListResponse.self, from: data)
+                let envelope = try decoder.decode(AvilaPlatformsBarberReviewsListResponse.self, from: data)
                 guard envelope.success != false, let rows = envelope.data, !rows.isEmpty else { continue }
                 return rows.asProviderReviews(barberId: barberId)
             } catch {

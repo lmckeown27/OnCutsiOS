@@ -40,7 +40,7 @@ extension UserSession: UserSessionProtocol {
     /// Refresh implementation - delegates to AppSessionManager
     /// Note: In practice, you'll call this through the SessionManager
     public func refreshAccessToken() async throws -> String {
-        guard let manager = CampusCutsSessionSync.appSessionManager else {
+        guard let manager = AvilaPlatformsSessionSync.appSessionManager else {
             throw SessionError.refreshFailed
         }
         try await manager.refreshSession()

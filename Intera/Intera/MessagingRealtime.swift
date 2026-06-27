@@ -2,7 +2,7 @@
 //  MessagingRealtime.swift
 //  Intera
 //
-//  Socket.IO listener for `new-message` (CampusCuts real-time chat).
+//  Socket.IO listener for `new-message` (AvilaPlatforms real-time chat).
 //  Must join `join-personal` + `join-conversation` like the web client, or `io.to("user-…")` emits are never received.
 //
 

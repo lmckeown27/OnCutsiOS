@@ -2,7 +2,7 @@
 //  MessagingModels.swift
 //  Intera
 //
-//  Decodable DTOs for CampusCuts messaging REST + socket payloads (snake_case JSON).
+//  Decodable DTOs for AvilaPlatforms messaging REST + socket payloads (snake_case JSON).
 //
 
 import Foundation
@@ -10,7 +10,7 @@ import Foundation
 // MARK: - Thread / booking context
 
 struct MessagingBookingDTO: Decodable, Sendable, Hashable {
-    /// CampusCuts `bookings.id` (UUID) when the API includes it — required for `DELETE /bookings-simple/:id`.
+    /// AvilaPlatforms `bookings.id` (UUID) when the API includes it — required for `DELETE /bookings-simple/:id`.
     let id: String?
     let status: String?
     let serviceName: String?
@@ -184,7 +184,7 @@ struct MessagingBlockedUserProfile: Identifiable, Hashable, Sendable {
     let id: String
     var firstName: String?
     var lastName: String?
-    /// CampusCuts `users."displayName"` when `first_name` / `last_name` are empty (e.g. Apple relay sign-up).
+    /// AvilaPlatforms `users."displayName"` when `first_name` / `last_name` are empty (e.g. Apple relay sign-up).
     var displayNameOverride: String?
     var avatarUrl: String?
 
@@ -307,7 +307,7 @@ extension MessagingBlockedUserProfile {
 
 /// Counterparty on `GET …/messages/conversations` — holds **displayName** when `booking.barber_name` cache is empty.
 struct MessagingConversationOtherUserDTO: Decodable, Sendable {
-    /// CampusCuts `otherUser.id` (messaging user UUID).
+    /// AvilaPlatforms `otherUser.id` (messaging user UUID).
     let id: String?
     let displayName: String?
     let firstName: String?
@@ -547,13 +547,13 @@ struct MessagingConversationRowDTO: Decodable, Sendable, Identifiable {
     let booking: MessagingBookingDTO?
     let otherUser: MessagingConversationOtherUserDTO?
     let lastMessagePreview: String?
-    /// Messaging user id of the latest message’s sender when `lastMessage` is an object (`senderId` from CampusCuts list API).
+    /// Messaging user id of the latest message’s sender when `lastMessage` is an object (`senderId` from AvilaPlatforms list API).
     let lastMessageSenderId: String?
     let updatedAt: String?
     /// When `0`, treat thread as fully read for inbox row dimming (when API sends it).
     let unreadCount: Int?
 
-    /// Inbox / legacy: `last_message_preview`, `updated_at`. CampusCuts list API: `lastMessage: { content }`, `createdAt`.
+    /// Inbox / legacy: `last_message_preview`, `updated_at`. AvilaPlatforms list API: `lastMessage: { content }`, `createdAt`.
     private enum CodingKeys: String, CodingKey {
         case id
         case booking

@@ -15,7 +15,7 @@ struct BookingCard: View {
     var onMessage: (() -> Void)? = nil
     
     var body: some View {
-        CampusCutsCard {
+        AvilaPlatformsCard {
             VStack(alignment: .leading, spacing: .space4) {
                 // Header with barber info and status
                 HStack {

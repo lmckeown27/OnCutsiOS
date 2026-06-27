@@ -5,7 +5,7 @@
 //  Home “glass hero” pill for the next active booking (today or upcoming): countdown, barber thumb — detail via parent navigation.
 //
 
-import CampusCutsModule
+import AvilaPlatformsModule
 import SwiftUI
 #if canImport(UIKit)
 import UIKit

@@ -9,7 +9,7 @@ The category filter bar is now **hidden by default** and only appears when the u
 ### Default State (Filter Hidden)
 ```
 ┌─────────────────────────────────────┐
-│ [↑ Icon]  CampusCuts  [Profile]    │ ← Navigation bar (up arrow = tap to expand)
+│ [↑ Icon]  AvilaPlatforms  [Profile]    │ ← Navigation bar (up arrow = tap to expand)
 ├─────────────────────────────────────┤
 │                                     │
 │  Jordan Williams                    │
@@ -28,7 +28,7 @@ The category filter bar is now **hidden by default** and only appears when the u
 ### Filter Expanded (After Tapping Up Arrow)
 ```
 ┌─────────────────────────────────────┐
-│ [↓ Icon]  CampusCuts  [Profile]    │ ← Icon changes to down arrow (tap to collapse)
+│ [↓ Icon]  AvilaPlatforms  [Profile]    │ ← Icon changes to down arrow (tap to collapse)
 ├─────────────────────────────────────┤
 │ [All] [✂️ Haircuts] [✨ Beauty]      │ ← Filter bar appears
 ├─────────────────────────────────────┤

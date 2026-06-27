@@ -398,7 +398,7 @@ Users can see everything they need before booking:
 
 When integrating real platform packages:
 
-### CampusCuts Package
+### AvilaPlatforms Package
 ```swift
 extension Barber {
     func toServiceProvider() -> ServiceProvider {

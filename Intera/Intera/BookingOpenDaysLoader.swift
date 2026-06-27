@@ -6,16 +6,16 @@
 //
 
 import Foundation
-import CampusCutsModule
+import AvilaPlatformsModule
 
 enum BookingOpenDaysLoader {
     /// Returns `Calendar.current` start-of-day instants that have ≥1 available slot.
     static func loadOpenDayStarts(
         days: [Date],
         barberId: String,
-        campusCutsBarberIntId: Int?,
+        avilaPlatformsBarberId: String,
         bearerToken: String?,
-        campusCutsClient: CampusCutsClient
+        avilaPlatformsClient: AvilaPlatformsClient
     ) async -> Set<Date> {
         guard !days.isEmpty else { return [] }
         let cal = Calendar.current
@@ -27,9 +27,9 @@ enum BookingOpenDaysLoader {
                     let hasOpen = await dayHasOpenSlot(
                         day: day,
                         barberId: barberId,
-                        campusCutsBarberIntId: campusCutsBarberIntId,
+                        avilaPlatformsBarberId: avilaPlatformsBarberId,
                         bearerToken: bearerToken,
-                        campusCutsClient: campusCutsClient
+                        avilaPlatformsClient: avilaPlatformsClient
                     )
                     return (start, hasOpen)
                 }
@@ -46,16 +46,17 @@ enum BookingOpenDaysLoader {
     private static func dayHasOpenSlot(
         day: Date,
         barberId: String,
-        campusCutsBarberIntId: Int?,
+        avilaPlatformsBarberId: String,
         bearerToken: String?,
-        campusCutsClient: CampusCutsClient
+        avilaPlatformsClient: AvilaPlatformsClient
     ) async -> Bool {
         let dayStr = BookingPacificSchedule.apiDateString(from: day)
+        let trimmedPackageId = avilaPlatformsBarberId.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if let bid = campusCutsBarberIntId {
+        if !trimmedPackageId.isEmpty {
             do {
-                let slots = try await campusCutsClient.fetchBarberDayAvailability(
-                    barberId: bid,
+                let slots = try await avilaPlatformsClient.fetchBarberDayAvailability(
+                    barberId: trimmedPackageId,
                     dateYYYYMMDD: dayStr
                 )
                 if slots.contains(where: { $0.isAvailable }) {

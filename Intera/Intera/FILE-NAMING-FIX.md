@@ -40,10 +40,10 @@ Shell App (Platform-Agnostic)
 └── ConsumerHomeScreen.swift           ← Generic consumer screen
 
 Platform-Specific Packages
-├── CampusCuts Package
+├── AvilaPlatforms Package
 │   ├── Barber.swift                   ← Haircut-specific model
-│   ├── CampusCutsAPI.swift           ← Haircut API
-│   └── CampusCutsAdapter.swift       ← Converts Barber → ServiceProvider
+│   ├── AvilaPlatformsAPI.swift           ← Haircut API
+│   └── AvilaPlatformsAdapter.swift       ← Converts Barber → ServiceProvider
 │
 ├── Beauty Platform Package (future)
 │   ├── BeautySpecialist.swift        ← Beauty-specific model
@@ -66,7 +66,7 @@ Platform-Specific Packages
 - `MainCoordinator.swift`
 
 ### ✅ Platform Package Files (Platform-Specific)
-- `Barber.swift` (in CampusCuts package)
+- `Barber.swift` (in AvilaPlatforms package)
 - `BeautySpecialist.swift` (in Beauty package)
 - `WellnessProvider.swift` (in Wellness package)
 
@@ -81,7 +81,7 @@ Platform-Specific Packages
 
 ```swift
 // Platform-specific mocks for development/testing
-static let haircutMocks: [ServiceProvider]  // Simulates CampusCuts data
+static let haircutMocks: [ServiceProvider]  // Simulates AvilaPlatforms data
 static let beautyMocks: [ServiceProvider]   // Simulates Beauty platform data
 static let wellnessMocks: [ServiceProvider] // Future: Simulates Wellness data
 
@@ -101,8 +101,8 @@ static let allMocks = haircutMocks + beautyMocks + wellnessMocks
 // In production - fetch from appropriate platform
 let platform = selectedService.platform
 switch platform {
-case .campusCuts:
-    let barbers = try await CampusCutsAPI.fetchBarbers()
+case .avilaPlatforms:
+    let barbers = try await AvilaPlatformsAPI.fetchBarbers()
     providers = barbers.map { $0.toServiceProvider() }
     
 case .beauty:
@@ -168,12 +168,12 @@ Intera/
 │       └── ConsumerHomeScreen.swift   ✅ Platform-agnostic
 │
 └── Packages/
-    └── CampusCuts/
+    └── AvilaPlatforms/
         ├── Models/
         │   └── Barber.swift           ✅ Platform-specific
         │
         └── Adapters/
-            └── CampusCutsAdapter.swift ✅ Converts to ServiceProvider
+            └── AvilaPlatformsAdapter.swift ✅ Converts to ServiceProvider
 ```
 
 ## Questions?
@@ -188,8 +188,8 @@ A: Yes! Any file in the shell app that has platform-specific naming should be ma
 - Navigation screens
 - Coordinator logic
 
-**Q: What about the CampusCuts `Barber.swift` file?**
-A: Keep it! That's in the CampusCuts package and should be platform-specific. Only shell app files need generic naming.
+**Q: What about the AvilaPlatforms `Barber.swift` file?**
+A: Keep it! That's in the AvilaPlatforms package and should be platform-specific. Only shell app files need generic naming.
 
 ## Success!
 

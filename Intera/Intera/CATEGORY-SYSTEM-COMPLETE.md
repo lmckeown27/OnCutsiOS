@@ -100,12 +100,12 @@ ForEach(filteredProviders) { provider in
 
 ## Future: Platform Package Integration
 
-When you add real platform packages (CampusCuts, Beauty, etc.), the adapters will map platform-specific providers to the correct category:
+When you add real platform packages (AvilaPlatforms, Beauty, etc.), the adapters will map platform-specific providers to the correct category:
 
-### CampusCuts Package → `.haircuts`
+### AvilaPlatforms Package → `.haircuts`
 
 ```swift
-// In CampusCutsAdapter
+// In AvilaPlatformsAdapter
 extension Barber {
     func toServiceProvider() -> ServiceProvider {
         ServiceProvider(
@@ -295,7 +295,7 @@ That's it! The category filter will automatically include the new category.
 The category system is **complete and ready to use**! 
 
 When you're ready to integrate real platform packages:
-1. Import the package (e.g., CampusCuts)
+1. Import the package (e.g., AvilaPlatforms)
 2. Create an adapter that maps to `ServiceProvider` with appropriate `category`
 3. Replace mock data with package data
 4. Category filtering will work automatically! 🎉

@@ -1,6 +1,6 @@
 # Multi-Service Platform Architecture
 
-This document outlines how the Intera app supports multiple service platforms (CampusCuts for haircuts, BeautyPlatform for beauty services, etc.) with each pulling from different packages/backends.
+This document outlines how the Intera app supports multiple service platforms (AvilaPlatforms for haircuts, BeautyPlatform for beauty services, etc.) with each pulling from different packages/backends.
 
 ## Overview
 
@@ -15,7 +15,7 @@ The app uses a **platform-agnostic frontend** with **service-specific backends**
         ┌─────────────┴─────────────┐
         ▼                           ▼
 ┌───────────────┐          ┌────────────────┐
-│  CampusCuts   │          │ Beauty Platform│
+│  AvilaPlatforms   │          │ Beauty Platform│
 │   Package     │          │    Package     │
 │               │          │                │
 │ - Barber API  │          │ - Stylist API  │
@@ -48,7 +48,7 @@ protocol ServiceProviderProtocol: Identifiable, Codable {
 Convert platform-specific models to the unified `ServiceProvider` type.
 
 **Files**:
-- `CampusCutsAdapter.swift` - Converts `Barber` → `ServiceProvider`
+- `AvilaPlatformsAdapter.swift` - Converts `Barber` → `ServiceProvider`
 - `BeautyPlatformAdapter.swift` - Converts `BeautySpecialist` → `ServiceProvider`
 
 ### 3. **Service Registry**
@@ -58,13 +58,13 @@ Manages which platforms are active and routes requests appropriately.
 
 ```swift
 enum ServicePlatform: String, CaseIterable {
-    case campusCuts = "haircuts"
+    case avilaPlatforms = "haircuts"
     case beautyPlatform = "beauty"
     case wellness = "wellness"
     
     var displayName: String {
         switch self {
-        case .campusCuts: return "Haircuts"
+        case .avilaPlatforms: return "Haircuts"
         case .beautyPlatform: return "Beauty"
         case .wellness: return "Wellness"
         }
@@ -72,7 +72,7 @@ enum ServicePlatform: String, CaseIterable {
     
     var packageName: String {
         switch self {
-        case .campusCuts: return "CampusCutsModule"
+        case .avilaPlatforms: return "AvilaPlatformsModule"
         case .beautyPlatform: return "BeautyPlatformModule"
         case .wellness: return "WellnessModule"
         }
@@ -87,7 +87,7 @@ enum ServicePlatform: String, CaseIterable {
 Keep `ServiceProvider` as the unified UI model, but create adapters for each platform:
 
 ```swift
-// CampusCutsAdapter.swift
+// AvilaPlatformsAdapter.swift
 extension Barber {
     func toServiceProvider() -> ServiceProvider {
         ServiceProvider(
@@ -135,12 +135,12 @@ protocol ServiceProviderSource {
     func createBooking(_ booking: BookingRequest) async throws -> Booking
 }
 
-class CampusCutsService: ServiceProviderSource {
-    let providerType: ServicePlatform = .campusCuts
+class AvilaPlatformsService: ServiceProviderSource {
+    let providerType: ServicePlatform = .avilaPlatforms
     
     func fetchProviders() async throws -> [ServiceProvider] {
-        // Call CampusCuts API
-        let barbers = try await CampusCutsAPI.fetchBarbers()
+        // Call AvilaPlatforms API
+        let barbers = try await AvilaPlatformsAPI.fetchBarbers()
         return barbers.map { $0.toServiceProvider() }
     }
 }
@@ -163,15 +163,15 @@ class BeautyPlatformService: ServiceProviderSource {
 ```
 1. User taps "Haircuts" in ServiceSelectionScreen
    ↓
-2. MainCoordinator sets selectedService = .campusCuts
+2. MainCoordinator sets selectedService = .avilaPlatforms
    ↓
 3. ConsumerHomeScreen loads
    ↓
-4. ServiceRegistry returns CampusCutsService
+4. ServiceRegistry returns AvilaPlatformsService
    ↓
-5. CampusCutsService.fetchProviders() called
+5. AvilaPlatformsService.fetchProviders() called
    ↓
-6. CampusCuts API returns [Barber]
+6. AvilaPlatforms API returns [Barber]
    ↓
 7. Adapter converts [Barber] → [ServiceProvider]
    ↓
@@ -213,16 +213,16 @@ Intera/
 │   │   └── ServiceProviderSource.swift   # Protocol for platform services
 │   │
 │   └── Adapters/
-│       ├── CampusCutsAdapter.swift       # Barber → ServiceProvider
+│       ├── AvilaPlatformsAdapter.swift       # Barber → ServiceProvider
 │       └── BeautyPlatformAdapter.swift   # BeautySpecialist → ServiceProvider
 │
 ├── Packages/
-│   ├── CampusCutsModule/
+│   ├── AvilaPlatformsModule/
 │   │   ├── Models/
-│   │   │   └── Barber.swift              # CampusCuts-specific model
+│   │   │   └── Barber.swift              # AvilaPlatforms-specific model
 │   │   ├── Services/
-│   │   │   └── CampusCutsAPI.swift
-│   │   └── CampusCutsService.swift
+│   │   │   └── AvilaPlatformsAPI.swift
+│   │   └── AvilaPlatformsService.swift
 │   │
 │   └── BeautyPlatformModule/
 │       ├── Models/
@@ -248,7 +248,7 @@ Intera/
 
 ### ✅ Separation of Concerns
 - Each platform package is independent
-- Can update CampusCuts without affecting Beauty platform
+- Can update AvilaPlatforms without affecting Beauty platform
 - Easy to add new service platforms
 
 ### ✅ Reusable UI
@@ -257,7 +257,7 @@ Intera/
 - Reduce code duplication
 
 ### ✅ Flexible Backend Integration
-- CampusCuts can use AWS Cognito + Stripe
+- AvilaPlatforms can use AWS Cognito + Stripe
 - Beauty platform can use different auth/payment
 - Each platform can have different API structures
 
@@ -280,7 +280,7 @@ Intera/
 - [x] Create unified `Booking` model
 
 ### Phase 2: Create Adapters
-- [ ] Create `CampusCutsAdapter` to convert `Barber` → `ServiceProvider`
+- [ ] Create `AvilaPlatformsAdapter` to convert `Barber` → `ServiceProvider`
 - [ ] Create `BeautyPlatformAdapter` (if/when Beauty has its own API)
 - [ ] Add mock data adapters
 
@@ -290,7 +290,7 @@ Intera/
 - [ ] Update screens to use appropriate service based on selection
 
 ### Phase 4: Package Separation
-- [ ] Move CampusCuts-specific code to module
+- [ ] Move AvilaPlatforms-specific code to module
 - [ ] Create Beauty platform module
 - [ ] Configure SPM or separate framework targets
 
@@ -299,7 +299,7 @@ Intera/
 For development, each platform has mock data:
 
 ```swift
-// CampusCuts mocks (existing)
+// AvilaPlatforms mocks (existing)
 extension Barber {
     static let mocks: [Barber] = [...]
 }
@@ -311,15 +311,15 @@ extension BeautySpecialist {
 
 // Unified mocks for UI development
 extension ServiceProvider {
-    static let campusCutsMocks = Barber.mocks.map { $0.toServiceProvider() }
+    static let avilaPlatformsMocks = Barber.mocks.map { $0.toServiceProvider() }
     static let beautyMocks = BeautySpecialist.mocks.map { $0.toServiceProvider() }
-    static let allMocks = campusCutsMocks + beautyMocks
+    static let allMocks = avilaPlatformsMocks + beautyMocks
 }
 ```
 
 ## Next Steps
 
-1. **Keep existing `Barber.swift`** - This is from CampusCuts package
+1. **Keep existing `Barber.swift`** - This is from AvilaPlatforms package
 2. **Keep `ServiceProvider`** - This is the unified UI model
 3. **Create adapter** - Convert between them
 4. **Remove duplicate `Barber` typealias** - Causes conflicts

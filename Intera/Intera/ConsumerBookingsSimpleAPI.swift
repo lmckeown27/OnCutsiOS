@@ -2,7 +2,7 @@
 //  ConsumerBookingsSimpleAPI.swift
 //  Intera
 //
-//  Fetches consumer bookings from `GET /api/v1/bookings-simple?role=consumer` (same as the CampusCuts web app).
+//  Fetches consumer bookings from `GET /api/v1/bookings-simple?role=consumer` (same as the AvilaPlatforms web app).
 //
 
 import Foundation
@@ -93,7 +93,7 @@ enum ConsumerBookingsSimpleAPI {
             }
             if let bid = row.barberId?.trimmingCharacters(in: .whitespacesAndNewlines), !bid.isEmpty {
                 do {
-                    let provider = try await CampusCutsBarberDetailAPI.fetchServiceProvider(
+                    let provider = try await AvilaPlatformsBarberDetailAPI.fetchServiceProvider(
                         barberId: bid,
                         bearerToken: token
                     )

@@ -7,7 +7,7 @@
 
 import Foundation
 import Observation
-import CampusCutsModule
+import AvilaPlatformsModule
 #if canImport(UIKit) && os(iOS)
 import UIKit
 #endif
@@ -36,7 +36,7 @@ public final class AppSessionManager {
     
     // MARK: - Private Properties
     
-    private let keychainKey = "com.campuscuts.userSession"
+    private let keychainKey = "com.avilaplatforms.userSession"
     
     // Task stored separately to avoid observation tracking
     @ObservationIgnored private var _sessionTask: Task<Void, Never>?
@@ -65,7 +65,7 @@ public final class AppSessionManager {
         _logoutUnregisterTask?.cancel()
         _logoutUnregisterTask = nil
         self.currentSession = session
-        CampusCutsAuthTokenStore.save(accessToken: session.token, refreshToken: session.refreshToken)
+        AvilaPlatformsAuthTokenStore.save(accessToken: session.token, refreshToken: session.refreshToken)
         saveSessionToKeychain()
         Task {
             #if os(iOS) || os(visionOS)
@@ -79,7 +79,7 @@ public final class AppSessionManager {
     /// Clear current session and log out
     public func logout() {
         let logoutSince = Date()
-        let bearer = CampusCutsAuthTokenStore.loadAccessToken()
+        let bearer = AvilaPlatformsAuthTokenStore.loadAccessToken()
         let apnsHex = PushDeviceRegistration.storedAPNsHexToken
         if let bearer, let apnsHex, !bearer.isEmpty {
             _logoutUnregisterTask?.cancel()
@@ -93,7 +93,7 @@ public final class AppSessionManager {
         }
         FirebaseAuthSignOutSupport.signOut()
         GoogleSignInAppSupport.signOut()
-        CampusCutsAuthTokenStore.clear()
+        AvilaPlatformsAuthTokenStore.clear()
         currentSession = nil
         clearSessionFromKeychain()
         #if os(iOS)
@@ -145,7 +145,7 @@ public final class AppSessionManager {
             throw SessionError.noActiveSession
         }
         let refresh = session.refreshToken
-            ?? CampusCutsAuthTokenStore.loadRefreshToken()
+            ?? AvilaPlatformsAuthTokenStore.loadRefreshToken()
         guard let refresh, !refresh.isEmpty else {
             throw SessionError.refreshFailed
         }
@@ -181,7 +181,7 @@ public final class AppSessionManager {
             signInProvider: session.signInProvider
         )
         currentSession = refreshedSession
-        CampusCutsAuthTokenStore.save(accessToken: accessToken, refreshToken: refreshToken)
+        AvilaPlatformsAuthTokenStore.save(accessToken: accessToken, refreshToken: refreshToken)
         saveSessionToKeychain()
     }
     
@@ -245,7 +245,7 @@ public final class AppSessionManager {
 
             if session.isValid {
                 self.currentSession = session
-                CampusCutsAuthTokenStore.save(accessToken: session.token, refreshToken: session.refreshToken)
+                AvilaPlatformsAuthTokenStore.save(accessToken: session.token, refreshToken: session.refreshToken)
                 Task {
                     if session.needsAccessTokenRefresh {
                         await self.refreshSessionIfNeeded(for: session)
@@ -276,7 +276,7 @@ public final class AppSessionManager {
     private func normalizedPersistedSession(_ session: UserSession) -> UserSession {
         let trimmedRefresh = session.refreshToken?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let mergedRefresh = trimmedRefresh.isEmpty
-            ? CampusCutsAuthTokenStore.loadRefreshToken()
+            ? AvilaPlatformsAuthTokenStore.loadRefreshToken()
             : session.refreshToken
         let jwtExpiry = UserSession.preferredAccessExpiration(
             accessToken: session.token,

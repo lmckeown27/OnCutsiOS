@@ -3,7 +3,7 @@
 //  Intera
 //
 //  Firebase (and Google Sign-In) startup on iOS / iPadOS / visionOS / Mac Catalyst.
-//  Remote notifications: APNs + Firebase Messaging, registration with CampusCuts API.
+//  Remote notifications: APNs + Firebase Messaging, registration with AvilaPlatforms API.
 //
 
 #if canImport(UIKit) && !os(watchOS)
@@ -193,7 +193,7 @@ extension InteraAppDelegate: UNUserNotificationCenterDelegate {
 
 extension InteraAppDelegate: MessagingDelegate {
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        // CampusCuts currently delivers iOS pushes via APNs using the hex token from `register-device`.
+        // AvilaPlatforms currently delivers iOS pushes via APNs using the hex token from `register-device`.
         // FCM token is still refreshed here for Firebase Console / future use.
         _ = fcmToken
     }

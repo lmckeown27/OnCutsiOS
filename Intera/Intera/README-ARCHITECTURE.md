@@ -1,8 +1,8 @@
-# CampusCuts Shell App Architecture
+# AvilaPlatforms Shell App Architecture
 
 ## 🏗️ Overview
 
-This is the **Shell App** (Main Repository) for CampusCuts using a modular **MVVM-C** (Model-View-ViewModel with Coordinators) architecture. The Shell acts as a hub that manages authentication and injects session data into external feature modules.
+This is the **Shell App** (Main Repository) for AvilaPlatforms using a modular **MVVM-C** (Model-View-ViewModel with Coordinators) architecture. The Shell acts as a hub that manages authentication and injects session data into external feature modules.
 
 ## 📂 Project Structure
 
@@ -217,11 +217,11 @@ enum AppEnvironment: String {
     var apiBaseURL: URL {
         switch self {
         case .development:
-            return URL(string: "https://dev-api.campuscuts.com")!
+            return URL(string: "https://dev-api.avilaplatforms.com")!
         case .staging:
-            return URL(string: "https://staging-api.campuscuts.com")!
+            return URL(string: "https://staging-api.avilaplatforms.com")!
         case .production:
-            return URL(string: "https://api.campuscuts.com")!
+            return URL(string: "https://api.avilaplatforms.com")!
         }
     }
 }

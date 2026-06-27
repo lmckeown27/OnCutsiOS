@@ -3,7 +3,7 @@
 //  Intera
 //
 //  Persists Apple `email` and `fullName` from the **first** successful Sign in with Apple only.
-//  On later sign-ins Apple often returns `nil`; replay from Keychain in `POST /api/v1/auth/apple` (CampusCuts contract).
+//  On later sign-ins Apple often returns `nil`; replay from Keychain in `POST /api/v1/auth/apple` (AvilaPlatforms contract).
 //
 
 import AuthenticationServices

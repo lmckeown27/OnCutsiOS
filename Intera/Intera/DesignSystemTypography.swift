@@ -41,7 +41,7 @@ extension Font {
 
 // MARK: - Text Styles (Custom ViewModifier)
 
-struct CampusCutsTextStyle: ViewModifier {
+struct AvilaPlatformsTextStyle: ViewModifier {
     enum Style {
         case displayLarge, displayMedium, displaySmall
         case headlineLarge, headlineMedium, headlineSmall
@@ -107,7 +107,7 @@ struct CampusCutsTextStyle: ViewModifier {
 }
 
 extension View {
-    func campusCutsStyle(_ style: CampusCutsTextStyle.Style) -> some View {
-        modifier(CampusCutsTextStyle(style: style))
+    func avilaPlatformsStyle(_ style: AvilaPlatformsTextStyle.Style) -> some View {
+        modifier(AvilaPlatformsTextStyle(style: style))
     }
 }

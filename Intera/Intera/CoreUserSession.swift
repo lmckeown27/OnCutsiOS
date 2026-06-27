@@ -21,7 +21,7 @@ public enum UserSessionSignInProvider: String, Codable, Sendable, Equatable {
 public struct UserSession: Sendable {
     public let userId: String
     public let token: String
-    /// Optional refresh token from the backend (stored in Keychain via `CampusCutsAuthTokenStore` when present).
+    /// Optional refresh token from the backend (stored in Keychain via `AvilaPlatformsAuthTokenStore` when present).
     public let refreshToken: String?
     public let email: String
     public let displayName: String
@@ -118,7 +118,7 @@ extension UserSession: Codable {
     }
 }
 
-/// User roles for CampusCuts
+/// User roles for AvilaPlatforms
 public enum UserRole: String, Codable, Sendable {
     case student
     case barber
@@ -138,7 +138,7 @@ extension UserSession {
     public static let mock = UserSession(
         userId: "mock-user-123",
         token: "mock-jwt-token",
-        email: "student@campuscuts.com",
+        email: "student@avilaplatforms.com",
         displayName: "Alex Johnson",
         role: .student,
         stripeCustomerId: "cus_mock123",
@@ -151,7 +151,7 @@ extension UserSession {
     public static let mockBarber = UserSession(
         userId: "barber-456",
         token: "mock-barber-token",
-        email: "barber@campuscuts.com",
+        email: "barber@avilaplatforms.com",
         displayName: "Jordan Smith",
         role: .barber,
         stripeCustomerId: "cus_barber456",

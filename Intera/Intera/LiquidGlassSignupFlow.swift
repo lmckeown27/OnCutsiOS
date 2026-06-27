@@ -8,7 +8,7 @@
 //  Terms: inline `InteraTermsOfServiceDocumentScrollView` + agreement on the same screen. Keychain resume may still show a post-verify Terms card when `pendingSession` is set.
 //
 
-import CampusCutsModule
+import AvilaPlatformsModule
 import SwiftUI
 #if os(iOS)
 import UIKit
@@ -61,7 +61,7 @@ final class SignupCoordinator {
     var onAuthenticatedSignupFinished: (() -> Void)?
 
     /// Present only while resuming a legacy saved verified session until it is applied to `AppSessionManager`.
-    var pendingSession: CampusCutsAuthSession?
+    var pendingSession: AvilaPlatformsAuthSession?
 
     private var didApplyRestoredSessionLogin: Bool = false
 
@@ -95,12 +95,12 @@ final class SignupCoordinator {
         case .verification:
             if let em = SignupOnboardingPersistence.loadEmail(), !em.isEmpty {
                 // Mid–phone-signup persistence is invalid while phone integration is off — avoid a stuck verification step.
-                if !SignupPhoneSignupIntegration.isEnabled, em.hasSuffix("@phone.signup.campuscuts.com") {
+                if !SignupPhoneSignupIntegration.isEnabled, em.hasSuffix("@phone.signup.avilaplatforms.com") {
                     SignupOnboardingPersistence.clearSignupNavigationState()
                     return
                 }
                 email = em
-                if em.hasSuffix("@phone.signup.campuscuts.com") {
+                if em.hasSuffix("@phone.signup.avilaplatforms.com") {
                     contactChannel = .phone
                     let local = String(em.split(separator: "@").first ?? "")
                     if local.allSatisfy(\.isNumber) {
@@ -140,17 +140,17 @@ final class SignupCoordinator {
         }
     }
 
-    /// US 10-digit mobile → E.164 `+1…` (matches web + CampusCuts backend defaults).
+    /// US 10-digit mobile → E.164 `+1…` (matches web + AvilaPlatforms backend defaults).
     static func normalizedUSPhoneE164(digits: String) -> String? {
         let d = digits.filter(\.isNumber)
         guard d.count == 10 else { return nil }
         return "+1\(d)"
     }
 
-    /// Matches `syntheticEmailFromPhoneE164` in the CampusCuts API.
+    /// Matches `syntheticEmailFromPhoneE164` in the AvilaPlatforms API.
     static func syntheticEmailFromPhoneE164(_ e164: String) -> String {
         let digits = e164.filter(\.isNumber)
-        return "\(digits)@phone.signup.campuscuts.com"
+        return "\(digits)@phone.signup.avilaplatforms.com"
     }
 
     func advanceFromName() {
@@ -224,7 +224,7 @@ final class SignupCoordinator {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            let sent = try await CampusCutsAuthService.sendPhoneSignupCode(
+            let sent = try await AvilaPlatformsAuthService.sendPhoneSignupCode(
                 apiV1BaseTrimmed: apiBase,
                 phone: e164,
                 firstName: f,
@@ -273,7 +273,7 @@ final class SignupCoordinator {
         }
         isSubmitting = true
         defer { isSubmitting = false }
-        let req = CampusCutsRegisterRequest(
+        let req = AvilaPlatformsRegisterRequest(
             email: em,
             password: password,
             firstName: f,
@@ -283,7 +283,7 @@ final class SignupCoordinator {
             acceptedTerms: true
         )
         do {
-            let sent = try await CampusCutsAuthService.sendVerificationCode(apiV1BaseTrimmed: apiBase, request: req)
+            let sent = try await AvilaPlatformsAuthService.sendVerificationCode(apiV1BaseTrimmed: apiBase, request: req)
             email = sent.email
             devVerificationHint = sent.devVerificationCode
             verificationCode = ""
@@ -312,7 +312,7 @@ final class SignupCoordinator {
             isSubmitting = true
             defer { isSubmitting = false }
             do {
-                let sent = try await CampusCutsAuthService.sendPhoneSignupCode(
+                let sent = try await AvilaPlatformsAuthService.sendPhoneSignupCode(
                     apiV1BaseTrimmed: apiBase,
                     phone: phoneE164,
                     firstName: f,
@@ -339,7 +339,7 @@ final class SignupCoordinator {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            let sent = try await CampusCutsAuthService.resendVerificationCode(email: em, apiV1BaseTrimmed: apiBase)
+            let sent = try await AvilaPlatformsAuthService.resendVerificationCode(email: em, apiV1BaseTrimmed: apiBase)
             email = sent.email
             devVerificationHint = sent.devVerificationCode
             verificationCode = ""
@@ -389,14 +389,14 @@ final class SignupCoordinator {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            var session = try await CampusCutsAuthService.verify(code: code, email: em, apiV1BaseTrimmed: apiBase)
+            var session = try await AvilaPlatformsAuthService.verify(code: code, email: em, apiV1BaseTrimmed: apiBase)
             let localFirst = firstName.trimmingCharacters(in: .whitespacesAndNewlines)
             let localLast = lastName.trimmingCharacters(in: .whitespacesAndNewlines)
             let mergedFirst = localFirst.isEmpty ? (session.firstName.isEmpty ? "" : session.firstName) : localFirst
             let mergedLast = localLast.isEmpty ? (session.lastName.isEmpty ? "" : session.lastName) : localLast
             firstName = mergedFirst
             lastName = mergedLast
-            session = CampusCutsVerifiedSession(
+            session = AvilaPlatformsVerifiedSession(
                 accessToken: session.accessToken,
                 refreshToken: session.refreshToken,
                 userId: session.userId,
@@ -408,7 +408,7 @@ final class SignupCoordinator {
             #if os(iOS)
             InteraLiquidGlassHaptics.notification(.success)
             #endif
-            sessionManager.login(session: UserSession(campusCutsVerified: session))
+            sessionManager.login(session: UserSession(avilaPlatformsVerified: session))
             SignupOnboardingPersistence.clearAll()
             pendingSession = nil
             onAuthenticatedSignupFinished?()
@@ -435,7 +435,7 @@ final class SignupCoordinator {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            let result = try await CampusCutsAuthService.verifyPhoneSignupCode(
+            let result = try await AvilaPlatformsAuthService.verifyPhoneSignupCode(
                 apiV1BaseTrimmed: apiBase,
                 phone: phoneE164,
                 code: code
@@ -485,7 +485,7 @@ final class SignupCoordinator {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            var session = try await CampusCutsAuthService.completePhoneSignup(
+            var session = try await AvilaPlatformsAuthService.completePhoneSignup(
                 apiV1BaseTrimmed: apiBase,
                 phoneSignupToken: token,
                 password: password
@@ -496,7 +496,7 @@ final class SignupCoordinator {
             let mergedLast = localLast.isEmpty ? (session.lastName.isEmpty ? "" : session.lastName) : localLast
             firstName = mergedFirst
             lastName = mergedLast
-            session = CampusCutsVerifiedSession(
+            session = AvilaPlatformsVerifiedSession(
                 accessToken: session.accessToken,
                 refreshToken: session.refreshToken,
                 userId: session.userId,
@@ -508,7 +508,7 @@ final class SignupCoordinator {
             #if os(iOS)
             InteraLiquidGlassHaptics.notification(.success)
             #endif
-            sessionManager.login(session: UserSession(campusCutsVerified: session))
+            sessionManager.login(session: UserSession(avilaPlatformsVerified: session))
             phoneSignupToken = nil
             SignupOnboardingPersistence.clearAll()
             pendingSession = nil
@@ -524,7 +524,7 @@ final class SignupCoordinator {
         guard !didApplyRestoredSessionLogin else { return }
         guard step == .terms, let s = pendingSession, !sessionManager.isAuthenticated else { return }
         didApplyRestoredSessionLogin = true
-        sessionManager.login(session: UserSession(campusCutsVerified: s))
+        sessionManager.login(session: UserSession(avilaPlatformsVerified: s))
         pendingSession = nil
         SignupOnboardingPersistence.deleteVerifiedSessionFromKeychain()
     }
@@ -1090,7 +1090,7 @@ struct LiquidGlassSignupFlowView: View {
 
     private var verificationDestinationLabel: String {
         let em = coordinator.email
-        if em.hasSuffix("@phone.signup.campuscuts.com"), let digitsPart = em.split(separator: "@").first {
+        if em.hasSuffix("@phone.signup.avilaplatforms.com"), let digitsPart = em.split(separator: "@").first {
             let s = String(digitsPart)
             guard s.count >= 4 else { return em }
             return "•••• ••• " + String(s.suffix(4))

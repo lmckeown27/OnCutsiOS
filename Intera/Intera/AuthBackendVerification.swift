@@ -4,7 +4,7 @@
 //
 //  POSTs Google ID tokens to `AppConfiguration.urlAuthGoogle` (`POST /api/v1/auth/google`).
 //  Expects the same JSON shape as email login: `{ "success": true, "data": { "accessToken", "refreshToken", "user" } }`.
-//  Never uses the Google ID token as the CampusCuts API Bearer (that caused 401 on messaging).
+//  Never uses the Google ID token as the AvilaPlatforms API Bearer (that caused 401 on messaging).
 //
 
 import Foundation
@@ -12,7 +12,7 @@ import Foundation
 struct SessionAuthTokens: Sendable {
     let accessToken: String
     let refreshToken: String?
-    /// CampusCuts `users.id` when returned by auth (required for APIs keyed by DB user id).
+    /// AvilaPlatforms `users.id` when returned by auth (required for APIs keyed by DB user id).
     let backendUserId: String?
     /// Present on Google / Apple campus JWT login when `data.user` includes profile fields.
     let backendEmail: String?
@@ -110,7 +110,7 @@ enum AuthBackendVerification {
         let refresh_token: String?
     }
 
-    /// POST JSON `{ "idToken": "<Google JWT>" }` and return CampusCuts access (and optional refresh) tokens.
+    /// POST JSON `{ "idToken": "<Google JWT>" }` and return AvilaPlatforms access (and optional refresh) tokens.
     /// - Throws: On non-2xx, network failure, or missing access token. Does **not** fall back to the Google token.
     static func verifyGoogleIDTokenAndFetchSessionTokens(_ idToken: String) async throws -> SessionAuthTokens {
         var request = URLRequest(url: googleTokenVerifyURL)

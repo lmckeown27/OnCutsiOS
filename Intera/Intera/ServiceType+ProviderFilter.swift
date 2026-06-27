@@ -5,7 +5,7 @@
 //  Infers `ServiceType` from `ServiceProvider` and filters the browse list.
 //
 
-import CampusCutsModule
+import AvilaPlatformsModule
 import Foundation
 
 extension ServiceType {

@@ -2,7 +2,7 @@
 //  PushNotificationAPI.swift
 //  Intera
 //
-//  Registers the APNs device token with CampusCuts (`POST /api/v1/notifications/register-device`).
+//  Registers the APNs device token with AvilaPlatforms (`POST /api/v1/notifications/register-device`).
 //
 
 import Foundation

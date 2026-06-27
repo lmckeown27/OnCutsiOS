@@ -130,8 +130,8 @@ struct MessagesView: View {
 // MARK: - Profile Feature
 
 /// Single profile surface for the Intera shell: **`UserProfileView`** in `UserProfileView.swift`.
-/// There is no second copy in this target; CampusCuts’ standalone `StudentProfileView` / `BarberProfileView`
-/// live under `CampusCutsPackage/ios-app/` and are not part of the Intera app target.
+/// There is no second copy in this target; AvilaPlatforms’ standalone `StudentProfileView` / `BarberProfileView`
+/// live under `AvilaPlatformsPackage/ios-app/` and are not part of the Intera app target.
 struct ProfileView: View {
     let sessionManager: AppSessionManager
     let coordinator: MainCoordinator

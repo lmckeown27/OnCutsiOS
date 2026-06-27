@@ -133,7 +133,7 @@ This allows:
 
 When integrating platform packages, they can map appropriately:
 
-### CampusCuts Package
+### AvilaPlatforms Package
 ```swift
 // Barber model from package
 struct Barber {

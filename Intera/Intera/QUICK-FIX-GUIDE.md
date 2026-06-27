@@ -3,7 +3,7 @@
 ## Problem
 
 You have TWO different `Barber` types:
-1. **CampusCuts `Barber`** (in `Barber.swift`) - Used by CampusCuts package
+1. **AvilaPlatforms `Barber`** (in `Barber.swift`) - Used by AvilaPlatforms package
 2. **ServiceProvider** (in `ComponentsBarberCard.swift`) - Unified UI model for all platforms
 
 The typealias `Barber = ServiceProvider` was causing conflicts.
@@ -13,7 +13,7 @@ The typealias `Barber = ServiceProvider` was causing conflicts.
 ### ✅ What's Been Done
 
 1. **Removed conflicting typealias** from `ComponentsBarberCard.swift`
-2. **Created `CampusCutsAdapter.swift`** - Converts CampusCuts `Barber` → `ServiceProvider`
+2. **Created `AvilaPlatformsAdapter.swift`** - Converts AvilaPlatforms `Barber` → `ServiceProvider`
 3. **Created `MULTI-SERVICE-ARCHITECTURE.md`** - Full architecture guide
 4. **Emptied `MockBeautySpecialists 2.swift`** - Remove this file from Xcode
 
@@ -42,7 +42,7 @@ In `ScreensConsumerHome.swift`, globally replace:
 
 ## Understanding the Architecture
 
-### CampusCuts Barber (Barber.swift)
+### AvilaPlatforms Barber (Barber.swift)
 ```swift
 struct Barber {
     let firstName: String
@@ -50,7 +50,7 @@ struct Barber {
     let pricing: [String: Double]
     let instantBook: Bool
     let aptosAddress: String
-    // ... CampusCuts-specific fields
+    // ... AvilaPlatforms-specific fields
 }
 ```
 
@@ -65,11 +65,11 @@ struct ServiceProvider {
 }
 ```
 
-### Conversion (CampusCutsAdapter.swift)
+### Conversion (AvilaPlatformsAdapter.swift)
 ```swift
 extension Barber {
     func toServiceProvider() -> ServiceProvider {
-        // Converts CampusCuts Barber to unified model
+        // Converts AvilaPlatforms Barber to unified model
     }
 }
 ```
@@ -78,10 +78,10 @@ extension Barber {
 
 When user selects a service:
 
-### Haircuts Service → CampusCuts Package
+### Haircuts Service → AvilaPlatforms Package
 ```swift
-// Fetch from CampusCuts API
-let barbers: [Barber] = try await CampusCutsAPI.fetchBarbers()
+// Fetch from AvilaPlatforms API
+let barbers: [Barber] = try await AvilaPlatformsAPI.fetchBarbers()
 
 // Convert to ServiceProvider for UI
 let providers = barbers.map { $0.toServiceProvider() }
@@ -110,9 +110,9 @@ ForEach(providers) { provider in
 
 ### ✅ KEEP These Files
 
-1. **`Barber.swift`** - CampusCuts package model
+1. **`Barber.swift`** - AvilaPlatforms package model
 2. **`ComponentsBarberCard.swift`** - Now contains `ServiceProvider` and `ServiceProviderCard`
-3. **`CampusCutsAdapter.swift`** - Converts between the two
+3. **`AvilaPlatformsAdapter.swift`** - Converts between the two
 4. **`ComponentsBookingCard.swift`** - Unified booking model
 5. **`MULTI-SERVICE-ARCHITECTURE.md`** - Architecture documentation
 
@@ -124,7 +124,7 @@ ForEach(providers) { provider in
 ## Benefits of This Setup
 
 ✅ **Each service can have its own backend**
-- CampusCuts uses AWS Cognito + Aptos blockchain
+- AvilaPlatforms uses AWS Cognito + Aptos blockchain
 - Beauty platform can use different auth/payment
 - Future services can use whatever they need
 
@@ -140,7 +140,7 @@ ForEach(providers) { provider in
 4. Done! No UI changes needed
 
 ✅ **Type safety**
-- CampusCuts code uses `Barber` type
+- AvilaPlatforms code uses `Barber` type
 - Beauty code uses `BeautySpecialist` type
 - UI code uses `ServiceProvider` type
 - Adapters ensure correct conversion
@@ -160,8 +160,8 @@ ForEach(providers) { provider in
 - Q: Won't this be more complex?
   - A: Initially yes, but it scales MUCH better. Adding a new service platform is trivial.
 
-- Q: Can I still use CampusCuts-specific features?
-  - A: Yes! The `Barber` model still exists for CampusCuts-specific code. The adapter just makes it work with the UI.
+- Q: Can I still use AvilaPlatforms-specific features?
+  - A: Yes! The `Barber` model still exists for AvilaPlatforms-specific code. The adapter just makes it work with the UI.
 
 - Q: What about bookings?
   - A: Same pattern - each platform has its own booking model, unified `Booking` for UI, adapters convert between them.

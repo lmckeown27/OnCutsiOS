@@ -2,10 +2,10 @@
 //  ProviderViewModel.swift
 //  Intera
 //
-//  Loads providers: CampusCuts `GET /api/v1/barbers` first, then legacy `/providers/list`.
+//  Loads providers: AvilaPlatforms `GET /api/v1/barbers` first, then legacy `/providers/list`.
 //
 
-import CampusCutsModule
+import AvilaPlatformsModule
 import Foundation
 import Observation
 #if os(iOS)
@@ -20,7 +20,7 @@ enum ProviderLoadingState {
 }
 
 private enum ProviderFetchSource {
-    case campusCutsBarbers
+    case avilaPlatformsBarbers
     case legacyProvidersList
 }
 
@@ -32,7 +32,7 @@ final class ProviderViewModel {
     /// Last good payload so a failed refresh doesn’t wipe the list.
     private(set) var lastSuccessfulProviders: [ServiceProvider] = []
 
-    /// Glass toolbar: cycles through `ServiceType` (CampusCuts package); filters the barber list in the shell.
+    /// Glass toolbar: cycles through `ServiceType` (AvilaPlatforms package); filters the barber list in the shell.
     var selectedServiceType: ServiceType = .all
 
     var providersForDisplay: [ServiceProvider] {
@@ -64,17 +64,17 @@ final class ProviderViewModel {
         } else {
             coord = nil
         }
-        let barbersURL = AppConfiguration.urlCampusCutsBarbers(
+        let barbersURL = AppConfiguration.urlAvilaPlatformsBarbers(
             latitude: coord?.latitude,
             longitude: coord?.longitude,
             maxDistanceKm: coord != nil ? ConsumerBrowseDistancePreference.maxDistanceKmForLocationQuery() : nil
         )
         #else
-        let barbersURL = AppConfiguration.urlCampusCutsBarbers
+        let barbersURL = AppConfiguration.urlAvilaPlatformsBarbers
         #endif
 
         let candidates: [(url: URL, source: ProviderFetchSource, label: String)] = [
-            (barbersURL, .campusCutsBarbers, "CampusCuts /barbers"),
+            (barbersURL, .avilaPlatformsBarbers, "AvilaPlatforms /barbers"),
             (AppConfiguration.urlProvidersList, .legacyProvidersList, "legacy /providers/list")
         ]
 
@@ -158,8 +158,8 @@ final class ProviderViewModel {
 
     private func decodeProviders(data: Data, source: ProviderFetchSource, url: URL, label: String) throws -> [ServiceProvider] {
         switch source {
-        case .campusCutsBarbers:
-            if let campus = try? CampusCutsBarbersDecoder.decodeServiceProviders(from: data) {
+        case .avilaPlatformsBarbers:
+            if let campus = try? AvilaPlatformsBarbersDecoder.decodeServiceProviders(from: data) {
                 return campus
             }
             do {

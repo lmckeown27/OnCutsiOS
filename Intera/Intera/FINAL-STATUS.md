@@ -23,7 +23,7 @@ Each service platform has its own models:
 
 ```
 Platform Packages (Specific Names)
-├── CampusCuts/
+├── AvilaPlatforms/
 │   └── Barber.swift                   ✅ Haircut-specific
 │
 ├── BeautyPlatform/ (future)
@@ -38,7 +38,7 @@ Converters bridge the gap:
 
 ```
 Adapters (Convert Specific → Generic)
-├── CampusCutsAdapter.swift
+├── AvilaPlatformsAdapter.swift
 │   └── Barber → ServiceProvider       ✅ Converts haircut data
 │
 ├── BeautyPlatformAdapter.swift (future)
@@ -52,7 +52,7 @@ Adapters (Convert Specific → Generic)
 
 ### Core Shell App Files
 1. ✅ `ServiceProviderCard.swift` - Platform-agnostic UI component
-2. ✅ `CampusCutsAdapter.swift` - Converts CampusCuts data to generic format
+2. ✅ `AvilaPlatformsAdapter.swift` - Converts AvilaPlatforms data to generic format
 
 ### Documentation Files
 3. ✅ `MULTI-SERVICE-ARCHITECTURE.md` - Complete architecture guide
@@ -95,10 +95,10 @@ Adapters (Convert Specific → Generic)
 
 ### Data Flow Example
 
-#### Haircuts (CampusCuts Platform)
+#### Haircuts (AvilaPlatforms Platform)
 ```swift
 // 1. Fetch platform-specific data
-let barbers: [Barber] = try await CampusCutsAPI.fetchBarbers()
+let barbers: [Barber] = try await AvilaPlatformsAPI.fetchBarbers()
 
 // 2. Convert to generic ServiceProvider
 let providers = barbers.map { $0.toServiceProvider() }
@@ -156,13 +156,13 @@ Mock data simulates what platform packages will return:
 
 ```swift
 // Development/Testing (in ServiceProviderCard.swift)
-ServiceProvider.haircutMocks   // Simulates CampusCuts package
+ServiceProvider.haircutMocks   // Simulates AvilaPlatforms package
 ServiceProvider.beautyMocks    // Simulates Beauty package
 ServiceProvider.wellnessMocks  // Simulates Wellness package
 
 // Production (actual usage)
 // 1. Fetch from platform
-let barbers = try await CampusCutsAPI.fetchBarbers()
+let barbers = try await AvilaPlatformsAPI.fetchBarbers()
 
 // 2. Convert to generic
 let providers = barbers.map { $0.toServiceProvider() }

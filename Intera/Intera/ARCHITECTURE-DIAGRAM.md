@@ -1,4 +1,4 @@
-# 🏗️ CampusCuts Architecture Overview
+# 🏗️ AvilaPlatforms Architecture Overview
 
 ## System Architecture Diagram
 
@@ -127,7 +127,7 @@ MarketplaceModule(provider: provider)
     │
     ├── provider.session.userId       → "123"
     ├── provider.session.token         → "abc"
-    ├── provider.apiBaseURL            → "https://api.campuscuts.com"
+    ├── provider.apiBaseURL            → "https://api.campuscut.com"
     └── provider.sessionManager.logout() → Call from module
 ```
 

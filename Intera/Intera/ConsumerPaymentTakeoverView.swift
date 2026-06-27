@@ -141,8 +141,8 @@ struct ConsumerPaymentTakeoverView: View {
         _selectedTipPreset = State(initialValue: nil)
         _checkout = StateObject(
             wrappedValue: CheckoutViewModel(
-                merchantDisplayName: "CampusCuts",
-                stripeReturnURL: "campuscuts://stripe-redirect"
+                merchantDisplayName: "AvilaPlatforms",
+                stripeReturnURL: "avilaplatforms://stripe-redirect"
             )
         )
     }
@@ -544,7 +544,7 @@ struct ConsumerPaymentTakeoverView: View {
         // is mis-set to pk_test while the bundle has pk_live, preferring server would cause 404/400 on PI + Elements.
         let fromServer: String? = {
             guard let s = serverTrimmed, s.hasPrefix("pk_") else { return nil }
-            if Self.hostsProductionCampusCutsAPI, s.hasPrefix("pk_test") {
+            if Self.hostsProductionAvilaPlatformsAPI, s.hasPrefix("pk_test") {
                 #if DEBUG
                 print("Stripe: ignoring pk_test from client-config on production API host; using Info.plist if present.")
                 #endif
@@ -557,9 +557,9 @@ struct ConsumerPaymentTakeoverView: View {
             phase = .misconfigured(stripeMisconfiguredHint(actualValue: pk))
             return
         }
-        if Self.hostsProductionCampusCutsAPI, pk.hasPrefix("pk_test") {
+        if Self.hostsProductionAvilaPlatformsAPI, pk.hasPrefix("pk_test") {
             phase = .misconfigured(
-                "This build uses a Stripe test publishable key (pk_test…) while the app is pointed at the production CampusCuts API. " +
+                "This build uses a Stripe test publishable key (pk_test…) while the app is pointed at the production AvilaPlatforms API. " +
                     "Live PaymentIntents return 404 in that setup. Set STRIPE_PUBLISHABLE_KEY = pk_live… on the server (GET /api/v1/stripe/client-config) and/or in `Config/StripeKeys.xcconfig`, then Product → Clean Build Folder."
             )
             return
@@ -571,7 +571,7 @@ struct ConsumerPaymentTakeoverView: View {
     }
 
     /// `true` when API root is production — Stripe mode must match live server PaymentIntents.
-    private static var hostsProductionCampusCutsAPI: Bool {
+    private static var hostsProductionAvilaPlatformsAPI: Bool {
         AppConfiguration.messagingAPIRootTrimmed.lowercased().contains("campuscut.com")
     }
 

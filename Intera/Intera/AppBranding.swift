@@ -10,7 +10,7 @@ import Foundation
 
 enum AppBranding {
     /// Shown under the app icon and in user-visible strings (Guideline 2.3.8).
-    static let displayName = "CampusCuts"
+    static let displayName = "AvilaPlatforms"
 }
 
 extension Bundle {

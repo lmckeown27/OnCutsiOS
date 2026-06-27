@@ -5,7 +5,7 @@
 //  Created by Liam McKeown on 3/8/26.
 //
 
-import CampusCutsModule
+import AvilaPlatformsModule
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
@@ -171,7 +171,7 @@ struct LoginView: View {
                 .foregroundStyle(Color.lavaShellCream)
 
             Text("Book when you're ready")
-                .campusCutsStyle(.bodyMedium)
+                .avilaPlatformsStyle(.bodyMedium)
         }
         .padding(.top, .space10)
     }
@@ -180,7 +180,7 @@ struct LoginView: View {
         VStack(spacing: .space4) {
             VStack(alignment: .leading, spacing: .space2) {
                 Text("Email")
-                    .campusCutsStyle(.labelLarge)
+                    .avilaPlatformsStyle(.labelLarge)
 
                 TextField("", text: $email)
                     .textContentType(.emailAddress)
@@ -210,7 +210,7 @@ struct LoginView: View {
             if didCompleteEmailHandshake {
                 VStack(alignment: .leading, spacing: .space2) {
                     Text("Password")
-                        .campusCutsStyle(.labelLarge)
+                        .avilaPlatformsStyle(.labelLarge)
 
                     HStack(spacing: 10) {
                         Group {
@@ -293,14 +293,14 @@ struct LoginView: View {
     private var devLoginSection: some View {
         VStack(spacing: .space3) {
             Text("Development Login")
-                .campusCutsStyle(.caption)
+                .avilaPlatformsStyle(.caption)
 
             HStack(spacing: .space3) {
                 Button {
                     sessionManager.mockLogin(as: .student)
                 } label: {
                     Text("Student")
-                        .campusCutsStyle(.caption)
+                        .avilaPlatformsStyle(.caption)
                         .padding(.horizontal, .space4)
                         .padding(.vertical, .space2)
                         .background {
@@ -314,7 +314,7 @@ struct LoginView: View {
                     sessionManager.mockLogin(as: .barber)
                 } label: {
                     Text("Barber")
-                        .campusCutsStyle(.caption)
+                        .avilaPlatformsStyle(.caption)
                         .padding(.horizontal, .space4)
                         .padding(.vertical, .space2)
                         .background {
@@ -452,7 +452,7 @@ struct LoginView: View {
         defer { isCheckingAccount = false }
 
         do {
-            let exists = try await CampusCutsAuthService.checkAccount(email: trimmed, apiV1BaseTrimmed: apiRoot)
+            let exists = try await AvilaPlatformsAuthService.checkAccount(email: trimmed, apiV1BaseTrimmed: apiRoot)
             if exists {
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
                     didCompleteEmailHandshake = true
@@ -490,12 +490,12 @@ struct LoginView: View {
 
         let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
-            let verified = try await CampusCutsAuthService.loginWithEmailPassword(
+            let verified = try await AvilaPlatformsAuthService.loginWithEmailPassword(
                 email: trimmedEmail,
                 password: password,
                 apiV1BaseTrimmed: apiRoot
             )
-            sessionManager.login(session: UserSession(campusCutsVerified: verified))
+            sessionManager.login(session: UserSession(avilaPlatformsVerified: verified))
             await sessionManager.refreshProfileFromServer()
         } catch {
             let o = InteraAuthUserMessaging.emailPasswordOutcome(for: error)
