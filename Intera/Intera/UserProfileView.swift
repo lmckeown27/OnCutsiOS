@@ -7,7 +7,7 @@
 //
 
 import SwiftUI
-import AvilaPlatformsModule
+import CampusCutsModule
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -117,11 +117,11 @@ struct UserProfileView: View {
         }
     }
 
-    private func avilaPlatformsClient() -> AvilaPlatformsClient {
-        AvilaPlatformsClient(
-            session: AvilaPlatformsUserSessionAdapter(manager: sessionManager),
+    private func campusCutsClient() -> CampusCutsClient {
+        CampusCutsClient(
+            session: CampusCutsUserSessionAdapter(manager: sessionManager),
             environment: .production,
-            isProduction: AppConfiguration.avilaPlatformsProductionLiveDataMode
+            isProduction: AppConfiguration.campusCutsProductionLiveDataMode
         )
     }
 
@@ -135,7 +135,7 @@ struct UserProfileView: View {
             barberBioFromAPI = nil
 
         case .barber:
-            let client = avilaPlatformsClient()
+            let client = campusCutsClient()
             do {
                 var barberId = UserProfileBarberIdCache.load(for: session.userId)
                 if barberId == nil {
@@ -671,7 +671,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
 
     /// Shown in the Account → Apple Pay & payments sheet (numbered checklist for reviewers and users).
     private static let applePayInstructionSteps: [String] = [
-        "Your service provider marks the service Completed in the AvilaPlatforms Provider platform (their provider-facing AvilaPlatforms Provider app).",
+        "Your service provider marks the service Completed in the CampusCuts Provider platform (their provider-facing CampusCuts Provider app).",
         "\(AppBranding.displayName) may open the payment screen automatically; you can tap Pay later to return to the app, then go to Bookings → open that booking → Pay for this service.",
         "On the payment screen, use the Apple Pay button (or Card / Cash). Apple Pay appears when Wallet has a card and merchant configuration is active.",
         "If checkout never appeared, open Bookings, select the completed booking, and tap Pay for this service.",

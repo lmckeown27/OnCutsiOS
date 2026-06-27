@@ -67,7 +67,7 @@ ServiceProvider.mock2 // Alex's Barbershop
 
 ## Platform Design Philosophy
 
-### Haircut Platform (AvilaPlatforms)
+### Haircut Platform (CampusCuts)
 - Uses **business names** to represent traditional barbershops
 - Reflects the established, shop-based business model
 - Examples: "Jordan's Cuts", "Fresh Fades Studio"

@@ -7,7 +7,7 @@
 
 import Foundation
 import OSLog
-import AvilaPlatformsModule
+import CampusCutsModule
 #if canImport(UIKit) && !os(watchOS)
 import UIKit
 #endif
@@ -52,9 +52,9 @@ enum PushDeviceRegistration {
             log.notice("register-device skipped: no APNs hex yet (waiting for system didRegisterForRemoteNotifications)")
             return
         }
-        let jwt = bearerToken ?? AvilaPlatformsAuthTokenStore.loadAccessToken()
+        let jwt = bearerToken ?? CampusCutsAuthTokenStore.loadAccessToken()
         guard let jwt, !jwt.isEmpty else {
-            log.notice("register-device skipped: no JWT (session token or AvilaPlatformsAuthTokenStore)")
+            log.notice("register-device skipped: no JWT (session token or CampusCutsAuthTokenStore)")
             return
         }
 
@@ -77,7 +77,7 @@ enum PushDeviceRegistration {
 
         do {
             try await PushNotificationAPI.registerDevice(deviceTokenHex: hex, bearerToken: jwt)
-            log.notice("register-device succeeded for AvilaPlatforms API")
+            log.notice("register-device succeeded for CampusCuts API")
             throttleLock.lock()
             lastSuccessfulBackendRegister = (hex, jwt, Date())
             throttleLock.unlock()
@@ -104,7 +104,7 @@ enum PushDeviceRegistration {
     /// Call before clearing auth (e.g. logout). Pass the same `logoutSince` you captured at the instant logout began.
     static func unregisterStoredTokenFromBackendIfPossible(logoutSince: Date) async {
         guard let hex = storedAPNsHexToken else { return }
-        guard let token = AvilaPlatformsAuthTokenStore.loadAccessToken(), !token.isEmpty else { return }
+        guard let token = CampusCutsAuthTokenStore.loadAccessToken(), !token.isEmpty else { return }
         try? await PushNotificationAPI.unregisterDevice(deviceTokenHex: hex, bearerToken: token, logoutSince: logoutSince)
     }
 }

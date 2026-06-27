@@ -9,7 +9,7 @@ A **smart, collapsible category filter** with disabled states for empty categori
 ### Default State (Filter Collapsed)
 ```
 ┌─────────────────────────────────────┐
-│ [↑]  AvilaPlatforms         [Profile]  │  ← Up arrow in toolbar
+│ [↑]  CampusCuts         [Profile]  │  ← Up arrow in toolbar
 ├─────────────────────────────────────┤
 │  Jordan Williams                    │
 │  Maya Chen                          │
@@ -21,7 +21,7 @@ A **smart, collapsible category filter** with disabled states for empty categori
 ### Tap Up Arrow → Filter Expands
 ```
 ┌─────────────────────────────────────┐
-│ [↓]  AvilaPlatforms         [Profile]  │  ← Down arrow
+│ [↓]  CampusCuts         [Profile]  │  ← Down arrow
 ├─────────────────────────────────────┤
 │ [All] [✂️ Haircuts (5)] [✨ Beauty (5)] [❤️ Wellness (0)] [🏃 Fitness (0)] │
 │  ✅      ✅ Enabled      ✅ Enabled      ❌ Disabled      ❌ Disabled      │
@@ -34,7 +34,7 @@ A **smart, collapsible category filter** with disabled states for empty categori
 ### Select Category → Filters List
 ```
 ┌─────────────────────────────────────┐
-│ [↓]  AvilaPlatforms         [Profile]  │
+│ [↓]  CampusCuts         [Profile]  │
 ├─────────────────────────────────────┤
 │ [All] [✂️ Haircuts (5)] [✨ Beauty (5)] [❤️ Wellness (0)] [🏃 Fitness (0)] │
 │         ⬆️ Selected                                                         │

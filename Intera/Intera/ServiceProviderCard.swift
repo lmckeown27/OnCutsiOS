@@ -373,7 +373,7 @@ struct ProviderReview: Identifiable, Codable, Hashable {
 
 /// Platform-agnostic service provider model
 /// This works for ANY type of service provider across all platforms:
-/// - Haircut providers (from AvilaPlatforms package)
+/// - Haircut providers (from CampusCuts package)
 /// - Beauty specialists (from Beauty platform package)
 /// - Wellness providers (from Wellness platform package)
 /// - Fitness trainers (from Fitness platform package)
@@ -451,7 +451,7 @@ struct ServiceProvider: Identifiable, Codable {
     
     // MARK: - Mock Data for Development
     
-    /// Mock haircut providers (simulates data from AvilaPlatforms platform)
+    /// Mock haircut providers (simulates data from CampusCuts platform)
     static let haircutMocks: [ServiceProvider] = [
         ServiceProvider(
             id: "barber-101",
@@ -905,12 +905,12 @@ extension ServiceProvider {
  This file is part of the SHELL APP layer - it's platform-agnostic.
  
  Platform-Specific Models (live in their own packages):
- - AvilaPlatforms: Barber model (see Barber.swift)
+ - CampusCuts: Barber model (see Barber.swift)
  - Beauty Platform: BeautySpecialist model (future)
  - Wellness Platform: WellnessProvider model (future)
  
  Adapters Convert to ServiceProvider:
- - AvilaPlatformsAdapter: Barber → ServiceProvider
+ - CampusCutsAdapter: Barber → ServiceProvider
  - BeautyPlatformAdapter: BeautySpecialist → ServiceProvider
  - WellnessPlatformAdapter: WellnessProvider → ServiceProvider
  

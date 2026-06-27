@@ -2,7 +2,7 @@
 //  InteraTermsOfService.swift
 //  Intera
 //
-//  In-app Terms of Service for the AvilaPlatforms platform (multi-category marketplace).
+//  In-app Terms of Service for the CampusCuts platform (multi-category marketplace).
 //
 
 import Foundation
@@ -17,15 +17,15 @@ enum InteraTermsOfService {
 
         1. Introduction
 
-        Welcome to AvilaPlatforms ("we," "our," or "us"). These Terms of Service ("Terms") govern your access to and use of the AvilaPlatforms platform, including our website, mobile applications, and all related services (collectively, the "Service").
+        Welcome to CampusCuts ("we," "our," or "us"). These Terms of Service ("Terms") govern your access to and use of the CampusCuts platform, including our website, mobile applications, and all related services (collectively, the "Service").
 
-        AvilaPlatforms may integrate or interoperate with partner experiences (for example, campus- or category-specific marketplaces). Where those partners have additional rules, they apply alongside these Terms only as described in those offerings.
+        CampusCuts may integrate or interoperate with partner experiences (for example, campus- or category-specific marketplaces). Where those partners have additional rules, they apply alongside these Terms only as described in those offerings.
 
         By accessing or using the Service, you agree to be bound by these Terms. If you do not agree to these Terms, you may not access or use the Service.
 
         2. Description of Service
 
-        AvilaPlatforms is a marketplace platform that connects people seeking local services ("Consumers") with independent professionals offering those services ("Service Providers"). Depending on where you use AvilaPlatforms, categories may include grooming and personal care, beauty and wellness, fitness, and other local services offered through the platform. We facilitate:
+        CampusCuts is a marketplace platform that connects people seeking local services ("Consumers") with independent professionals offering those services ("Service Providers"). Depending on where you use CampusCuts, categories may include grooming and personal care, beauty and wellness, fitness, and other local services offered through the platform. We facilitate:
 
         • Discovery and browsing of provider profiles, listings, and offerings
         • Booking and scheduling of appointments where the product supports it
@@ -34,7 +34,7 @@ enum InteraTermsOfService {
         • Communication between Consumers and Service Providers
         • Optional tools for campuses, venues, or partner organizations to help coordinate providers where available
 
-        Important: AvilaPlatforms is a platform that connects users. We are not the direct provider of the underlying services (for example, haircuts, training sessions, or other booked services). Service Providers are independent contractors or independent businesses, not employees of AvilaPlatforms, unless we expressly state otherwise in writing for a specific program.
+        Important: CampusCuts is a platform that connects users. We are not the direct provider of the underlying services (for example, haircuts, training sessions, or other booked services). Service Providers are independent contractors or independent businesses, not employees of CampusCuts, unless we expressly state otherwise in writing for a specific program.
 
         3. Account Registration
 
@@ -80,7 +80,7 @@ enum InteraTermsOfService {
 
         • Review and manage applications or listings only within the scope assigned to you
         • Support a safe, fair marketplace and act in good faith when making approval or quality decisions
-        • Escalate safety, fraud, or policy concerns to AvilaPlatforms support when appropriate
+        • Escalate safety, fraud, or policy concerns to CampusCuts support when appropriate
 
         7. Payments and Fees
 
@@ -94,14 +94,14 @@ enum InteraTermsOfService {
 
         8. Cancellations and Refunds
 
-        Cancellation and refund rules may be set by individual Service Providers or by AvilaPlatforms flows shown at checkout. We encourage both parties to communicate promptly regarding changes to scheduled services. Refund eligibility may depend on:
+        Cancellation and refund rules may be set by individual Service Providers or by CampusCuts flows shown at checkout. We encourage both parties to communicate promptly regarding changes to scheduled services. Refund eligibility may depend on:
 
         • The timing of the cancellation
         • The reason for cancellation
         • The provider’s posted policy or the terms shown at booking
         • Whether the service was partially or fully rendered
 
-        Disputes between Consumers and Service Providers should first be resolved directly when possible. AvilaPlatforms may assist with mediation in some cases but is not obligated to issue refunds.
+        Disputes between Consumers and Service Providers should first be resolved directly when possible. CampusCuts may assist with mediation in some cases but is not obligated to issue refunds.
 
         9. User Conduct
 
@@ -119,9 +119,9 @@ enum InteraTermsOfService {
 
         10. Intellectual Property
 
-        The Service and its original content, features, and functionality are owned by AvilaPlatforms and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
+        The Service and its original content, features, and functionality are owned by CampusCuts and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
 
-        By posting content (including profile information, portfolio images, and reviews), you grant AvilaPlatforms a non-exclusive, worldwide, royalty-free license to use, display, and distribute such content in connection with the Service.
+        By posting content (including profile information, portfolio images, and reviews), you grant CampusCuts a non-exclusive, worldwide, royalty-free license to use, display, and distribute such content in connection with the Service.
 
         11. Disclaimer of Warranties
 
@@ -131,13 +131,13 @@ enum InteraTermsOfService {
 
         12. Limitation of Liability
 
-        TO THE MAXIMUM EXTENT PERMITTED BY LAW, AVILAPLATFORMS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES, WHETHER INCURRED DIRECTLY OR INDIRECTLY.
+        TO THE MAXIMUM EXTENT PERMITTED BY LAW, CAMPUSCUTS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES, WHETHER INCURRED DIRECTLY OR INDIRECTLY.
 
         OUR TOTAL LIABILITY FOR ANY CLAIMS ARISING FROM OR RELATED TO THE SERVICE SHALL NOT EXCEED THE AMOUNT YOU PAID US IN FEES FOR THE SERVICE IN THE TWELVE (12) MONTHS PRECEDING THE CLAIM (OR, IF NO FEES APPLIED, ONE HUNDRED U.S. DOLLARS (US$100)).
 
         13. Indemnification
 
-        You agree to indemnify, defend, and hold harmless AvilaPlatforms and its officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including attorneys’ fees) arising from your use of the Service or violation of these Terms.
+        You agree to indemnify, defend, and hold harmless CampusCuts and its officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including attorneys’ fees) arising from your use of the Service or violation of these Terms.
 
         14. Termination
 

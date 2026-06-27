@@ -2,7 +2,7 @@
 //  IntegratedSignUpFlowRegistry.swift
 //  Intera
 //
-//  Register sign-up flows from integrated packages (AvilaPlatformsModule today; more modules later).
+//  Register sign-up flows from integrated packages (CampusCutsModule today; more modules later).
 //
 
 import SwiftUI

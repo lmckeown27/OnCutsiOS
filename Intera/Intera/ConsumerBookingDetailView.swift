@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import AvilaPlatformsModule
+import CampusCutsModule
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -272,11 +272,11 @@ struct ConsumerBookingDetailView: View {
         return nil
     }
 
-    private var avilaPlatformsClient: AvilaPlatformsClient {
-        AvilaPlatformsClient(
-            session: AvilaPlatformsUserSessionAdapter(manager: sessionManager),
+    private var campusCutsClient: CampusCutsClient {
+        CampusCutsClient(
+            session: CampusCutsUserSessionAdapter(manager: sessionManager),
             environment: .production,
-            isProduction: AppConfiguration.avilaPlatformsProductionLiveDataMode
+            isProduction: AppConfiguration.campusCutsProductionLiveDataMode
         )
     }
 
@@ -625,7 +625,7 @@ struct ConsumerBookingDetailView: View {
     @MainActor
     private func startRebookFlow() async {
         guard let bid = bookingRow.barberId?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty else { return }
-        if AppConfiguration.avilaPlatformsProductionLiveDataMode {
+        if AppConfiguration.campusCutsProductionLiveDataMode {
             showLiveDataStripeAlert = true
             return
         }
@@ -636,7 +636,7 @@ struct ConsumerBookingDetailView: View {
         isLoadingRebook = true
         defer { isLoadingRebook = false }
         do {
-            rebookProvider = try await AvilaPlatformsBarberDetailAPI.fetchServiceProvider(
+            rebookProvider = try await CampusCutsBarberDetailAPI.fetchServiceProvider(
                 barberId: bid,
                 bearerToken: sessionManager.currentSession?.token
             )
@@ -1539,7 +1539,7 @@ struct ConsumerBookingDetailView: View {
         }
 
         do {
-            let provider = try await AvilaPlatformsBarberDetailAPI.fetchServiceProvider(
+            let provider = try await CampusCutsBarberDetailAPI.fetchServiceProvider(
                 barberId: bid,
                 bearerToken: sessionManager.currentSession?.token
             )
@@ -1577,9 +1577,9 @@ struct ConsumerBookingDetailView: View {
         let open = await BookingOpenDaysLoader.loadOpenDayStarts(
             days: days,
             barberId: barberId,
-            avilaPlatformsBarberId: barberId,
+            campusCutsBarberId: barberId,
             bearerToken: sessionManager.currentSession?.token,
-            avilaPlatformsClient: avilaPlatformsClient
+            campusCutsClient: campusCutsClient
         )
         scheduleEditOpenDaysByMonthKey[monthKey] = open
     }
@@ -1623,10 +1623,12 @@ struct ConsumerBookingDetailView: View {
 
     private func fetchRibbonSlotsForEditDay(_ day: Date) async -> [BookingRibbonSlot] {
         let dayStr = BookingPacificSchedule.apiDateString(from: day)
-        let bid = bookingRow.barberId?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? ""
+        guard let bid = bookingRow.barberId?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty else {
+            return []
+        }
         if !bid.isEmpty {
             do {
-                let campus = try await avilaPlatformsClient.fetchBarberDayAvailability(barberId: bid, dateYYYYMMDD: dayStr)
+                let campus = try await campusCutsClient.fetchBarberDayAvailability(barberId: bid, dateYYYYMMDD: dayStr)
                 let mapped = campus.map {
                     BookingRibbonSlot(
                         timeKey: normalizeEditSlotTimeKey($0.startTime),
@@ -1641,7 +1643,6 @@ struct ConsumerBookingDetailView: View {
                 if InteraRefreshCancellation.isBenignCancellation(error) { return [] }
             }
         }
-        guard !bid.isEmpty else { return [] }
         do {
             let rows = try await BarberAvailabilityAPI.fetchDaySlots(
                 barberId: bid,

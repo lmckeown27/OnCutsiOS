@@ -199,7 +199,7 @@ private struct AvatarClipModifier: ViewModifier {
         }
         
         Text("With profile outline placeholder")
-            .avilaPlatformsStyle(.caption)
+            .campusCutsStyle(.caption)
     }
     .padding()
 }
@@ -215,7 +215,7 @@ private struct AvatarClipModifier: ViewModifier {
             HStack {
                 AvatarView(imageUrl: nil, name: name, size: 48)
                 Text(name)
-                    .avilaPlatformsStyle(.bodyMedium)
+                    .campusCutsStyle(.bodyMedium)
                 Spacer()
             }
         }

@@ -5,7 +5,7 @@
 //  Resume liquid signup after background: verification email + optional verified session (Keychain).
 //
 
-import AvilaPlatformsModule
+import CampusCutsModule
 import Foundation
 import Security
 
@@ -44,7 +44,7 @@ enum SignupOnboardingPersistence {
         }
     }
 
-    static func saveVerifiedSession(_ session: AvilaPlatformsVerifiedSession) throws {
+    static func saveVerifiedSession(_ session: CampusCutsVerifiedSession) throws {
         // Advance saved step before Keychain so a Keychain failure cannot leave us stuck on `.verification`
         // (which would make `restoreIfNeeded` snap the user back after a successful verify).
         save(step: .terms, email: session.email)
@@ -53,7 +53,7 @@ enum SignupOnboardingPersistence {
         try saveKeychainData(data)
     }
 
-    static func loadVerifiedSession() throws -> AvilaPlatformsVerifiedSession? {
+    static func loadVerifiedSession() throws -> CampusCutsVerifiedSession? {
         guard let data = loadKeychainData() else { return nil }
         let snap = try JSONDecoder().decode(VerifiedSessionSnapshot.self, from: data)
         return snap.asVerifiedSession()
@@ -147,7 +147,7 @@ private struct VerifiedSessionSnapshot: Codable, Sendable {
     var lastName: String
     var backendRole: String
 
-    init(session: AvilaPlatformsVerifiedSession) {
+    init(session: CampusCutsVerifiedSession) {
         accessToken = session.accessToken
         refreshToken = session.refreshToken
         userId = session.userId
@@ -157,8 +157,8 @@ private struct VerifiedSessionSnapshot: Codable, Sendable {
         backendRole = session.backendRole
     }
 
-    func asVerifiedSession() -> AvilaPlatformsVerifiedSession {
-        AvilaPlatformsVerifiedSession(
+    func asVerifiedSession() -> CampusCutsVerifiedSession {
+        CampusCutsVerifiedSession(
             accessToken: accessToken,
             refreshToken: refreshToken,
             userId: userId,

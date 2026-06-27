@@ -5,13 +5,13 @@
 //  Main home screen for consumers to browse service providers and manage bookings
 //
 
-import AvilaPlatformsModule
+import CampusCutsModule
 import SwiftUI
 #if os(iOS)
 import UIKit
 #endif
 
-// MARK: - Home shell (`AvilaPlatformsChatManager`)
+// MARK: - Home shell (`CampusCutsChatManager`)
 
 /// Where search + category chrome is drawn relative to the provider list and `GlassEffectContainer`.
 private enum GuestAuthResumeAction {
@@ -480,7 +480,7 @@ struct ConsumerHomeScreen: View {
         .onReceive(NotificationCenter.default.publisher(for: .messagingUnreadCountShouldRefresh)) { _ in
             Task { await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager) }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .avilaPlatformsStartProviderChat)) { output in
+        .onReceive(NotificationCenter.default.publisher(for: .campusCutsStartProviderChat)) { output in
             guard let id = output.userInfo?["providerID"] as? String else { return }
             Task { @MainActor in
                 openChatForBarberProfileId(id)
@@ -834,7 +834,7 @@ struct ConsumerHomeScreen: View {
                     .foregroundStyle(Color.lavaShellCream)
 
                 Text(trimmed.isEmpty ? "Check back later for available service providers" : "Try a different search or category.")
-                    .avilaPlatformsStyle(.bodyMedium)
+                    .campusCutsStyle(.bodyMedium)
                     .multilineTextAlignment(.center)
 
                 Spacer()
@@ -913,7 +913,7 @@ struct ConsumerHomeScreen: View {
                 .foregroundStyle(Color.lavaShellCream)
             
             Text("Select a service provider to book your appointment")
-                .avilaPlatformsStyle(.bodyMedium)
+                .campusCutsStyle(.bodyMedium)
                 .multilineTextAlignment(.center)
         }
         .padding()
@@ -1411,7 +1411,7 @@ struct ServiceProviderDetailSheet: View {
 
     @State private var barberReviewsState: BarberReviewsFetchState = .idle
 
-    private var liveDataSafetyMode: Bool { AppConfiguration.avilaPlatformsProductionLiveDataMode }
+    private var liveDataSafetyMode: Bool { AppConfiguration.campusCutsProductionLiveDataMode }
 
     /// After a successful fetch, API rows; otherwise embedded `customerReviews` while loading or if the request failed.
     private var displayReviews: [ProviderReview] {
@@ -3269,7 +3269,7 @@ struct UnifiedProviderHomeScreen: View {
         .onReceive(NotificationCenter.default.publisher(for: .messagingUnreadCountShouldRefresh)) { _ in
             Task { await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager) }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .avilaPlatformsStartProviderChat)) { output in
+        .onReceive(NotificationCenter.default.publisher(for: .campusCutsStartProviderChat)) { output in
             guard let id = output.userInfo?["providerID"] as? String else { return }
             Task { @MainActor in
                 openUnifiedChatForBarberProfileId(id)
@@ -3720,7 +3720,7 @@ struct UnifiedProviderHomeScreen: View {
                     .font(InteraFont.headlineMedium)
                     .foregroundStyle(Color.lavaShellCream)
                 Text(trimmed.isEmpty ? "Check back later" : "Try a different search or category.")
-                    .avilaPlatformsStyle(.bodyMedium)
+                    .campusCutsStyle(.bodyMedium)
                 Spacer()
             }
             .padding()

@@ -1,4 +1,4 @@
-# 🚀 AvilaPlatforms - Getting Started Guide
+# 🚀 CampusCuts - Getting Started Guide
 
 ## What You Just Built
 
@@ -15,7 +15,7 @@ Congratulations! You now have a **production-ready Shell App** architecture with
 ### Step 1: Test the Shell App (5 minutes)
 
 1. Build and run the app in Xcode (⌘R)
-2. You'll see the **LoginView** with the AvilaPlatforms logo
+2. You'll see the **LoginView** with the CampusCuts logo
 3. In DEBUG mode, tap the **"Student"** or **"Barber"** quick login button
 4. You should be taken to the **MainTabView** with 5 tabs
 5. Navigate between tabs - notice session info is available everywhere
@@ -32,8 +32,8 @@ Let's create the **Marketplace** as a separate Swift Package:
 
 ```bash
 # In Terminal, outside your main project
-mkdir AvilaPlatformsMarketplace
-cd AvilaPlatformsMarketplace
+mkdir CampusCutsMarketplace
+cd CampusCutsMarketplace
 git init
 
 # Create Swift Package structure
@@ -147,7 +147,7 @@ final class MarketplaceAPIClient {
 ```bash
 git add .
 git commit -m "Initial marketplace module"
-git remote add origin https://github.com/YOUR_USERNAME/AvilaPlatformsMarketplace.git
+git remote add origin https://github.com/YOUR_USERNAME/CampusCutsMarketplace.git
 git push -u origin main
 ```
 
@@ -156,7 +156,7 @@ git push -u origin main
 1. In Xcode, open your Intera project
 2. Go to **Project Settings → Package Dependencies**
 3. Click **+** button
-4. Enter your GitHub URL: `https://github.com/YOUR_USERNAME/AvilaPlatformsMarketplace.git`
+4. Enter your GitHub URL: `https://github.com/YOUR_USERNAME/CampusCutsMarketplace.git`
 5. Click **Add Package**
 
 #### G. Update MainTabView.swift
@@ -313,22 +313,22 @@ Before going to production:
 Your final repository structure:
 
 ```
-AvilaPlatforms-Shell/           (This project - the hub)
+CampusCuts-Shell/           (This project - the hub)
 ├── Core/
 ├── Navigation/
 ├── UI/
 └── Features/
 
-AvilaPlatforms-Core/            (Shared types - NEW)
+CampusCuts-Core/            (Shared types - NEW)
 ├── UserSession.swift
 ├── FeatureProvider.swift
 └── Networking/
 
-AvilaPlatforms-Marketplace/     (Feature - NEW)
-AvilaPlatforms-Booking/         (Feature - NEW)
-AvilaPlatforms-Messages/        (Feature - NEW)
-AvilaPlatforms-Profile/         (Feature - NEW)
-AvilaPlatforms-Analytics/       (Feature - NEW)
+CampusCuts-Marketplace/     (Feature - NEW)
+CampusCuts-Booking/         (Feature - NEW)
+CampusCuts-Messages/        (Feature - NEW)
+CampusCuts-Profile/         (Feature - NEW)
+CampusCuts-Analytics/       (Feature - NEW)
 ```
 
 ## 🧪 Testing Strategy
@@ -431,7 +431,7 @@ struct E2ETests {
 ✅ Session management and authentication flow  
 ✅ Modern Swift concurrency patterns  
 
-**You're ready to build AvilaPlatforms! 🚀**
+**You're ready to build CampusCuts! 🚀**
 
 ---
 

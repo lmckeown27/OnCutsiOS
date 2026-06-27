@@ -1,13 +1,13 @@
 //
-//  AvilaPlatformsCard.swift
+//  CampusCutsCard.swift
 //  Intera
 //
-//  Reusable card component for AvilaPlatforms design system
+//  Reusable card component for CampusCuts design system
 //
 
 import SwiftUI
 
-struct AvilaPlatformsCard<Content: View>: View {
+struct CampusCutsCard<Content: View>: View {
     let content: () -> Content
     var padding: CGFloat = .space4
     var cornerRadius: CGFloat = .radiusXL
@@ -41,19 +41,19 @@ struct AvilaPlatformsCard<Content: View>: View {
 
 #Preview {
     VStack(spacing: .space6) {
-        AvilaPlatformsCard {
+        CampusCutsCard {
             VStack(alignment: .leading, spacing: .space3) {
                 Text("Card Title")
-                    .avilaPlatformsStyle(.headlineMedium)
+                    .campusCutsStyle(.headlineMedium)
                 
-                Text("This is a sample card with some content inside. It follows the AvilaPlatforms design system.")
-                    .avilaPlatformsStyle(.bodyMedium)
+                Text("This is a sample card with some content inside. It follows the CampusCuts design system.")
+                    .campusCutsStyle(.bodyMedium)
                 
                 PrimaryButton(title: "Action", action: {})
             }
         }
         
-        AvilaPlatformsCard(backgroundColor: .oliveTint) {
+        CampusCutsCard(backgroundColor: .oliveTint) {
             HStack {
                 Image(systemName: "info.circle.fill")
                     .foregroundStyleInteraShellIcon()
@@ -61,9 +61,9 @@ struct AvilaPlatformsCard<Content: View>: View {
                 
                 VStack(alignment: .leading) {
                     Text("Information")
-                        .avilaPlatformsStyle(.labelLarge)
+                        .campusCutsStyle(.labelLarge)
                     Text("Card with custom background")
-                        .avilaPlatformsStyle(.caption)
+                        .campusCutsStyle(.caption)
                 }
             }
         }

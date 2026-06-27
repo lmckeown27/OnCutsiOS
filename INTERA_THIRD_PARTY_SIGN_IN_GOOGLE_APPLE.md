@@ -1,6 +1,6 @@
 # Intera: Google and Apple third-party sign-in
 
-This document describes how **Sign in with Google** and **Sign in with Apple** work in the Intera consumer app: what the user sees, which platform pieces are required, and how the client exchanges provider tokens for a **AvilaPlatforms** session (JWT access token, optional refresh token).
+This document describes how **Sign in with Google** and **Sign in with Apple** work in the Intera consumer app: what the user sees, which platform pieces are required, and how the client exchanges provider tokens for a **CampusCuts** session (JWT access token, optional refresh token).
 
 ---
 
@@ -11,7 +11,7 @@ This document describes how **Sign in with Google** and **Sign in with Apple** w
 | **Google** | Google Sign-In for iOS (`GIDSignIn`) | Google **ID token** (JWT string) | `POST …/api/v1/auth/google` — body `{ "idToken": "<jwt>" }` |
 | **Apple** | `AuthenticationServices` (`ASAuthorizationAppleIDProvider`) | Apple **identity token** (JWT string) | `POST …/api/v1/auth/apple` — body `{ "identityToken": "<jwt>", … }` |
 
-The app **never** uses the Google or Apple JWT as the Bearer token for AvilaPlatforms APIs. After verification, the server returns the **same style of response as email login** (`success`, `data.accessToken`, optional `data.refreshToken`, `data.user`, etc.). The client persists tokens via `AvilaPlatformsAuthTokenStore` and builds an in-app `UserSession` through `AppSessionManager.login`.
+The app **never** uses the Google or Apple JWT as the Bearer token for CampusCuts APIs. After verification, the server returns the **same style of response as email login** (`success`, `data.accessToken`, optional `data.refreshToken`, `data.user`, etc.). The client persists tokens via `CampusCutsAuthTokenStore` and builds an in-app `UserSession` through `AppSessionManager.login`.
 
 ---
 
@@ -28,7 +28,7 @@ The app **never** uses the Google or Apple JWT as the Bearer token for AvilaPlat
 
 1. User taps **Continue with Google**.
 2. The Google SDK presents the system / Google account picker (native UI).
-3. After success, the app obtains a **Google ID token**, sends it to the AvilaPlatforms backend, then logs the user in with the returned **AvilaPlatforms access token**.
+3. After success, the app obtains a **Google ID token**, sends it to the CampusCuts backend, then logs the user in with the returned **CampusCuts access token**.
 
 ### Configuration and lifecycle
 
@@ -61,7 +61,7 @@ The app **never** uses the Google or Apple JWT as the Bearer token for AvilaPlat
 1. User taps **Continue with Apple**.
 2. Depending on context (e.g. create account vs sign in only), the app may show **`ApplePreflowSignInFlow`** (collects supplemental details where needed) or **`AppleSignInOnlySheet`** (Apple UI only).
 3. Apple’s system UI completes; the app receives an **`ASAuthorizationAppleIDCredential`** including an **identity token** (JWT).
-4. The app **`POST`s the identity token** (and optional name/email) to AvilaPlatforms, then applies the returned session. If the account has no platform password yet, the UI may prompt for a password step before the flow is finished.
+4. The app **`POST`s the identity token** (and optional name/email) to CampusCuts, then applies the returned session. If the account has no platform password yet, the UI may prompt for a password step before the flow is finished.
 
 ### Apple Developer setup
 
@@ -70,7 +70,7 @@ The app **never** uses the Google or Apple JWT as the Bearer token for AvilaPlat
 
 ### Code flow
 
-- **`AppleSignInAppSupport.completeLogin`** — Merges credential and optional prefills (`AppleSignInSupplementStore` for names/email when Apple omits them on later sign-ins). Calls **`AuthBackendVerification.verifyAppleIdentityTokenAndFetchSessionTokens`**, validates resolved email, **`AvilaPlatformsAuthTokenStore.save`**, then **`sessionManager.login`** with the assembled session. Returns a `Bool` indicating whether the user must set a **AvilaPlatforms password** (`needsPlatformPassword`).
+- **`AppleSignInAppSupport.completeLogin`** — Merges credential and optional prefills (`AppleSignInSupplementStore` for names/email when Apple omits them on later sign-ins). Calls **`AuthBackendVerification.verifyAppleIdentityTokenAndFetchSessionTokens`**, validates resolved email, **`CampusCutsAuthTokenStore.save`**, then **`sessionManager.login`** with the assembled session. Returns a `Bool` indicating whether the user must set a **CampusCuts password** (`needsPlatformPassword`).
 - **`AuthBackendVerification.verifyAppleIdentityTokenAndFetchSessionTokens`** — Builds JSON with **`identityToken`**, optional **`firstName`**, **`lastName`**, **`email`** (supplemental). Tries **`AppConfiguration.urlAuthApple`** (`…/api/v1/auth/apple`) first; on **404**, retries **`AppConfiguration.urlAuthAppleLegacy`** (`…/api/auth/apple`) for deployments that only forward the legacy prefix.
 
 ### Backend contract
@@ -83,7 +83,7 @@ The app **never** uses the Google or Apple JWT as the Bearer token for AvilaPlat
 ## Shared configuration
 
 - **`AppConfiguration.swift`** — Builds absolute URLs from the API base (e.g. **`pathAuthGoogle`**, **`pathAuthApple`**, **`pathAuthMe`**). All third-party exchanges use these URLs, not hard-coded hosts in feature code.
-- **`AvilaPlatformsAuthTokenStore`** — Persists access (and refresh when provided) tokens after any successful OAuth-backed login.
+- **`CampusCutsAuthTokenStore`** — Persists access (and refresh when provided) tokens after any successful OAuth-backed login.
 - **`ProductionLogging`** — Non-fatal logging on verification failures (e.g. `area: auth_google`).
 
 ---
@@ -96,7 +96,7 @@ The app **never** uses the Google or Apple JWT as the Bearer token for AvilaPlat
 | Google: redirect does nothing | **URL scheme** (reversed client ID) not in the built target’s URL types. |
 | Apple: capability errors in Xcode | **Sign In with Apple** not enabled on App ID / entitlements out of sync. |
 | Both: HTTP **404** on verify | Backend **`POST /api/v1/auth/google`** or **`/auth/apple`** not deployed or wrong base URL in `AppConfiguration`. Apple client will try legacy **`/api/auth/apple`** after 404. |
-| APIs **401** after “sign in” | Client must use **AvilaPlatforms JWT** from the auth response, **not** the raw Google/Apple token (see comments in **`AuthBackendVerification.swift`**). |
+| APIs **401** after “sign in” | Client must use **CampusCuts JWT** from the auth response, **not** the raw Google/Apple token (see comments in **`AuthBackendVerification.swift`**). |
 
 ---
 
@@ -116,4 +116,4 @@ The app **never** uses the Google or Apple JWT as the Bearer token for AvilaPlat
 | `Intera/GoogleService-Info.plist` | Google `CLIENT_ID` (and related Firebase metadata as used by the project). |
 | `Intera/GoogleSignInURL.plist` | URL scheme for OAuth return to the app. |
 
-Backend route implementations live in the **AvilaPlatforms** server package (e.g. `POST /api/v1/auth/google`, `POST /api/v1/auth/apple`); see repository docs or `INTERA_PROVIDER_BACKEND_AND_REALTIME_APPENDIX.md` for API context where applicable.
+Backend route implementations live in the **CampusCuts** server package (e.g. `POST /api/v1/auth/google`, `POST /api/v1/auth/apple`); see repository docs or `INTERA_PROVIDER_BACKEND_AND_REALTIME_APPENDIX.md` for API context where applicable.

@@ -2,7 +2,7 @@
 //  PrimaryButton.swift
 //  Intera
 //
-//  AvilaPlatforms primary button component
+//  CampusCuts primary button component
 //
 
 import SwiftUI

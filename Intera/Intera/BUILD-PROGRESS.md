@@ -1,4 +1,4 @@
-# AvilaPlatforms iOS App - Build Progress
+# CampusCuts iOS App - Build Progress
 
 ## ✅ Phase 1: Foundation Complete!
 
@@ -58,7 +58,7 @@
 - ✅ Tab badges showing booking count
 
 ### UI/UX
-- ✅ AvilaPlatforms olive green branding
+- ✅ CampusCuts olive green branding
 - ✅ Serif typography throughout
 - ✅ Consistent 8pt spacing
 - ✅ Professional shadows and cards
@@ -178,8 +178,8 @@ Color.primary600      // Dark olive
 Color.statusPending   // Orange
 
 // Typography
-Text("Title").avilaPlatformsStyle(.headlineLarge)
-Text("Body").avilaPlatformsStyle(.bodyMedium)
+Text("Title").campusCutsStyle(.headlineLarge)
+Text("Body").campusCutsStyle(.bodyMedium)
 
 // Spacing
 .padding(.space4)     // 16pt

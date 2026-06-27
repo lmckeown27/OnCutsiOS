@@ -79,7 +79,7 @@ enum PreviewTab: String, CaseIterable {
         Spacer()
         
         Text("Selected: \(selected.rawValue)")
-            .avilaPlatformsStyle(.bodyLarge)
+            .campusCutsStyle(.bodyLarge)
     }
 }
 
@@ -99,7 +99,7 @@ enum PreviewTab: String, CaseIterable {
         Spacer()
         
         Text("Selected: \(selected.rawValue)")
-            .avilaPlatformsStyle(.bodyLarge)
+            .campusCutsStyle(.bodyLarge)
     }
 }
 

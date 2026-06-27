@@ -1,6 +1,6 @@
 # Beauty Specialist Mock Data
 
-This document describes the mock beauty specialist data created for the Intera/AvilaPlatforms app.
+This document describes the mock beauty specialist data created for the Intera/CampusCuts app.
 
 ## Overview
 

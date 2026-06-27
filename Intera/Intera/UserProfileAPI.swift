@@ -2,7 +2,7 @@
 //  UserProfileAPI.swift
 //  Intera
 //
-//  AvilaPlatforms user profile REST client: GET/PUT `/api/v1/users/:id`,
+//  CampusCuts user profile REST client: GET/PUT `/api/v1/users/:id`,
 //  multipart profile photo upload, and account deletion. The deployed Express API uses **PUT**
 //  for profile updates (not POST `/users/profile`).
 //
@@ -128,7 +128,7 @@ enum UserProfileAPI {
         try throwIfHTTPError(resp, data: data)
     }
 
-    /// `GET /api/v1/auth/me` — reads **`needsPlatformPassword`** or **`needs_platform_password`** (AvilaPlatforms returns both).
+    /// `GET /api/v1/auth/me` — reads **`needsPlatformPassword`** or **`needs_platform_password`** (CampusCuts returns both).
     static func authMeIndicatesNeedsPlatformPassword(bearerToken: String) async throws -> Bool {
         let url = AppConfiguration.urlAuthMe
         var req = URLRequest(url: url)

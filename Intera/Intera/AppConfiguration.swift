@@ -12,7 +12,7 @@ import Core
 
 /// Thread-safe configuration: only immutable `Sendable` static data and pure URL helpers.
 enum AppConfiguration: Sendable {
-    // MARK: - API v1 root (AvilaPlatforms Express on EC2)
+    // MARK: - API v1 root (CampusCuts Express on EC2)
 
     /// Single root for versioned API: **scheme + host + `/api/v1`**, no trailing slash.
     ///
@@ -26,8 +26,8 @@ enum AppConfiguration: Sendable {
     /// Shell routes (`/auth/google`, `/providers/list`, …) are joined to this same root so Debug and Release hit one deployment.
     private static let apiBaseURLString = apiV1RootURLString
 
-    /// Barbers list uses this root + `/barbers` (see `urlAvilaPlatformsBarbers`).
-    private static let avilaPlatformsAPIv1BaseURLString = apiV1RootURLString
+    /// Barbers list uses this root + `/barbers` (see `urlCampusCutsBarbers`).
+    private static let campusCutsAPIv1BaseURLString = apiV1RootURLString
 
     static let apiBaseURL: URL = {
         guard let url = URL(string: apiBaseURLString) else {
@@ -41,7 +41,7 @@ enum AppConfiguration: Sendable {
         apiBaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
 
-    /// AvilaPlatforms web checkout for a booking after the provider marks the service complete (`COMPLETED` → consumer pays).
+    /// CampusCuts web checkout for a booking after the provider marks the service complete (`COMPLETED` → consumer pays).
     /// Matches `booking-simple` complete handler: `{FRONTEND_URL}/web/payment/:bookingId`.
     static func urlConsumerBookingPaymentWeb(bookingId: String) -> URL? {
         let trimmed = bookingId.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -79,27 +79,27 @@ enum AppConfiguration: Sendable {
     static var stripePublishableKey: String { "" }
     #endif
 
-    // MARK: - AvilaPlatforms live data safety
+    // MARK: - CampusCuts live data safety
 
-    /// When `true`, Intera shows the AvilaPlatforms **Live Data Mode** banner and routes the consumer **Book** action to a Stripe test-mode explanation instead of a real booking/checkout flow.
+    /// When `true`, Intera shows the CampusCuts **Live Data Mode** banner and routes the consumer **Book** action to a Stripe test-mode explanation instead of a real booking/checkout flow.
     /// Turn on only while debugging against production data.
-    static let avilaPlatformsProductionLiveDataMode = false
+    static let campusCutsProductionLiveDataMode = false
 
     // MARK: - Barbers list
 
     /// Optional `campusId` query (UUID or slug) for `GET /barbers`.
-    static let avilaPlatformsDefaultCampusId: String? = nil
+    static let campusCutsDefaultCampusId: String? = nil
 
     /// `GET …/api/v1/barbers/:id` — production embeds `reviews` on this payload (Prisma/bookings-backed).
-    static func urlAvilaPlatformsBarber(barberId: String) -> URL? {
-        let base = avilaPlatformsAPIv1BaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    static func urlCampusCutsBarber(barberId: String) -> URL? {
+        let base = campusCutsAPIv1BaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let encoded = barberId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? barberId
         return URL(string: base + "/barbers/" + encoded)
     }
 
     /// `GET …/api/v1/barbers/:id/reviews` — optional; not deployed on all backends (may 404).
     static func urlBarberReviews(barberId: String) -> URL? {
-        let base = avilaPlatformsAPIv1BaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let base = campusCutsAPIv1BaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let encoded = barberId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? barberId
         let joined = base + "/barbers/" + encoded + "/reviews"
         return URL(string: joined)
@@ -107,14 +107,14 @@ enum AppConfiguration: Sendable {
 
     /// `GET …/api/v1/reviews/barber/:id` — Express review routes (shape may use `client_first_name`).
     static func urlReviewsForBarber(barberId: String) -> URL? {
-        let base = avilaPlatformsAPIv1BaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let base = campusCutsAPIv1BaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let encoded = barberId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? barberId
         return URL(string: base + "/reviews/barber/" + encoded)
     }
 
     /// `GET …/api/v1/barbers/:id/availability?date=YYYY-MM-DD` — slot list for a calendar day (public).
     static func urlBarberAvailability(barberId: String, dateYYYYMMDD: String) -> URL? {
-        let base = avilaPlatformsAPIv1BaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let base = campusCutsAPIv1BaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let encoded = barberId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? barberId
         var components = URLComponents(string: base + "/barbers/" + encoded + "/availability")
         components?.queryItems = [URLQueryItem(name: "date", value: dateYYYYMMDD)]
@@ -123,10 +123,10 @@ enum AppConfiguration: Sendable {
 
     /// `GET …/api/v1/barbers` (public; optional Bearer).
     /// With both `latitude` and `longitude`, the backend filters and sorts by distance (see `getAllBarbers`); omit either to skip geo params.
-    static func urlAvilaPlatformsBarbers(latitude: Double?, longitude: Double?, maxDistanceKm: Double? = nil) -> URL {
-        var components = URLComponents(string: avilaPlatformsAPIv1BaseURLString + "/barbers")!
+    static func urlCampusCutsBarbers(latitude: Double?, longitude: Double?, maxDistanceKm: Double? = nil) -> URL {
+        var components = URLComponents(string: campusCutsAPIv1BaseURLString + "/barbers")!
         var items: [URLQueryItem] = []
-        if let cid = avilaPlatformsDefaultCampusId?.trimmingCharacters(in: .whitespacesAndNewlines), !cid.isEmpty {
+        if let cid = campusCutsDefaultCampusId?.trimmingCharacters(in: .whitespacesAndNewlines), !cid.isEmpty {
             items.append(URLQueryItem(name: "campusId", value: cid))
         }
         if let latitude, let longitude {
@@ -140,9 +140,9 @@ enum AppConfiguration: Sendable {
         return components.url!
     }
 
-    /// Same path as `urlAvilaPlatformsBarbers(latitude:nil, longitude:nil)` — no geo or campus query (unless `avilaPlatformsDefaultCampusId` is set).
-    static var urlAvilaPlatformsBarbers: URL {
-        urlAvilaPlatformsBarbers(latitude: nil, longitude: nil, maxDistanceKm: nil)
+    /// Same path as `urlCampusCutsBarbers(latitude:nil, longitude:nil)` — no geo or campus query (unless `campusCutsDefaultCampusId` is set).
+    static var urlCampusCutsBarbers: URL {
+        urlCampusCutsBarbers(latitude: nil, longitude: nil, maxDistanceKm: nil)
     }
 
     // MARK: - Paths (joined to `apiV1RootURLString`)
@@ -162,7 +162,7 @@ enum AppConfiguration: Sendable {
     /// POST Sign in with Apple `identityToken` (App Store Guideline 4.8).
     static var urlAuthApple: URL { url(forPath: pathAuthApple) }
 
-    /// GET current user (Bearer) — includes `needsPlatformPassword` / `needs_platform_password` per AvilaPlatforms contract.
+    /// GET current user (Bearer) — includes `needsPlatformPassword` / `needs_platform_password` per CampusCuts contract.
     static var urlAuthMe: URL { url(forPath: pathAuthMe) }
 
     /// Same handler as `urlAuthApple` but under `/api/auth/…` — some production proxies only forward the legacy prefix (`index.ts` mounts both).
@@ -179,10 +179,10 @@ enum AppConfiguration: Sendable {
     /// POST registration metadata (email, name, terms, etc.). Contract should match email login response shape where possible.
     static var urlAuthRegister: URL { url(forPath: pathAuthRegister) }
 
-    /// Legacy list URL; home screen tries `urlAvilaPlatformsBarbers` first, then this.
+    /// Legacy list URL; home screen tries `urlCampusCutsBarbers` first, then this.
     static var urlProvidersList: URL { url(forPath: pathProvidersList) }
 
-    /// `POST` — same handler the AvilaPlatforms web app uses for simple bookings.
+    /// `POST` — same handler the CampusCuts web app uses for simple bookings.
     static var urlBookingsSimpleCreate: URL { url(forPath: pathBookingsSimpleCreate) }
 
     static func url(forPath path: String) -> URL {

@@ -2,11 +2,11 @@
 //  AppleSignInAppSupport.swift
 //  Intera
 //
-//  Sign in with Apple → `POST /api/v1/auth/apple` → AvilaPlatforms JWT session (Guideline 4.8).
+//  Sign in with Apple → `POST /api/v1/auth/apple` → CampusCuts JWT session (Guideline 4.8).
 //
 
 import AuthenticationServices
-import AvilaPlatformsModule
+import CampusCutsModule
 import Foundation
 
 /// Reads `email` from Apple’s identity JWT payload (still present when `ASAuthorizationAppleIDCredential.email` is nil on later authorizations).
@@ -87,7 +87,7 @@ enum AppleSignInAppSupport {
             throw AppleSignInFlowError.missingEmail
         }
 
-        AvilaPlatformsAuthTokenStore.save(accessToken: tokens.accessToken, refreshToken: tokens.refreshToken)
+        CampusCutsAuthTokenStore.save(accessToken: tokens.accessToken, refreshToken: tokens.refreshToken)
 
         let trimmedBackendId = tokens.backendUserId
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }

@@ -6,7 +6,7 @@
 //  (service type, search, profile). Uses `.safeAreaInset(edge: .top)` for Dynamic Island / notch.
 //
 
-import AvilaPlatformsModule
+import CampusCutsModule
 import SwiftUI
 #if os(iOS)
 import UIKit
@@ -74,7 +74,7 @@ private enum GlassCapsuleToolbarHaptics {
         light.impactOccurred()
     }
 
-    /// Service type chip / segmented changes (AvilaPlatforms glass toolbar).
+    /// Service type chip / segmented changes (CampusCuts glass toolbar).
     static func selectionChanged() {
         selection.prepare()
         selection.selectionChanged()
@@ -203,7 +203,7 @@ private struct GlassToolbarProfileAvatarButton: View {
     /// When `true`, the parent capsule already provides `.ultraThinMaterial` — skip duplicate frosted fill on the avatar.
     var useExternalMaterial: Bool = false
 
-    /// Uses the app session only (`profile_picture_url` from the AvilaPlatforms API / uploaded photo). No Google or email-provider avatar fallback.
+    /// Uses the app session only (`profile_picture_url` from the CampusCuts API / uploaded photo). No Google or email-provider avatar fallback.
     private var resolvedURL: URL? {
         fallbackImageURL
     }

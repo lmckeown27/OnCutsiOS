@@ -110,10 +110,10 @@ Intera/
 │   └── ConsumerHomeScreen.swift             ✅ KEEP
 │
 ├── Adapters/
-│   └── AvilaPlatformsAdapter.swift             ✅ KEEP
+│   └── CampusCutsAdapter.swift             ✅ KEEP
 │
 └── Packages/
-    └── AvilaPlatforms/
+    └── CampusCuts/
         └── Barber.swift                     ✅ KEEP (different model)
 ```
 

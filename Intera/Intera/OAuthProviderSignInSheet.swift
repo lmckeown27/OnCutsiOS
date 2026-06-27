@@ -6,7 +6,7 @@
 //
 
 import AuthenticationServices
-import AvilaPlatformsModule
+import CampusCutsModule
 import SwiftUI
 #if canImport(UIKit)
 import UIKit

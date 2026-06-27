@@ -8,7 +8,7 @@
 
 import Foundation
 import GoogleSignIn
-import AvilaPlatformsModule
+import CampusCutsModule
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -151,7 +151,7 @@ enum GoogleSignInAppSupport {
         #if DEBUG
         print("✅ Backend verification complete, creating session...")
         #endif
-        AvilaPlatformsAuthTokenStore.save(accessToken: tokens.accessToken, refreshToken: tokens.refreshToken)
+        CampusCutsAuthTokenStore.save(accessToken: tokens.accessToken, refreshToken: tokens.refreshToken)
         let session = UserSession(
             googleUser: user,
             backendToken: tokens.accessToken,
@@ -223,7 +223,7 @@ enum GoogleSignInFlowError: LocalizedError {
 
 extension UserSession {
     /// Builds the in-app session used for browsing, booking, and profile (email + avatar URL).
-    /// Prefer `backendUserId` (AvilaPlatforms `users.id` from auth response) for API calls; fall back to Google `sub` only if missing.
+    /// Prefer `backendUserId` (CampusCuts `users.id` from auth response) for API calls; fall back to Google `sub` only if missing.
     init(googleUser: GIDGoogleUser, backendToken: String, refreshToken: String? = nil, backendUserId: String? = nil) {
         let profile = googleUser.profile
         let email = profile?.email ?? ""

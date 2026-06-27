@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import AvilaPlatformsModule
+import CampusCutsModule
 
 /// The root orchestrator view that switches between login and main content
 /// based on authentication state
@@ -29,8 +29,8 @@ struct RootView: View {
                 InteraShellBackground()
 
                 VStack(spacing: 0) {
-                    if AppConfiguration.avilaPlatformsProductionLiveDataMode {
-                        AvilaPlatformsLiveDataModeBanner()
+                    if AppConfiguration.campusCutsProductionLiveDataMode {
+                        CampusCutsLiveDataModeBanner()
                     }
                     mainChrome
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -41,8 +41,8 @@ struct RootView: View {
             }
             #else
             VStack(spacing: 0) {
-                if AppConfiguration.avilaPlatformsProductionLiveDataMode {
-                    AvilaPlatformsLiveDataModeBanner()
+                if AppConfiguration.campusCutsProductionLiveDataMode {
+                    CampusCutsLiveDataModeBanner()
                 }
                 mainChrome
                     .environmentObject(chatViewModel)
@@ -93,7 +93,7 @@ struct RootView: View {
         }
         #endif
         .onAppear {
-            AvilaPlatformsSessionSync.appSessionManager = sessionManager
+            CampusCutsSessionSync.appSessionManager = sessionManager
             IntegratedSignUpBootstrap.installDefaultFlowsIfNeeded()
         }
         .animation(nil, value: sessionManager.isAuthenticated)

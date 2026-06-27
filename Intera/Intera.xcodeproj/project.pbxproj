@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		92220B6F2F8F5C75007B473F /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 92220B6E2F8F5C75007B473F /* FirebaseMessaging */; };
-		929C9C662F5E96AD008F89DD /* AvilaPlatformsModule in Frameworks */ = {isa = PBXBuildFile; productRef = 929C9C652F5E96AD008F89DD /* AvilaPlatformsModule */; };
+		929C9C662F5E96AD008F89DD /* CampusCutsModule in Frameworks */ = {isa = PBXBuildFile; productRef = 929C9C652F5E96AD008F89DD /* CampusCutsModule */; };
 		92AA00042F5E9000008F89DD /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 92AA00022F5E9000008F89DD /* GoogleSignIn */; };
 		92AA00052F5E9000008F89DD /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 92AA00032F5E9000008F89DD /* GoogleSignInSwift */; };
 		92BD6E6F2F778B9A000B491D /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = 92BD6E6E2F778B9A000B491D /* FirebaseAI */; };
@@ -79,7 +79,7 @@
 				92BD6E6F2F778B9A000B491D /* FirebaseAI in Frameworks */,
 				92BD6E732F778B9A000B491D /* FirebaseAnalytics in Frameworks */,
 				92AA00052F5E9000008F89DD /* GoogleSignInSwift in Frameworks */,
-				929C9C662F5E96AD008F89DD /* AvilaPlatformsModule in Frameworks */,
+				929C9C662F5E96AD008F89DD /* CampusCutsModule in Frameworks */,
 				92FF02052FA000020008F00 /* Core in Frameworks */,
 				92BD6E752F778B9A000B491D /* FirebaseAnalyticsCore in Frameworks */,
 				92BD6E712F778B9A000B491D /* FirebaseAILogic in Frameworks */,
@@ -163,7 +163,7 @@
 			);
 			name = Intera;
 			packageProductDependencies = (
-				929C9C652F5E96AD008F89DD /* AvilaPlatformsModule */,
+				929C9C652F5E96AD008F89DD /* CampusCutsModule */,
 				92FF02042FA000020008F00 /* Core */,
 				92AA00022F5E9000008F89DD /* GoogleSignIn */,
 				92AA00032F5E9000008F89DD /* GoogleSignInSwift */,
@@ -262,7 +262,7 @@
 			mainGroup = 929C9C112F5E8511008F89DD;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				929C9C642F5E96AD008F89DD /* XCLocalSwiftPackageReference "../../AvilaPlatforms" */,
+				929C9C642F5E96AD008F89DD /* XCLocalSwiftPackageReference "../CampusCutsPackage" */,
 				92AA00012F5E9000008F89DD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				92BD6E6D2F778B9A000B491D /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				92FE00012F900200008F00 /* XCRemoteSwiftPackageReference "socket.io-client-swift" */,
@@ -714,9 +714,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		929C9C642F5E96AD008F89DD /* XCLocalSwiftPackageReference "../../AvilaPlatforms" */ = {
+		929C9C642F5E96AD008F89DD /* XCLocalSwiftPackageReference "../CampusCutsPackage" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../AvilaPlatforms;
+			relativePath = ../CampusCutsPackage;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -761,10 +761,10 @@
 			package = 92BD6E6D2F778B9A000B491D /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
 		};
-		929C9C652F5E96AD008F89DD /* AvilaPlatformsModule */ = {
+		929C9C652F5E96AD008F89DD /* CampusCutsModule */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 929C9C642F5E96AD008F89DD /* XCLocalSwiftPackageReference "../../AvilaPlatforms" */;
-			productName = AvilaPlatformsModule;
+			package = 929C9C642F5E96AD008F89DD /* XCLocalSwiftPackageReference "../CampusCutsPackage" */;
+			productName = CampusCutsModule;
 		};
 		92AA00022F5E9000008F89DD /* GoogleSignIn */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -828,7 +828,7 @@
 		};
 		92FF02042FA000020008F00 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 929C9C642F5E96AD008F89DD /* XCLocalSwiftPackageReference "../../AvilaPlatforms" */;
+			package = 929C9C642F5E96AD008F89DD /* XCLocalSwiftPackageReference "../CampusCutsPackage" */;
 			productName = Core;
 		};
 /* End XCSwiftPackageProductDependency section */

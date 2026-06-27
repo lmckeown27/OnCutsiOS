@@ -2,12 +2,12 @@
 //  LiveBookingView.swift
 //  Intera
 //
-//  Lava lamp booking intake: AvilaPlatforms services + availability, glass cards,
+//  Lava lamp booking intake: CampusCuts services + availability, glass cards,
 //  sticky footer CTA, review navigation via `BookingMetadata`.
 //
 
 import SwiftUI
-import AvilaPlatformsModule
+import CampusCutsModule
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -77,7 +77,7 @@ struct LiveBookingView: View {
     @State private var navPath = NavigationPath()
     @State private var isSubmittingBooking = false
 
-    @State private var packageServiceRows: [AvilaPlatformsBarberServiceRow] = []
+    @State private var packageServiceRows: [CampusCutsBarberServiceRow] = []
     @State private var selectedChipId: String?
     @State private var selectedDate: Date = Date()
     @State private var selectedAppointmentTime = Date()
@@ -95,15 +95,15 @@ struct LiveBookingView: View {
     @State private var serviceError: String?
     @State private var timeError: String?
 
-    private var avilaPlatformsBarberId: String {
+    private var campusCutsBarberId: String {
         provider.id.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var avilaPlatformsClient: AvilaPlatformsClient {
-        AvilaPlatformsClient(
-            session: AvilaPlatformsUserSessionAdapter(manager: sessionManager),
+    private var campusCutsClient: CampusCutsClient {
+        CampusCutsClient(
+            session: CampusCutsUserSessionAdapter(manager: sessionManager),
             environment: .production,
-            isProduction: AppConfiguration.avilaPlatformsProductionLiveDataMode
+            isProduction: AppConfiguration.campusCutsProductionLiveDataMode
         )
     }
 
@@ -475,12 +475,12 @@ struct LiveBookingView: View {
     }
 
     private func loadPackageServices() async {
-        guard !avilaPlatformsBarberId.isEmpty else {
+        guard !campusCutsBarberId.isEmpty else {
             packageServiceRows = []
             return
         }
         do {
-            packageServiceRows = try await avilaPlatformsClient.fetchBarberServiceRows(barberId: avilaPlatformsBarberId)
+            packageServiceRows = try await campusCutsClient.fetchBarberServiceRows(barberId: campusCutsBarberId)
         } catch {
             packageServiceRows = []
         }
@@ -498,9 +498,9 @@ struct LiveBookingView: View {
         let open = await BookingOpenDaysLoader.loadOpenDayStarts(
             days: days,
             barberId: provider.id,
-            avilaPlatformsBarberId: avilaPlatformsBarberId,
+            campusCutsBarberId: campusCutsBarberId,
             bearerToken: sessionManager.currentSession?.token,
-            avilaPlatformsClient: avilaPlatformsClient
+            campusCutsClient: campusCutsClient
         )
         openDaysByMonthKey[monthKey] = open
     }
@@ -515,9 +515,9 @@ struct LiveBookingView: View {
 
         let day = BookingPacificSchedule.apiDateString(from: selectedDate)
 
-        if !avilaPlatformsBarberId.isEmpty {
+        if !campusCutsBarberId.isEmpty {
             do {
-                let slots = try await avilaPlatformsClient.fetchBarberDayAvailability(barberId: avilaPlatformsBarberId, dateYYYYMMDD: day)
+                let slots = try await campusCutsClient.fetchBarberDayAvailability(barberId: campusCutsBarberId, dateYYYYMMDD: day)
                 let mapped = slots.map { s in
                     let key = normalizeSlotTimeKey(s.startTime)
                     return BookingRibbonSlot(timeKey: key, label: displayTimeLabel(key), available: s.isAvailable)

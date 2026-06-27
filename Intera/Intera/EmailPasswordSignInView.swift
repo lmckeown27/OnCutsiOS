@@ -2,11 +2,11 @@
 //  EmailPasswordSignInView.swift
 //  Intera
 //
-//  AvilaPlatforms email handshake + password sign-in for use inside the sign-in sheet stack.
+//  CampusCuts email handshake + password sign-in for use inside the sign-in sheet stack.
 //  UI aligned with `PhoneNumberSignInPlaceholderView` (intro copy, field chrome, olive buttons).
 //
 
-import AvilaPlatformsModule
+import CampusCutsModule
 import SwiftUI
 
 @available(iOS 17.0, macOS 14.0, *)
@@ -148,7 +148,7 @@ struct EmailPasswordSignInView: View {
         defer { isCheckingAccount = false }
 
         do {
-            let exists = try await AvilaPlatformsAuthService.checkAccount(email: trimmed, apiV1BaseTrimmed: apiV1BaseTrimmed)
+            let exists = try await CampusCutsAuthService.checkAccount(email: trimmed, apiV1BaseTrimmed: apiV1BaseTrimmed)
             if exists {
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.88)) {
                     didCompleteEmailHandshake = true
@@ -170,12 +170,12 @@ struct EmailPasswordSignInView: View {
 
         let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
-            let verified = try await AvilaPlatformsAuthService.loginWithEmailPassword(
+            let verified = try await CampusCutsAuthService.loginWithEmailPassword(
                 email: trimmedEmail,
                 password: password,
                 apiV1BaseTrimmed: apiV1BaseTrimmed
             )
-            sessionManager.login(session: UserSession(avilaPlatformsVerified: verified))
+            sessionManager.login(session: UserSession(campusCutsVerified: verified))
             await sessionManager.refreshProfileFromServer()
             onSignedIn()
         } catch {

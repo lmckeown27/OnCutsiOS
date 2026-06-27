@@ -128,7 +128,7 @@ enum InteraAuthUserMessaging {
         return oauthSignInOutcome(for: error)
     }
 
-    // MARK: - Email / password (AvilaPlatforms APIs)
+    // MARK: - Email / password (CampusCuts APIs)
 
     static func emailPasswordOutcome(for error: Error) -> (title: String, message: String) {
         let ns = error as NSError

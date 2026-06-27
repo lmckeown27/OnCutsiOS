@@ -18,10 +18,10 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>AvilaPlatforms Stripe</string>
+			<string>CampusCuts Stripe</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>avilaplatforms</string>
+				<string>campuscuts</string>
 			</array>
 		</dict>
 	</array>
