@@ -474,9 +474,10 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GoogleSignInURL.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Avila - Services";
+				INFOPLIST_KEY_CFBundleDisplayName = "Avila Platforms";
+				INFOPLIST_KEY_CFBundleName = "Avila Platforms";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSAppTransportSecurity = "{\n    NSAllowsLocalNetworking = 1;\n}";
@@ -529,9 +530,10 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GoogleSignInURL.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Avila - Services";
+				INFOPLIST_KEY_CFBundleDisplayName = "Avila Platforms";
+				INFOPLIST_KEY_CFBundleName = "Avila Platforms";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSAppTransportSecurity = "{\n    NSAllowsLocalNetworking = 1;\n}";
