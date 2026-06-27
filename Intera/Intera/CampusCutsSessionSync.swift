@@ -7,5 +7,8 @@ import Foundation
 
 @MainActor
 enum CampusCutsSessionSync {
-    static weak var appSessionManager: AppSessionManager?
+    static var appSessionManager: AppSessionManager? {
+        get { CampusCutsIntegration.sessionManager }
+        set { CampusCutsIntegration.sessionManager = newValue }
+    }
 }

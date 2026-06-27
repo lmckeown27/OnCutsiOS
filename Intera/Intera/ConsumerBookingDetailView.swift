@@ -273,11 +273,7 @@ struct ConsumerBookingDetailView: View {
     }
 
     private var campusCutsClient: CampusCutsClient {
-        CampusCutsClient(
-            session: CampusCutsUserSessionAdapter(manager: sessionManager),
-            environment: .production,
-            isProduction: AppConfiguration.campusCutsProductionLiveDataMode
-        )
+        CampusCutsIntegration.makeClient(sessionManager: sessionManager)
     }
 
     var body: some View {

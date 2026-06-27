@@ -100,11 +100,7 @@ struct LiveBookingView: View {
     }
 
     private var campusCutsClient: CampusCutsClient {
-        CampusCutsClient(
-            session: CampusCutsUserSessionAdapter(manager: sessionManager),
-            environment: .production,
-            isProduction: AppConfiguration.campusCutsProductionLiveDataMode
-        )
+        CampusCutsIntegration.makeClient(sessionManager: sessionManager)
     }
 
     private var serviceChips: [LiveServiceChip] {

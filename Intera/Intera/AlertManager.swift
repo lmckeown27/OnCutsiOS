@@ -82,7 +82,7 @@ final class AlertManager {
                 break
             }
         }
-        if error is DecodingError {
+        if error is DecodingError || error is HTTPJSONBodyValidation.Error {
             return "We couldn’t read the server response. Please try again later."
         }
         return error.localizedDescription.isEmpty

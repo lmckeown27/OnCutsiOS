@@ -16,12 +16,12 @@ enum AppConfiguration: Sendable {
 
     /// Single root for versioned API: **scheme + host + `/api/v1`**, no trailing slash.
     ///
-    /// **Production:** matches the web app when `VITE_API_URL=/api/v1` is served from `https://campuscut.com`
+    /// **Production:** matches the web app when `VITE_API_URL=/api/v1` is served from `https://avilaplatforms.com`
     /// (browser uses a relative path; iOS must use this absolute URL).
     ///
     /// **Local backend:** set to `http://127.0.0.1:3001/api/v1` (or your port). Debug **Info.plist** needs
     /// `NSAllowsLocalNetworking` for HTTP to the simulator host.
-    private static let apiV1RootURLString = "https://campuscut.com/api/v1"
+    private static let apiV1RootURLString = "https://avilaplatforms.com/api/v1"
 
     /// Shell routes (`/auth/google`, `/providers/list`, …) are joined to this same root so Debug and Release hit one deployment.
     private static let apiBaseURLString = apiV1RootURLString
@@ -41,6 +41,15 @@ enum AppConfiguration: Sendable {
         apiBaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
 
+    /// `true` when the configured API host is a live production deployment (Stripe must use `pk_live_…`).
+    static var hostsProductionAPI: Bool {
+        guard let host = apiBaseURL.host?.lowercased() else { return false }
+        return host == "avilaplatforms.com"
+            || host == "www.avilaplatforms.com"
+            || host == "campuscut.com"
+            || host == "www.campuscut.com"
+    }
+
     /// CampusCuts web checkout for a booking after the provider marks the service complete (`COMPLETED` → consumer pays).
     /// Matches `booking-simple` complete handler: `{FRONTEND_URL}/web/payment/:bookingId`.
     static func urlConsumerBookingPaymentWeb(bookingId: String) -> URL? {
@@ -57,7 +66,7 @@ enum AppConfiguration: Sendable {
     /// Socket.IO connects to the **origin** (scheme + host), not `/api/v1`.
     static var messagingSocketOriginURL: URL {
         guard let api = URL(string: apiV1RootURLString), let host = api.host else {
-            return URL(string: "https://campuscut.com")!
+            return URL(string: "https://avilaplatforms.com")!
         }
         let scheme = (api.scheme == "http" || api.scheme == "https") ? (api.scheme ?? "https") : "https"
         var c = URLComponents()

@@ -125,6 +125,8 @@ internal struct BarberListRowDTO: Decodable {
     let reviewCount: Int?
     let totalBookings: Int?
     let isActive: Bool?
+    let distanceMiles: Double?
+    let distanceKm: Double?
 
     func asBarber() -> Barber {
         let business = name?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty

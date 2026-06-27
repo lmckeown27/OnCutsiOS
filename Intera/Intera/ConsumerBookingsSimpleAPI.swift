@@ -40,6 +40,7 @@ enum ConsumerBookingsSimpleAPI {
         }
         let (data, resp) = try await URLSession.shared.data(for: req)
         try throwIfHTTPError(resp)
+        try HTTPJSONBodyValidation.validateJSONObjectData(data, httpResponse: resp)
         let decoded: [ConsumerBookingSimpleRow]
         if let env = try? jsonDecoder.decode(BookingsSimpleTopEnvelope.self, from: data),
            let rows = env.data?.bookings {

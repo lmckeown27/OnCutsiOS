@@ -923,6 +923,7 @@ struct ConsumerHomeScreen: View {
     // MARK: - Actions
     
     private func loadProviders() async {
+        CampusCutsSessionSync.appSessionManager = sessionManager
         await providerVM.loadProviders(bearerToken: sessionManager.currentSession?.token)
         providerListShuffleSeed = UInt64.random(in: 1 ... UInt64.max)
     }
@@ -3728,6 +3729,7 @@ struct UnifiedProviderHomeScreen: View {
     }
     
     private func loadProviders() async {
+        CampusCutsSessionSync.appSessionManager = sessionManager
         await providerVM.loadProviders(bearerToken: sessionManager.currentSession?.token)
         providerListShuffleSeed = UInt64.random(in: 1 ... UInt64.max)
     }

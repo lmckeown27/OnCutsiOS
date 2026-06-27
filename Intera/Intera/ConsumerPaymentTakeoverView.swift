@@ -572,7 +572,7 @@ struct ConsumerPaymentTakeoverView: View {
 
     /// `true` when API root is production — Stripe mode must match live server PaymentIntents.
     private static var hostsProductionCampusCutsAPI: Bool {
-        AppConfiguration.messagingAPIRootTrimmed.lowercased().contains("campuscut.com")
+        AppConfiguration.hostsProductionAPI
     }
 
     /// Explains common xcconfig / Info.plist mistakes (key must be `STRIPE_PUBLISHABLE_KEY` in a local xcconfig, then clean build).

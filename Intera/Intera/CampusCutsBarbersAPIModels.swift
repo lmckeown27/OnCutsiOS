@@ -60,6 +60,22 @@ private struct CampusCutsPricingDTO: Decodable, Sendable {
     let name: String
     let price: FlexibleIntDecodable
     let durationMinutes: Int?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, price, durationMinutes
+        case serviceName
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(String.self, forKey: .id)
+        let rawName = try c.decodeIfPresent(String.self, forKey: .name)
+            ?? c.decodeIfPresent(String.self, forKey: .serviceName)
+        let trimmed = rawName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        name = trimmed.isEmpty ? "Service" : trimmed
+        price = try c.decode(FlexibleIntDecodable.self, forKey: .price)
+        durationMinutes = try c.decodeIfPresent(Int.self, forKey: .durationMinutes)
+    }
 }
 
 private struct CampusCutsServiceLocationDTO: Decodable, Sendable {
@@ -77,8 +93,11 @@ private struct FlexibleIntDecodable: Decodable, Sendable {
             value = i
         } else if let d = try? c.decode(Double.self) {
             value = Int(d.rounded())
+        } else if let s = try? c.decode(String.self),
+                  let parsed = Double(s.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            value = Int(parsed.rounded())
         } else {
-            throw DecodingError.dataCorruptedError(in: c, debugDescription: "Expected Int or Double for price")
+            throw DecodingError.dataCorruptedError(in: c, debugDescription: "Expected Int, Double, or numeric String for price")
         }
     }
 }
@@ -163,6 +182,7 @@ enum CampusCutsBarberDetailAPI {
                 userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode)"]
             )
         }
+        try HTTPJSONBodyValidation.validateJSONObjectData(data, httpResponse: response)
         return try CampusCutsBarbersDecoder.decodeSingleServiceProvider(from: data)
     }
 }

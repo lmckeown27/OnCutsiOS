@@ -30,7 +30,7 @@ struct PendingRescheduleRequestDTO: Decodable, Sendable, Hashable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decodeIfPresent(String.self, forKey: .id)
+        id = Self.decodeFlexibleId(from: c)
         location = try c.decodeIfPresent(String.self, forKey: .location)
         notes = try c.decodeIfPresent(String.self, forKey: .notes)
         status = try c.decodeIfPresent(String.self, forKey: .status)
@@ -81,6 +81,17 @@ struct PendingRescheduleRequestDTO: Decodable, Sendable, Hashable {
                !s.isEmpty {
                 return s
             }
+        }
+        return nil
+    }
+
+    private static func decodeFlexibleId(from c: KeyedDecodingContainer<CodingKeys>) -> String? {
+        if let s = try? c.decodeIfPresent(String.self, forKey: .id) {
+            let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !t.isEmpty { return t }
+        }
+        if let i = try? c.decodeIfPresent(Int.self, forKey: .id) {
+            return String(i)
         }
         return nil
     }

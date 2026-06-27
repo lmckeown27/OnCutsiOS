@@ -36,7 +36,7 @@ public enum AppEnvironment: String, Sendable {
         case .staging:
             return URL(string: "https://staging-api.campuscuts.com")!
         case .production:
-            return URL(string: "https://api.campuscuts.com")!
+            return URL(string: "https://avilaplatforms.com/api/v1")!
         }
     }
     
@@ -54,13 +54,13 @@ final class DefaultFeatureProvider: FeatureProvider {
     let environment: AppEnvironment
     
     var apiBaseURL: URL {
-        environment.apiBaseURL
+        AppConfiguration.apiBaseURL
     }
     
     init(
         session: UserSession,
         sessionManager: AppSessionManager,
-        environment: AppEnvironment = .development
+        environment: AppEnvironment = .production
     ) {
         self.session = session
         self.sessionManager = sessionManager

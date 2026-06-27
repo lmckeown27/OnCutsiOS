@@ -1693,7 +1693,7 @@ private struct ShakeEffect: GeometryEffect {
 @available(iOS 17.0, macOS 14.0, *)
 #Preview("Liquid signup") {
     LiquidGlassSignupFlowView(
-        apiV1BaseTrimmed: "https://campuscut.com/api/v1",
+        apiV1BaseTrimmed: "https://avilaplatforms.com/api/v1",
         sessionManager: AppSessionManager(),
         onFinished: {}
     )

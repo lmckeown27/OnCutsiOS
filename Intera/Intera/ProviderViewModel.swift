@@ -53,7 +53,7 @@ final class ProviderViewModel {
         selectedServiceType.filteredProviders(from: providers)
     }
 
-    /// Tries `GET …/barbers` (with device `lat`/`lng` on iOS when permitted), then legacy `/providers/list`.
+    /// Tries CampusCutsModule `fetchBrowseProviders`, then raw `GET …/barbers`, then legacy `/providers/list`.
     func loadProviders(bearerToken: String?) async {
         state = .loading
 
@@ -64,6 +64,45 @@ final class ProviderViewModel {
         } else {
             coord = nil
         }
+        #else
+        let coord: CLLocationCoordinate2D? = nil
+        #endif
+
+        var lastError: Error?
+
+        if let client = CampusCutsIntegration.makeClientIfAvailable() {
+            do {
+                let rows = try await client.fetchBrowseProviders(
+                    campusId: AppConfiguration.campusCutsDefaultCampusId,
+                    latitude: coord?.latitude,
+                    longitude: coord?.longitude,
+                    maxDistanceKm: coord != nil ? ConsumerBrowseDistancePreference.maxDistanceKmForLocationQuery() : nil
+                )
+                let providers = rows.map { $0.asServiceProvider() }
+                #if DEBUG
+                print("✅ Providers: \(providers.count) via CampusCutsModule fetchBrowseProviders")
+                #endif
+                lastSuccessfulProviders = providers
+                state = .success(providers)
+                prefetchProviderProfileImages(providers)
+                return
+            } catch {
+                if InteraRefreshCancellation.isBenignCancellation(error) {
+                    if !lastSuccessfulProviders.isEmpty {
+                        state = .success(lastSuccessfulProviders)
+                    } else {
+                        state = .idle
+                    }
+                    return
+                }
+                lastError = error
+                #if DEBUG
+                print("⏭️ CampusCutsModule browse fetch failed, falling back to shell HTTP: \(error.localizedDescription)")
+                #endif
+            }
+        }
+
+        #if os(iOS)
         let barbersURL = AppConfiguration.urlCampusCutsBarbers(
             latitude: coord?.latitude,
             longitude: coord?.longitude,
@@ -77,8 +116,6 @@ final class ProviderViewModel {
             (barbersURL, .campusCutsBarbers, "CampusCuts /barbers"),
             (AppConfiguration.urlProvidersList, .legacyProvidersList, "legacy /providers/list")
         ]
-
-        var lastError: Error?
 
         for candidate in candidates {
             var request = URLRequest(url: candidate.url)
@@ -104,6 +141,8 @@ final class ProviderViewModel {
                         userInfo: [NSLocalizedDescriptionKey: "Server returned status \(http.statusCode)."]
                     )
                 }
+
+                try HTTPJSONBodyValidation.validateJSONObjectData(data, httpResponse: response)
 
                 let providers = try decodeProviders(data: data, source: candidate.source, url: candidate.url, label: candidate.label)
 

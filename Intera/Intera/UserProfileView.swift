@@ -118,11 +118,7 @@ struct UserProfileView: View {
     }
 
     private func campusCutsClient() -> CampusCutsClient {
-        CampusCutsClient(
-            session: CampusCutsUserSessionAdapter(manager: sessionManager),
-            environment: .production,
-            isProduction: AppConfiguration.campusCutsProductionLiveDataMode
-        )
+        CampusCutsIntegration.makeClient(sessionManager: sessionManager)
     }
 
     /// Loads barber bio for edit-form fallback; students/admins do not need extra data here.
@@ -1295,7 +1291,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
             UserProfileGlassSectionHeader(title: "Account")
             UserProfileGlassTile {
                 VStack(spacing: 0) {
-                    Link(destination: URL(string: "https://campuscut.com/privacy")!) {
+                    Link(destination: URL(string: "https://avilaplatforms.com/privacy")!) {
                         integratedAccountRow(
                             title: "Privacy Policy"
                         )
@@ -1303,7 +1299,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
 
                     integratedAccountDivider()
 
-                    Link(destination: URL(string: "https://campuscut.com/terms")!) {
+                    Link(destination: URL(string: "https://avilaplatforms.com/terms")!) {
                         integratedAccountRow(
                             title: "Terms of Service"
                         )

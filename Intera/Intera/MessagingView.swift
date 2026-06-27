@@ -2285,10 +2285,10 @@ struct MessagingUGCTermsGateView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Link(destination: URL(string: "https://campuscut.com/terms")!) {
+                        Link(destination: URL(string: "https://avilaplatforms.com/terms")!) {
                             Label("Terms of Service", systemImage: "doc.text")
                         }
-                        Link(destination: URL(string: "https://campuscut.com/privacy")!) {
+                        Link(destination: URL(string: "https://avilaplatforms.com/privacy")!) {
                             Label("Privacy Policy", systemImage: "hand.raised")
                         }
                     }

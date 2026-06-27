@@ -23,13 +23,22 @@ internal class CampusCutsAPIService {
 
     // MARK: - Generic Request Method
 
+    private func resolveURL(endpoint: String) -> URL {
+        let trimmedBase = baseURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let segment = endpoint.hasPrefix("/") ? String(endpoint.dropFirst()) : endpoint
+        if let url = URL(string: trimmedBase + "/" + segment) {
+            return url
+        }
+        return baseURL.appendingPathComponent(segment)
+    }
+
     private func request<T: Decodable>(
         endpoint: String,
         method: String = "GET",
         body: Data? = nil,
         isRetryAfterRefresh: Bool = false
     ) async throws -> T {
-        let url = baseURL.appendingPathComponent(endpoint)
+        let url = resolveURL(endpoint: endpoint)
         var urlRequest = authInterceptor.apply(to: url, method: method, body: body)
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
@@ -75,13 +84,45 @@ internal class CampusCutsAPIService {
     // MARK: - Barber Endpoints
 
     func fetchBarbers(campusId: String? = nil) async throws -> [Barber] {
-        var endpoint = "barbers"
-        if let campusId = campusId?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty {
-            let encoded = campusId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? campusId
-            endpoint += "?campusId=\(encoded)"
-        }
-        let rows: [BarberListRowDTO] = try await request(endpoint: endpoint)
+        let rows = try await fetchBarberListRows(campusId: campusId)
         return rows.map { $0.asBarber() }
+    }
+
+    func fetchBarberListRows(
+        campusId: String? = nil,
+        latitude: Double? = nil,
+        longitude: Double? = nil,
+        maxDistanceKm: Double? = nil
+    ) async throws -> [BarberListRowDTO] {
+        let endpoint = barbersEndpoint(
+            campusId: campusId,
+            latitude: latitude,
+            longitude: longitude,
+            maxDistanceKm: maxDistanceKm
+        )
+        return try await request(endpoint: endpoint)
+    }
+
+    private func barbersEndpoint(
+        campusId: String?,
+        latitude: Double?,
+        longitude: Double?,
+        maxDistanceKm: Double?
+    ) -> String {
+        var parts: [String] = []
+        if let campusId = campusId?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty {
+            let enc = campusId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? campusId
+            parts.append("campusId=\(enc)")
+        }
+        if let latitude, let longitude {
+            parts.append("lat=\(latitude)")
+            parts.append("lng=\(longitude)")
+            if let maxDistanceKm {
+                parts.append("maxDistance=\(maxDistanceKm)")
+            }
+        }
+        guard !parts.isEmpty else { return "barbers" }
+        return "barbers?" + parts.joined(separator: "&")
     }
 
     func fetchBarberAvailability(barberId: String, date: String) async throws -> [AvailabilitySlotDTO] {
