@@ -3,6 +3,8 @@
 //  Intera
 //
 //  App-wide Inter Variable typography (`Fonts/InterVariable.ttf`).
+//  Apply weight via the OpenType `wght` axis — not SwiftUI `.weight()` on a custom font
+//  (that triggers "Unable to update Font Descriptor's weight" console noise).
 //
 
 import SwiftUI
@@ -13,6 +15,8 @@ import UIKit
 enum InteraFont {
     /// PostScript name for the Inter Variable font file bundled under `Fonts/`.
     private static let variableFontName = "InterVariable"
+    /// OpenType axis tag for `wght` (Inter Variable).
+    private static let weightVariationAxis = 2003265652
 
     static func installGlobalAppearanceIfNeeded() {
         #if canImport(UIKit)
@@ -39,33 +43,27 @@ enum InteraFont {
     private static var didInstallAppearance = false
 
     static func uiFont(size: CGFloat, weight: Font.Weight = .regular) -> UIFont {
-        let uiWeight = uiKitWeight(weight)
-        let descriptor = UIFontDescriptor(fontAttributes: [
-            .name: variableFontName,
-            UIFontDescriptor.AttributeName.traits: [
-                UIFontDescriptor.TraitKey.weight: uiWeight.rawValue,
+        let wght = openTypeWeightValue(weight)
+        guard let base = UIFont(name: variableFontName, size: size) else {
+            return UIFont.systemFont(ofSize: size, weight: uiKitWeight(weight))
+        }
+
+        let variationKey = UIFontDescriptor.AttributeName(rawValue: "NSCTFontVariationAttribute")
+        let descriptor = base.fontDescriptor.addingAttributes([
+            variationKey: [
+                NSNumber(value: weightVariationAxis): NSNumber(value: wght),
             ],
         ])
-        let font = UIFont(descriptor: descriptor, size: size)
-        if font.familyName.localizedCaseInsensitiveContains("Inter") {
-            return font
-        }
-        if let named = UIFont(name: variableFontName, size: size) {
-            let weighted = UIFontDescriptor(fontAttributes: [
-                .name: named.fontName,
-                UIFontDescriptor.AttributeName.traits: [
-                    UIFontDescriptor.TraitKey.weight: uiWeight.rawValue,
-                ],
-            ])
-            return UIFont(descriptor: weighted, size: size)
-        }
-        return UIFont.systemFont(ofSize: size, weight: uiWeight)
+        return UIFont(descriptor: descriptor, size: size)
     }
     #endif
 
     static func font(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        Font.custom(variableFontName, size: size, relativeTo: relativeStyle(forSize: size))
-            .weight(weight)
+        #if canImport(UIKit)
+        return Font(uiFont(size: size, weight: weight))
+        #else
+        return Font.custom(variableFontName, size: size)
+        #endif
     }
 
     /// Drop-in for `Font.system(size:weight:design:)` — design is ignored; Inter Variable is always used.
@@ -105,6 +103,20 @@ enum InteraFont {
     static var caption: Font { font(size: 12, weight: .regular) }
     static var caption2: Font { font(size: 11, weight: .regular) }
 
+    // MARK: - Weighted semantic styles (use instead of `.weight()` on custom Inter fonts)
+
+    static func largeTitle(weight: Font.Weight = .bold) -> Font { font(size: 34, weight: weight) }
+    static func title(weight: Font.Weight = .bold) -> Font { font(size: 28, weight: weight) }
+    static func title2(weight: Font.Weight = .bold) -> Font { font(size: 22, weight: weight) }
+    static func title3(weight: Font.Weight = .semibold) -> Font { font(size: 20, weight: weight) }
+    static func headline(weight: Font.Weight = .semibold) -> Font { font(size: 17, weight: weight) }
+    static func body(weight: Font.Weight = .regular) -> Font { font(size: 17, weight: weight) }
+    static func callout(weight: Font.Weight = .regular) -> Font { font(size: 16, weight: weight) }
+    static func subheadline(weight: Font.Weight = .regular) -> Font { font(size: 15, weight: weight) }
+    static func footnote(weight: Font.Weight = .regular) -> Font { font(size: 13, weight: weight) }
+    static func caption(weight: Font.Weight = .regular) -> Font { font(size: 12, weight: weight) }
+    static func caption2(weight: Font.Weight = .regular) -> Font { font(size: 11, weight: weight) }
+
     // MARK: - Design system aliases
 
     static var displayLarge: Font { font(size: 36, weight: .bold) }
@@ -120,6 +132,16 @@ enum InteraFont {
     static var labelMedium: Font { font(size: 12, weight: .medium) }
     static var labelSmall: Font { font(size: 10, weight: .medium) }
     static var captionSmall: Font { font(size: 10, weight: .regular) }
+
+    static func headlineLarge(weight: Font.Weight = .semibold) -> Font { font(size: 22, weight: weight) }
+    static func headlineMedium(weight: Font.Weight = .semibold) -> Font { font(size: 20, weight: weight) }
+    static func headlineSmall(weight: Font.Weight = .semibold) -> Font { font(size: 18, weight: weight) }
+    static func bodyLarge(weight: Font.Weight = .medium) -> Font { font(size: 16, weight: weight) }
+    static func bodyMedium(weight: Font.Weight = .medium) -> Font { font(size: 14, weight: weight) }
+    static func bodySmall(weight: Font.Weight = .regular) -> Font { font(size: 12, weight: weight) }
+    static func labelLarge(weight: Font.Weight = .medium) -> Font { font(size: 14, weight: weight) }
+    static func labelMedium(weight: Font.Weight = .medium) -> Font { font(size: 12, weight: weight) }
+    static func labelSmall(weight: Font.Weight = .medium) -> Font { font(size: 10, weight: weight) }
 
     #if canImport(UIKit)
     private static func uiKitWeight(_ weight: Font.Weight) -> UIFont.Weight {
@@ -137,6 +159,21 @@ enum InteraFont {
         }
     }
     #endif
+
+    private static func openTypeWeightValue(_ weight: Font.Weight) -> CGFloat {
+        switch weight {
+        case .ultraLight: return 200
+        case .thin: return 250
+        case .light: return 300
+        case .regular: return 400
+        case .medium: return 500
+        case .semibold: return 600
+        case .bold: return 700
+        case .heavy: return 800
+        case .black: return 900
+        default: return 400
+        }
+    }
 
     private static func relativeStyle(forSize size: CGFloat) -> Font.TextStyle {
         switch size {

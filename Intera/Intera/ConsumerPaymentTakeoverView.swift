@@ -180,7 +180,7 @@ struct ConsumerPaymentTakeoverView: View {
                     Button("Pay later") {
                         chatViewModel.dismissPaymentTakeoverForLater()
                     }
-                    .font(InteraFont.body.weight(.semibold))
+                    .font(InteraFont.body(weight: .semibold))
                     .foregroundStyle(Color.lavaShellCream)
                 }
             }
@@ -344,7 +344,7 @@ struct ConsumerPaymentTakeoverView: View {
 
     private var paymentMethodOrDivider: some View {
         Text("or")
-            .font(InteraFont.subheadline.weight(.semibold))
+            .font(InteraFont.subheadline(weight: .semibold))
             .foregroundStyle(Color.lavaShellCreamTertiary)
             .frame(maxWidth: .infinity)
             .accessibilityLabel("or")
@@ -395,7 +395,7 @@ struct ConsumerPaymentTakeoverView: View {
                         .tint(Color.paymentFilledButtonLabel)
                 } else {
                     Image(systemName: "creditcard.fill")
-                        .font(InteraFont.title3.weight(.semibold))
+                        .font(InteraFont.title3(weight: .semibold))
                         .foregroundStyle(Color.paymentFilledButtonLabel)
                 }
                 Text(isPaying ? "Opening…" : "Input Card Details")
@@ -426,7 +426,7 @@ struct ConsumerPaymentTakeoverView: View {
                             .tint(Color.paymentOutlineButtonLabel)
                     } else {
                         Image(systemName: "banknote")
-                            .font(InteraFont.subheadline.weight(.semibold))
+                            .font(InteraFont.subheadline(weight: .semibold))
                     }
                     Text(isConfirmingCash ? "Completing…" : "Cash")
                         .font(paymentCashActionLabelFont)

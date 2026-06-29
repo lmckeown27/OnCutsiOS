@@ -230,7 +230,7 @@ struct LoginView: View {
                             isPasswordVisible.toggle()
                         } label: {
                             Image(systemName: isPasswordVisible ? "eye.slash.fill" : "eye.fill")
-                                .font(InteraFont.body.weight(.medium))
+                                .font(InteraFont.body(weight: .medium))
                                 .foregroundStyle(Color.neutral600)
                                 .frame(minWidth: 28, minHeight: 28)
                                 .contentShape(Rectangle())
@@ -362,7 +362,7 @@ struct LoginView: View {
 
             VStack(spacing: 22) {
                 Text("No account found for this email.")
-                    .font(InteraFont.subheadline.weight(.semibold))
+                    .font(InteraFont.subheadline(weight: .semibold))
                     .foregroundStyle(.primary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
@@ -392,7 +392,7 @@ struct LoginView: View {
                     }
                 } label: {
                     Text("Start Registration")
-                        .font(InteraFont.body.weight(.semibold))
+                        .font(InteraFont.body(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .foregroundStyle(.white)
@@ -419,7 +419,7 @@ struct LoginView: View {
                         showCreateAccountPrompt = false
                     }
                 }
-                .font(InteraFont.subheadline.weight(.medium))
+                .font(InteraFont.subheadline(weight: .medium))
                 .foregroundStyle(.secondary)
             }
             .padding(28)

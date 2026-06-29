@@ -240,7 +240,7 @@ struct ConversationInboxThreadCard: View {
                             .fill(ConversationInboxCardMetrics.unreadAccentColor)
                             .frame(width: 10, height: 10)
                         Text("New Message")
-                            .font(InteraFont.subheadline.weight(.bold))
+                            .font(InteraFont.subheadline(weight: .bold))
                             .foregroundStyle(ConversationInboxCardMetrics.unreadAccentColor)
                     }
                 }
@@ -249,10 +249,10 @@ struct ConversationInboxThreadCard: View {
                     Text("View Conversation")
                         .foregroundStyleOliveGreen()
                     Image(systemName: "chevron.right")
-                        .font(InteraFont.caption.weight(.bold))
+                        .font(InteraFont.caption(weight: .bold))
                         .foregroundStyleInteraShellIconSecondary()
                 }
-                .font(InteraFont.subheadline.weight(.semibold))
+                .font(InteraFont.subheadline(weight: .semibold))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)

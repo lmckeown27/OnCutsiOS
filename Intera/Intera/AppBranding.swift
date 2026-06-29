@@ -3,15 +3,17 @@
 //  Intera
 //
 //  User-facing product name (App Store / home screen / in-app copy). Keep in sync with
-//  `INFOPLIST_KEY_CFBundleDisplayName` and `INFOPLIST_KEY_CFBundleName` in the Intera target.
+//  `CFBundleDisplayName` and `CFBundleName` in `GoogleSignInURL.plist`.
 //  Google Sign-In’s system sheet uses CFBundleName (not display name).
 //
 
 import Foundation
 
 enum AppBranding {
-    /// Shown under the app icon and in user-visible strings (Guideline 2.3.8).
-    static let displayName = "Avila Platforms"
+    /// Platform brand shown under the app icon and in user-visible strings (Guideline 2.3.8).
+    static let displayName = "Pismo"
+    /// Repo / Xcode product label — not renamed in the target to avoid breaking bundle IDs and schemes.
+    static let productName = "PismoiOS"
 }
 
 extension Bundle {

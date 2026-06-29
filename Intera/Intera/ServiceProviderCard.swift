@@ -130,14 +130,14 @@ struct ServiceProviderCard: View {
                     if shouldShowStarRatingOnCard, let rating = provider.rating {
                         HStack(spacing: 5) {
                             Image(systemName: "star.fill")
-                                .font(InteraFont.subheadline.weight(.semibold))
+                                .font(InteraFont.subheadline(weight: .semibold))
                                 .foregroundStyle(.yellow)
                             Text(String(format: "%.1f", rating))
-                                .font(InteraFont.subheadline.weight(.semibold))
+                                .font(InteraFont.subheadline(weight: .semibold))
                                 .foregroundStyle(cardPrimaryTextColor)
                             if let count = provider.reviewCount, count > 0 {
                                 Text("(\(count))")
-                                    .font(InteraFont.caption.weight(.medium))
+                                    .font(InteraFont.caption(weight: .medium))
                                     .foregroundStyle(cardSecondaryTextColor)
                             }
                         }
@@ -186,10 +186,10 @@ struct ServiceProviderCard: View {
                         if let distanceLabel = provider.formattedDistanceFromUser {
                             HStack(spacing: 4) {
                                 Image(systemName: "location.fill")
-                                    .font(InteraFont.caption.weight(.semibold))
+                                    .font(InteraFont.caption(weight: .semibold))
                                     .accessibilityHidden(true)
                                 Text(distanceLabel)
-                                    .font(InteraFont.caption.weight(.semibold))
+                                    .font(InteraFont.caption(weight: .semibold))
                             }
                             .foregroundStyle(cardSecondaryTextColor)
                             .accessibilityElement(children: .combine)

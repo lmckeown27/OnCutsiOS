@@ -279,7 +279,7 @@ struct MessagingInboxRowLabel: View {
 
                     if let line = booking?.inboxBookingContextSubtitle, !line.isEmpty {
                         Text(line)
-                            .font(InteraFont.subheadline.weight(.medium))
+                            .font(InteraFont.subheadline(weight: .medium))
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                             .opacity(rowTerminalDim ? 0.72 : 1)
@@ -287,7 +287,7 @@ struct MessagingInboxRowLabel: View {
                     if let loc = booking?.inboxLocationDisplayLine, !loc.isEmpty {
                         HStack(alignment: .top, spacing: 6) {
                             Image(systemName: "mappin.and.ellipse")
-                                .font(InteraFont.caption.weight(.semibold))
+                                .font(InteraFont.caption(weight: .semibold))
                                 .foregroundStyleInteraShellIconSecondary()
                                 .frame(width: 14, alignment: .leading)
                             Text(loc)
@@ -1514,7 +1514,7 @@ struct MessagingConversationView: View {
             instagramStickyHeader
             if let moderationBanner, !moderationBanner.isEmpty {
                 Text(moderationBanner)
-                    .font(InteraFont.caption.weight(.semibold))
+                    .font(InteraFont.caption(weight: .semibold))
                     .foregroundStyle(Color.lavaShellCream)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -1985,7 +1985,7 @@ struct MessagingConversationView: View {
             Image(systemName: "hourglass")
                 .foregroundStyle(Color.lavaShellCream.opacity(0.9))
             Text(waitingForProviderChromeHeadline)
-                .font(InteraFont.subheadline.weight(.semibold))
+                .font(InteraFont.subheadline(weight: .semibold))
                 .foregroundStyle(Color.lavaShellCream)
             Spacer()
         }
@@ -2045,7 +2045,7 @@ struct MessagingConversationView: View {
                 #endif
             } label: {
                 Image(systemName: "plus")
-                    .font(InteraFont.title3.weight(.semibold))
+                    .font(InteraFont.title3(weight: .semibold))
                     .foregroundStyleInteraShellIcon()
                     .frame(width: 36, height: 36)
             }
@@ -2099,7 +2099,7 @@ struct MessagingConversationView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Photo attached")
-                    .font(InteraFont.caption.weight(.semibold))
+                    .font(InteraFont.caption(weight: .semibold))
                     .foregroundStyle(Color.lavaShellCreamSecondary)
                 Text("Add a caption or tap send")
                     .font(InteraFont.caption2)
@@ -2171,7 +2171,7 @@ struct MessagingConversationView: View {
                                         .font(InteraFont.title2)
                                         .foregroundStyle(Color.lavaShellCream.opacity(0.85))
                                     Text("Couldn’t load this image.")
-                                        .font(InteraFont.caption.weight(.semibold))
+                                        .font(InteraFont.caption(weight: .semibold))
                                         .foregroundStyle(Color.lavaShellCream.opacity(0.9))
                                         .multilineTextAlignment(.center)
                                 }
@@ -2202,7 +2202,7 @@ struct MessagingConversationView: View {
                           msg.serverMessageIdForReport != nil {
                     messagingLiquidTextBubble(isOutgoing: false) {
                         Text("This message couldn’t be shown.")
-                            .font(InteraFont.caption.weight(.semibold))
+                            .font(InteraFont.caption(weight: .semibold))
                             .foregroundStyle(Color.lavaShellCream.opacity(0.88))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
@@ -2273,9 +2273,9 @@ struct MessagingUGCTermsGateView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Before you message")
-                        .font(InteraFont.title3.weight(.bold))
+                        .font(InteraFont.title3(weight: .bold))
                     Text("Messages & community safety")
-                        .font(InteraFont.subheadline.weight(.semibold))
+                        .font(InteraFont.subheadline(weight: .semibold))
                         .foregroundStyle(.secondary)
                     Text(
                         "\(AppBranding.displayName) lets you message providers about bookings. By continuing, you agree to our Terms of Service and acknowledge that messages are user-generated content: some text may be filtered automatically, you can report objectionable messages or conversations, and you can block abusive users (we are notified when you block). Our team reviews serious reports as soon as possible and aims to act within 24 hours, including removing content or restricting accounts when appropriate."
@@ -2285,14 +2285,14 @@ struct MessagingUGCTermsGateView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Link(destination: URL(string: "https://avilaplatforms.com/terms")!) {
+                        Link(destination: URL(string: "https://pismoplatforms.com/terms")!) {
                             Label("Terms of Service", systemImage: "doc.text")
                         }
-                        Link(destination: URL(string: "https://avilaplatforms.com/privacy")!) {
+                        Link(destination: URL(string: "https://pismoplatforms.com/privacy")!) {
                             Label("Privacy Policy", systemImage: "hand.raised")
                         }
                     }
-                    .font(InteraFont.subheadline.weight(.semibold))
+                    .font(InteraFont.subheadline(weight: .semibold))
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
@@ -2307,7 +2307,7 @@ struct MessagingUGCTermsGateView: View {
                     Button("I agree") {
                         onAccept()
                     }
-                    .font(InteraFont.body.weight(.semibold))
+                    .font(InteraFont.body(weight: .semibold))
                 }
             }
         }
@@ -2363,7 +2363,7 @@ private struct MessagingThreadBookingDetailsView: View {
                                 .tint(Color.lavaShellCreamSecondary)
                         }
                         Text("Edit Booking")
-                            .font(InteraFont.subheadline.weight(.semibold))
+                            .font(InteraFont.subheadline(weight: .semibold))
                             .lineLimit(1)
                     }
                     .foregroundStyle(Color.lavaShellCreamSecondary)

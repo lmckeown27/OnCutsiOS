@@ -100,7 +100,11 @@ struct LiveBookingView: View {
     }
 
     private var campusCutsClient: CampusCutsClient {
-        CampusCutsIntegration.makeClient(sessionManager: sessionManager)
+        CampusCutsClient(
+            session: CampusCutsUserSessionAdapter(manager: sessionManager),
+            environment: .production,
+            isProduction: AppConfiguration.campusCutsProductionLiveDataMode
+        )
     }
 
     private var serviceChips: [LiveServiceChip] {
@@ -307,7 +311,7 @@ struct LiveBookingView: View {
             if let igURL = provider.instagramProfileURL {
                 Link(destination: igURL) {
                     Label("Instagram", systemImage: "camera.fill")
-                        .font(InteraFont.subheadline.weight(.medium))
+                        .font(InteraFont.subheadline(weight: .medium))
                         .labelStyle(.iconOnly)
                         .foregroundStyleInteraShellIcon()
                         .frame(width: 36, height: 36)
@@ -425,7 +429,7 @@ struct LiveBookingView: View {
         Group {
             if !calendarSelectionCommitted {
                 Text("Pick a day on the calendar to see available times.")
-                    .font(InteraFont.subheadline.weight(.medium))
+                    .font(InteraFont.subheadline(weight: .medium))
                     .foregroundStyle(BookingSelectorTheme.cream.opacity(0.42))
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)

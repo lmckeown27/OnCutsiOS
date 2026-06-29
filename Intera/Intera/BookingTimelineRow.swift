@@ -119,7 +119,7 @@ struct BookingTimelineRow: View {
                 .font(InteraFont.caption)
                 .foregroundStyle(Color.lavaShellCream.opacity(position == .past ? 0.62 : 0.92))
             Text(row.displayStatus)
-                .font(InteraFont.caption2.weight(.semibold))
+                .font(InteraFont.caption2(weight: .semibold))
                 .foregroundStyle(Color.lavaShellCreamTertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

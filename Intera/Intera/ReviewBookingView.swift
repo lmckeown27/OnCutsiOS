@@ -106,10 +106,10 @@ struct ReviewBookingView: View {
                     Link(destination: igURL) {
                         HStack(spacing: 6) {
                             Image(systemName: "camera.fill")
-                                .font(InteraFont.caption.weight(.semibold))
+                                .font(InteraFont.caption(weight: .semibold))
                                 .foregroundStyleInteraShellIconSecondary()
                             Text("Instagram")
-                                .font(InteraFont.subheadline.weight(.medium))
+                                .font(InteraFont.subheadline(weight: .medium))
                                 .foregroundStyleOliveGreen()
                         }
                     }

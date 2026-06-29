@@ -32,7 +32,7 @@ struct ConsumerBrowseDistanceSheet: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Within \(displayMiles) mi")
-                            .font(InteraFont.title2.weight(.semibold))
+                            .font(InteraFont.title2(weight: .semibold))
                         Slider(
                             value: $miles,
                             in: ConsumerBrowseDistancePreference.minimumMiles ... ConsumerBrowseDistancePreference.maximumMiles,

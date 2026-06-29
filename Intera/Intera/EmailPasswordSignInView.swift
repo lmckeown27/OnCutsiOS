@@ -53,7 +53,7 @@ struct EmailPasswordSignInView: View {
                             isPasswordVisible.toggle()
                         } label: {
                             Image(systemName: isPasswordVisible ? "eye.slash.fill" : "eye.fill")
-                                .font(InteraFont.body.weight(.medium))
+                                .font(InteraFont.body(weight: .medium))
                                 .foregroundStyle(.secondary)
                                 .frame(minWidth: 28, minHeight: 28)
                                 .contentShape(Rectangle())
@@ -124,7 +124,7 @@ struct EmailPasswordSignInView: View {
                         .tint(.white)
                 }
                 Text(title)
-                    .font(InteraFont.body.weight(.semibold))
+                    .font(InteraFont.body(weight: .semibold))
                     .opacity(isBusy ? 0 : 1)
             }
             .frame(maxWidth: .infinity)

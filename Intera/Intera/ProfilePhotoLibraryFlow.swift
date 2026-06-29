@@ -244,7 +244,7 @@ struct ProfileCircularCropSheet: View {
                         }
                     } label: {
                         Text("Use This Photo")
-                            .font(InteraFont.body.weight(.semibold))
+                            .font(InteraFont.body(weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                     }
@@ -252,7 +252,7 @@ struct ProfileCircularCropSheet: View {
                     .tint(Color.oliveGreen)
 
                     Button("Choose Different Photo", action: onChooseDifferent)
-                        .font(InteraFont.body.weight(.medium))
+                        .font(InteraFont.body(weight: .medium))
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 8)

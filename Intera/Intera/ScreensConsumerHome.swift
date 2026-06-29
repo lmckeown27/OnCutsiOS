@@ -283,7 +283,7 @@ struct ConsumerHomeScreen: View {
                             showMaxDistanceSheet = true
                         } label: {
                             Image(systemName: "location.circle")
-                                .font(InteraFont.body.weight(.semibold))
+                                .font(InteraFont.body(weight: .semibold))
                                 .foregroundStyleInteraShellIcon()
                         }
                         .accessibilityLabel("Maximum search distance")
@@ -1545,10 +1545,10 @@ struct ServiceProviderDetailSheet: View {
                             if let distanceLabel = provider.formattedDistanceFromUser {
                                 HStack(spacing: 6) {
                                     Image(systemName: "location.circle.fill")
-                                        .font(InteraFont.body.weight(.semibold))
+                                        .font(InteraFont.body(weight: .semibold))
                                         .accessibilityHidden(true)
                                     Text(distanceLabel)
-                                        .font(InteraFont.subheadline.weight(.semibold))
+                                        .font(InteraFont.subheadline(weight: .semibold))
                                 }
                                 .foregroundStyle(detailSubtleColor)
                                 .accessibilityElement(children: .combine)
@@ -1937,8 +1937,8 @@ private struct ProviderDetailAboutServicesSection: View {
         let isPrimaryHaircut = isPrimaryHaircutService(service)
         let nameFont = isPrimaryHaircut ? InteraFont.headlineSmall : InteraFont.bodySmall
         let priceFont = isPrimaryHaircut
-            ? InteraFont.headlineSmall.weight(.medium)
-            : InteraFont.bodySmall.weight(.medium)
+            ? InteraFont.headlineSmall(weight: .medium)
+            : InteraFont.bodySmall(weight: .medium)
 
         return HStack(spacing: 4) {
             Text(service.name)
@@ -1988,10 +1988,10 @@ private struct ProviderDetailRatingSummaryRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "star.fill")
-                .font(InteraFont.title3.weight(.semibold))
+                .font(InteraFont.title3(weight: .semibold))
                 .foregroundStyle(Color.yellow)
             Text(String(format: "%.1f", averageRating))
-                .font(InteraFont.title3.weight(.semibold))
+                .font(InteraFont.title3(weight: .semibold))
                 .foregroundStyle(detailHeadlineColor)
             Spacer(minLength: 0)
         }
@@ -2044,7 +2044,7 @@ private struct ProviderDetailReviewsPreviewSection: View {
                                 .foregroundStyle(detailHeadlineColor)
                             Spacer(minLength: 8)
                             Image(systemName: "chevron.right")
-                                .font(InteraFont.subheadline.weight(.semibold))
+                                .font(InteraFont.subheadline(weight: .semibold))
                                 .foregroundStyle(detailSubtleColor)
                         }
 
@@ -2064,7 +2064,7 @@ private struct ProviderDetailReviewsPreviewSection: View {
 
                         if reviews.count > 2 {
                             Text("See all reviews")
-                                .font(InteraFont.subheadline.weight(.semibold))
+                                .font(InteraFont.subheadline(weight: .semibold))
                                 .foregroundStyle(detailEmphasisColor)
                         }
                     }
@@ -2093,7 +2093,7 @@ private struct ProviderReviewRowContent: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Text(review.authorDisplayName)
-                    .font(InteraFont.bodyMedium.weight(.semibold))
+                    .font(InteraFont.bodyMedium(weight: .semibold))
                     .foregroundStyle(detailEmphasisColor)
                 Spacer(minLength: 8)
                 if let stars = review.rating {
@@ -2123,7 +2123,7 @@ private struct ProviderReviewStarsRow: View {
         HStack(spacing: 2) {
             ForEach(0 ..< 5, id: \.self) { i in
                 Image(systemName: i < rating ? "star.fill" : "star")
-                    .font(InteraFont.caption.weight(.semibold))
+                    .font(InteraFont.caption(weight: .semibold))
                     .foregroundStyle(i < rating ? Color.yellow : Color.gray.opacity(0.45))
             }
         }
@@ -2971,7 +2971,7 @@ struct UnifiedProviderHomeScreen: View {
                             showMaxDistanceSheet = true
                         } label: {
                             Image(systemName: "location.circle")
-                                .font(InteraFont.body.weight(.semibold))
+                                .font(InteraFont.body(weight: .semibold))
                                 .foregroundStyleInteraShellIcon()
                         }
                         .accessibilityLabel("Maximum search distance")

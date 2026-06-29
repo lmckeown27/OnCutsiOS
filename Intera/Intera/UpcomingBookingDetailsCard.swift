@@ -98,7 +98,7 @@ struct UpcomingBookingDetailsCard: View {
                     .foregroundStyle(Color.lavaShellCream)
                     .lineLimit(2)
                 Text(booking.serviceName)
-                    .font(InteraFont.subheadline.weight(.semibold))
+                    .font(InteraFont.subheadline(weight: .semibold))
                     .foregroundStyle(Color.lavaShellCreamSecondary)
                     .multilineTextAlignment(.leading)
                     .lineLimit(2)
@@ -129,11 +129,11 @@ struct UpcomingBookingDetailsCard: View {
     private var bookingDetailLinkRow: some View {
         HStack(alignment: .center, spacing: 10) {
             Text("Booking details")
-                .font(InteraFont.subheadline.weight(.semibold))
+                .font(InteraFont.subheadline(weight: .semibold))
                 .foregroundStyle(Color.lavaShellCream)
             Spacer(minLength: 0)
             Image(systemName: "chevron.right")
-                .font(InteraFont.caption.weight(.bold))
+                .font(InteraFont.caption(weight: .bold))
                 .foregroundStyleInteraShellIconSecondary()
                 .accessibilityHidden(true)
         }
@@ -147,10 +147,10 @@ struct UpcomingBookingDetailsCard: View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(booking.appointmentTime)
-                    .font(InteraFont.body.weight(.bold).monospacedDigit())
+                    .font(InteraFont.body(weight: .bold).monospacedDigit())
                     .foregroundStyleOliveGreen()
                 Text(booking.appointmentDate)
-                    .font(InteraFont.caption.weight(.medium))
+                    .font(InteraFont.caption(weight: .medium))
                     .foregroundStyle(Color.lavaShellCreamTertiary)
             }
             .fixedSize()
@@ -159,7 +159,7 @@ struct UpcomingBookingDetailsCard: View {
 
             VStack(alignment: .trailing, spacing: 4) {
                 Text(booking.price)
-                    .font(InteraFont.body.weight(.bold))
+                    .font(InteraFont.body(weight: .bold))
                     .foregroundStyle(Color.lavaShellCream)
                     .monospacedDigit()
                 statusBadge
@@ -198,7 +198,7 @@ struct UpcomingBookingDetailsCard: View {
             RoundedRectangle(cornerRadius: avatarCornerRadius, style: .continuous)
                 .fill(Color.oliveGreen.opacity(0.12))
             Text(booking.barberName.prefix(1).uppercased())
-                .font(InteraFont.title3.weight(.bold))
+                .font(InteraFont.title3(weight: .bold))
                 .foregroundStyleOliveGreen()
         }
         .frame(width: avatarSize, height: avatarSize)
@@ -208,7 +208,7 @@ struct UpcomingBookingDetailsCard: View {
         let label = booking.isConfirmed ? "Confirmed" : "Pending"
 
         return Text(label)
-            .font(InteraFont.caption2.weight(.semibold))
+            .font(InteraFont.caption2(weight: .semibold))
             .foregroundStyleOliveGreen()
     }
 }

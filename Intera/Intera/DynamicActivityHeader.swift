@@ -222,7 +222,7 @@ struct HomeTodayBookingReminderGlassCard: View {
                         .lineLimit(2)
                         .minimumScaleFactor(0.85)
                     AppointmentMinuteCountdownText(scheduledAt: highlight.scheduledAt)
-                        .font(InteraFont.subheadline.weight(.semibold))
+                        .font(InteraFont.subheadline(weight: .semibold))
                         .foregroundStyle(Color.lavaShellCream)
                         .monospacedDigit()
                 }
@@ -292,7 +292,7 @@ struct HomeTodayBookingReminderGlassCard: View {
             RoundedRectangle(cornerRadius: avatarCornerRadius, style: .continuous)
                 .fill(Color.primary.opacity(0.1))
             Text(highlight.barberDisplayName.prefix(1).uppercased())
-                .font(InteraFont.title3.weight(.bold))
+                .font(InteraFont.title3(weight: .bold))
                 .foregroundStyle(Color.lavaShellCream.opacity(0.85))
         }
         .frame(width: avatarSize, height: avatarSize)
@@ -318,7 +318,7 @@ struct HomePendingPaymentReminderGlassCard: View {
                 providerAvatar
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Payment due")
-                        .font(InteraFont.subheadline.weight(.semibold))
+                        .font(InteraFont.subheadline(weight: .semibold))
                         .foregroundStyle(Color.lavaShellCream.opacity(0.92))
                     Text(highlight.barberDisplayName)
                         .font(InteraFont.system(size: 28, weight: .bold, design: .default))
@@ -385,7 +385,7 @@ struct HomePendingPaymentReminderGlassCard: View {
             RoundedRectangle(cornerRadius: avatarCornerRadius, style: .continuous)
                 .fill(Color.primary.opacity(0.1))
             Text(highlight.barberDisplayName.prefix(1).uppercased())
-                .font(InteraFont.title3.weight(.bold))
+                .font(InteraFont.title3(weight: .bold))
                 .foregroundStyle(Color.lavaShellCream.opacity(0.85))
         }
         .frame(width: avatarSize, height: avatarSize)

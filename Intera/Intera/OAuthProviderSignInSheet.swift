@@ -237,10 +237,10 @@ struct OAuthProviderSignInOptionsContent: View {
             Spacer(minLength: 0)
             HStack(spacing: 14) {
                 Image(systemName: "apple.logo")
-                    .font(InteraFont.title3.weight(.semibold))
+                    .font(InteraFont.title3(weight: .semibold))
                     .foregroundStyle(Self.applePillText)
                 Text("Sign in with Apple")
-                    .font(InteraFont.body.weight(.semibold))
+                    .font(InteraFont.body(weight: .semibold))
                     .foregroundStyle(Self.applePillText)
             }
             Spacer(minLength: 0)
@@ -364,7 +364,7 @@ struct OAuthProviderSignInOptionsContent: View {
     #if os(iOS) || os(visionOS)
     private var signInWithApplePillCompactChrome: some View {
         Image(systemName: "apple.logo")
-            .font(InteraFont.title3.weight(.semibold))
+            .font(InteraFont.title3(weight: .semibold))
             .foregroundStyle(Self.applePillText)
             .frame(maxWidth: .infinity)
             .frame(height: Self.compactOAuthPillHeight)
@@ -434,7 +434,7 @@ struct OAuthProviderSignInOptionsContent: View {
                 HStack(spacing: 14) {
                     googleSignInAssetIcon(size: 22)
                     Text("Sign in with Google")
-                        .font(InteraFont.body.weight(.semibold))
+                        .font(InteraFont.body(weight: .semibold))
                         .foregroundStyle(Self.googleButtonText)
                 }
                 Spacer(minLength: 0)
@@ -470,7 +470,7 @@ struct OAuthProviderSignInOptionsContent: View {
             onNavigateToEmail()
         } label: {
             Text("Manual Sign-In")
-                .font(InteraFont.body.weight(.semibold))
+                .font(InteraFont.body(weight: .semibold))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
@@ -488,7 +488,7 @@ struct OAuthProviderSignInOptionsContent: View {
 
     private var oauthOrDivider: some View {
         Text("or")
-            .font(InteraFont.caption.weight(.medium))
+            .font(InteraFont.caption(weight: .medium))
             .foregroundStyle(BookingSelectorTheme.cream.opacity(0.62))
             .frame(maxWidth: .infinity)
     }
@@ -496,7 +496,7 @@ struct OAuthProviderSignInOptionsContent: View {
     private func createAccountLink(action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text("Create Account")
-                .font(InteraFont.subheadline.weight(.semibold))
+                .font(InteraFont.subheadline(weight: .semibold))
                 .foregroundStyleOliveGreen()
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)

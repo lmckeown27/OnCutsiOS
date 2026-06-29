@@ -268,7 +268,7 @@ struct UnifiedTimelineView: View {
             }
         } label: {
             Image(systemName: "sun.max.fill")
-                .font(InteraFont.title2.weight(.semibold))
+                .font(InteraFont.title2(weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(width: 56, height: 56)
                 .background {

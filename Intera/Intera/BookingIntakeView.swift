@@ -303,10 +303,10 @@ struct BookingIntakeView: View {
                     Link(destination: igURL) {
                         HStack(spacing: 6) {
                             Image(systemName: "camera.fill")
-                                .font(InteraFont.caption.weight(.semibold))
+                                .font(InteraFont.caption(weight: .semibold))
                                 .foregroundStyleInteraShellIconSecondary()
                             Text("Instagram")
-                                .font(InteraFont.subheadline.weight(.medium))
+                                .font(InteraFont.subheadline(weight: .medium))
                                 .foregroundStyleOliveGreen()
                         }
                     }
@@ -372,7 +372,7 @@ struct BookingIntakeView: View {
     private func serviceChip(service: ServiceProvider.Service, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text("\(service.name)  $\(service.price)")
-                .font(InteraFont.body.weight(.semibold))
+                .font(InteraFont.body(weight: .semibold))
                 .foregroundStyle(isSelected ? Color.white : Color.primary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -391,7 +391,7 @@ struct BookingIntakeView: View {
     private var locationAmberCallout: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "mappin.and.ellipse")
-                .font(InteraFont.body.weight(.semibold))
+                .font(InteraFont.body(weight: .semibold))
                 #if canImport(UIKit)
                 .foregroundStyle(Color(UIColor.systemYellow))
                 #else

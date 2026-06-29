@@ -34,7 +34,7 @@ struct PhoneNumberSignInPlaceholderView: View {
                     infoMessage = "Phone number sign-in isn’t available in this build yet. Please use email or Google."
                 } label: {
                     Text("Send verification code")
-                        .font(InteraFont.body.weight(.semibold))
+                        .font(InteraFont.body(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }

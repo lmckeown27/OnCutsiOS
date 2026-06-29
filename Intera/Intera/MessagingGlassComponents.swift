@@ -195,17 +195,17 @@ struct PinnedBookingHeader: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 6) {
                         Image(systemName: "calendar.badge.clock")
-                            .font(InteraFont.caption.weight(.semibold))
+                            .font(InteraFont.caption(weight: .semibold))
                             .foregroundStyleInteraShellIconSecondary()
                         Text("Latest booking")
-                            .font(InteraFont.caption.weight(.semibold))
+                            .font(InteraFont.caption(weight: .semibold))
                             .foregroundStyle(.secondary)
                     }
                     Text(row.displayServiceName)
                         .font(InteraFont.headlineSmall)
                         .foregroundStyle(.primary)
                     Text(row.displayStatus)
-                        .font(InteraFont.caption.weight(.semibold))
+                        .font(InteraFont.caption(weight: .semibold))
                         .foregroundStyleOliveGreen(opacity: 0.95)
                     if let when = formattedSchedule(row) {
                         Text(when)

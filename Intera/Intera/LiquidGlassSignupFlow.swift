@@ -749,7 +749,7 @@ struct LiquidGlassSignupFlowView: View {
                         dismiss()
                     } label: {
                         Text("Close")
-                            .font(InteraFont.subheadline.weight(.semibold))
+                            .font(InteraFont.subheadline(weight: .semibold))
                             .foregroundStyle(Color.lavaShellCream)
                     }
                 }
@@ -818,7 +818,7 @@ struct LiquidGlassSignupFlowView: View {
     private var stepHeader: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Step \(signupStepIndicator.current) of \(signupStepIndicator.total)")
-                .font(InteraFont.subheadline.weight(.semibold))
+                .font(InteraFont.subheadline(weight: .semibold))
                 .foregroundStyle(Color.lavaShellCream.opacity(0.92))
                 .tracking(0.3)
 
@@ -832,7 +832,7 @@ struct LiquidGlassSignupFlowView: View {
                let ns = emailMorphNamespace,
                !coordinator.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(coordinator.email)
-                    .font(InteraFont.subheadline.weight(.semibold))
+                    .font(InteraFont.subheadline(weight: .semibold))
                     .foregroundStyle(.secondary)
                     .matchedGeometryEffect(
                         id: "authIdentityEmail",
@@ -920,7 +920,7 @@ struct LiquidGlassSignupFlowView: View {
                     coordinator.advanceFromName()
                 } label: {
                     Text("Continue")
-                        .font(InteraFont.body.weight(.semibold))
+                        .font(InteraFont.body(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                 }
@@ -961,7 +961,7 @@ struct LiquidGlassSignupFlowView: View {
                         glassTextField(title: "Mobile number", content: {
                             HStack(alignment: .center, spacing: 12) {
                                 Image(systemName: "circle.grid.3x3.fill")
-                                    .font(InteraFont.title3.weight(.semibold))
+                                    .font(InteraFont.title3(weight: .semibold))
                                     .foregroundStyleInteraShellIconSecondary()
                                     .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 8) {
@@ -989,7 +989,7 @@ struct LiquidGlassSignupFlowView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     HStack {
                                         Text("Digits only · area + number")
-                                            .font(InteraFont.caption2.weight(.medium))
+                                            .font(InteraFont.caption2(weight: .medium))
                                             .foregroundStyle(.tertiary)
                                         Spacer(minLength: 0)
                                         Text("\(min(coordinator.phoneDigits.count, 10))/10")
@@ -1023,7 +1023,7 @@ struct LiquidGlassSignupFlowView: View {
                             ? (coordinator.isSubmitting ? "Sending code…" : "Continue")
                             : "Continue"
                     )
-                        .font(InteraFont.body.weight(.semibold))
+                        .font(InteraFont.body(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                 }
@@ -1065,7 +1065,7 @@ struct LiquidGlassSignupFlowView: View {
                     }
                 } label: {
                     Text(passwordPrimaryButtonTitle)
-                        .font(InteraFont.body.weight(.semibold))
+                        .font(InteraFont.body(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                 }
@@ -1102,7 +1102,7 @@ struct LiquidGlassSignupFlowView: View {
         liquidCard {
             VStack(spacing: 18) {
                 Text(verificationDestinationLabel)
-                    .font(InteraFont.subheadline.weight(.medium))
+                    .font(InteraFont.subheadline(weight: .medium))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -1135,7 +1135,7 @@ struct LiquidGlassSignupFlowView: View {
                                 .shadow(color: focused ? Color.oliveGreen.opacity(0.35) : .clear, radius: 8, y: 0)
                                 .overlay {
                                     Text(ch.map({ String($0) }) ?? " ")
-                                        .font(InteraFont.title2.weight(.semibold))
+                                        .font(InteraFont.title2(weight: .semibold))
                                         .monospacedDigit()
                                 }
                                 .allowsHitTesting(false)
@@ -1185,7 +1185,7 @@ struct LiquidGlassSignupFlowView: View {
                     Task { await coordinator.resendVerificationEmail() }
                 } label: {
                     Text(coordinator.isSubmitting ? "Sending…" : "Didn’t get a code? Send again")
-                        .font(InteraFont.caption.weight(.semibold))
+                        .font(InteraFont.caption(weight: .semibold))
                 }
                 .buttonStyle(.plain)
                 .foregroundStyleOliveGreen(opacity: 0.95)
@@ -1204,7 +1204,7 @@ struct LiquidGlassSignupFlowView: View {
                     ) {
                         coordinator.discardSavedSignupProgress()
                     }
-                    .font(InteraFont.caption.weight(.medium))
+                    .font(InteraFont.caption(weight: .medium))
                     .foregroundStyle(.tertiary)
                     .padding(.top, 4)
                 }
@@ -1248,7 +1248,7 @@ struct LiquidGlassSignupFlowView: View {
                     coordinator.advanceFromTerms()
                 } label: {
                     Text("Continue")
-                        .font(InteraFont.body.weight(.semibold))
+                        .font(InteraFont.body(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                 }
@@ -1280,7 +1280,7 @@ struct LiquidGlassSignupFlowView: View {
                     enterInteraFromComplete()
                 } label: {
                     Text("Enter \(AppBranding.displayName)")
-                        .font(InteraFont.body.weight(.semibold))
+                        .font(InteraFont.body(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                 }
@@ -1304,7 +1304,7 @@ struct LiquidGlassSignupFlowView: View {
                     .interaOliveGreenTextOutline(when: coordinator.termsAccepted)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Terms of Service")
-                        .font(InteraFont.caption.weight(.semibold))
+                        .font(InteraFont.caption(weight: .semibold))
                         .foregroundStyle(.secondary)
                     Text(
                         coordinator.termsAccepted
@@ -1334,7 +1334,7 @@ struct LiquidGlassSignupFlowView: View {
                     termsAcceptedBinding.wrappedValue = true
                 } label: {
                     Text("I agree to the Terms of Service")
-                        .font(InteraFont.subheadline.weight(.semibold))
+                        .font(InteraFont.subheadline(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .foregroundStyle(termsDocumentReachedBottom ? Color.oliveGreen : Color.secondary)
@@ -1382,7 +1382,7 @@ struct LiquidGlassSignupFlowView: View {
                 isSignupPasswordVisible.toggle()
             } label: {
                 Image(systemName: isSignupPasswordVisible ? "eye.slash.fill" : "eye.fill")
-                    .font(InteraFont.body.weight(.medium))
+                    .font(InteraFont.body(weight: .medium))
                     .foregroundStyle(.secondary)
                     .frame(minWidth: 28, minHeight: 28)
                     .contentShape(Rectangle())
@@ -1410,7 +1410,7 @@ struct LiquidGlassSignupFlowView: View {
     private func glassTextField<Content: View>(title: String, @ViewBuilder content: @escaping () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(InteraFont.caption.weight(.semibold))
+                .font(InteraFont.caption(weight: .semibold))
                 .foregroundStyle(.secondary)
             content()
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
@@ -1693,7 +1693,7 @@ private struct ShakeEffect: GeometryEffect {
 @available(iOS 17.0, macOS 14.0, *)
 #Preview("Liquid signup") {
     LiquidGlassSignupFlowView(
-        apiV1BaseTrimmed: "https://avilaplatforms.com/api/v1",
+        apiV1BaseTrimmed: "https://pismoplatforms.com/api/v1",
         sessionManager: AppSessionManager(),
         onFinished: {}
     )

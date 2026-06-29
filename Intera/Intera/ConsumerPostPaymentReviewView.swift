@@ -42,7 +42,7 @@ struct ConsumerPostPaymentReviewView: View {
 
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Written review (optional)")
-                                    .font(InteraFont.subheadline.weight(.semibold))
+                                    .font(InteraFont.subheadline(weight: .semibold))
                                     .foregroundStyle(Color.lavaShellCreamSecondary)
                                     .onTapGesture { dismissReviewKeyboard() }
 
@@ -108,7 +108,7 @@ struct ConsumerPostPaymentReviewView: View {
                                     dismissReviewKeyboard()
                                     Task { await skipWithoutSubmitting() }
                                 }
-                                .font(InteraFont.subheadline.weight(.semibold))
+                                .font(InteraFont.subheadline(weight: .semibold))
                                 .foregroundStyle(Color.paymentOutlineButtonLabel)
                             }
                         }

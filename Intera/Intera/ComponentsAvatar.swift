@@ -94,7 +94,7 @@ struct ServiceProviderProfileThumbnail: View {
                     .font(
                         size >= 100
                             ? InteraFont.title
-                            : (size >= 72 ? InteraFont.headline : InteraFont.caption.weight(.bold))
+                            : (size >= 72 ? InteraFont.headline : InteraFont.caption(weight: .bold))
                     )
                     .foregroundStyleOliveGreen()
             }

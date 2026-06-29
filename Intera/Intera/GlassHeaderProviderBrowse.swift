@@ -1291,7 +1291,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 } label: {
                     HStack(spacing: 0) {
                         Image(systemName: "line.3.horizontal.decrease.circle")
-                            .font(InteraFont.body.weight(.semibold))
+                            .font(InteraFont.body(weight: .semibold))
                             .foregroundStyle(Color.lavaShellCream)
                             .frame(width: 40, height: 40)
                             .overlay {
@@ -1349,7 +1349,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         VStack(alignment: .leading, spacing: 12) {
             if !matchingSearchServiceTypes.isEmpty {
                 Text("Services")
-                    .font(InteraFont.caption.weight(.semibold))
+                    .font(InteraFont.caption(weight: .semibold))
                     .foregroundStyle(Color.secondary)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -1364,7 +1364,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                                 }
                             } label: {
                                 Text(type.toolbarTitle)
-                                    .font(InteraFont.subheadline.weight(.medium))
+                                    .font(InteraFont.subheadline(weight: .medium))
                                     .foregroundStyle(utilityPillSearchInputCharcoal)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 8)
@@ -1382,7 +1382,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
 
             if !matchingSearchProviders.isEmpty {
                 Text("Providers")
-                    .font(InteraFont.caption.weight(.semibold))
+                    .font(InteraFont.caption(weight: .semibold))
                     .foregroundStyle(Color.secondary)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
@@ -1428,7 +1428,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 }
             } label: {
                 Text("Done")
-                    .font(InteraFont.subheadline.weight(.semibold))
+                    .font(InteraFont.subheadline(weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
             }
@@ -1521,7 +1521,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     }
                 } label: {
                     Image(systemName: "magnifyingglass")
-                        .font(InteraFont.body.weight(.semibold))
+                        .font(InteraFont.body(weight: .semibold))
                         .foregroundStyle(Color.lavaShellCream)
                         .padding(.vertical, 4)
                         .padding(.horizontal, 4)
@@ -1572,7 +1572,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             onMessagesTap()
         } label: {
             Image(systemName: "bubble.left.and.bubble.right.fill")
-                .font(InteraFont.body.weight(.semibold))
+                .font(InteraFont.body(weight: .semibold))
                 .foregroundStyle(.primary)
                 .overlay(alignment: .topTrailing) {
                     if unreadMessageCount > 0 {
@@ -1598,7 +1598,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             onBookingsTap()
         } label: {
             Image(systemName: "calendar.badge.clock")
-                .font(InteraFont.body.weight(.semibold))
+                .font(InteraFont.body(weight: .semibold))
                 .foregroundStyle(.primary)
                 .overlay(alignment: .topTrailing) {
                     if upcomingBookingCount > 0 {
@@ -1675,7 +1675,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             }
         } label: {
             Text(type.toolbarTitle)
-                .font(InteraFont.subheadline.weight(isSelected ? .semibold : .medium))
+                .font(InteraFont.subheadline(weight: isSelected ? .semibold : .medium))
                 .foregroundStyle(isSelected ? Color.white : Color.primary)
             .padding(.vertical, 7)
             .padding(.horizontal, 12)

@@ -96,7 +96,7 @@ struct BookingCalendarGridSelector: View {
                 onDisplayedMonthChange(displayedMonth)
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(InteraFont.body.weight(.semibold))
+                    .font(InteraFont.body(weight: .semibold))
                     .foregroundStyle(BookingSelectorTheme.cream)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -124,7 +124,7 @@ struct BookingCalendarGridSelector: View {
                 onDisplayedMonthChange(displayedMonth)
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(InteraFont.body.weight(.semibold))
+                    .font(InteraFont.body(weight: .semibold))
                     .foregroundStyle(BookingSelectorTheme.cream)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -277,7 +277,7 @@ private struct BookingTimeSlotChip: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(InteraFont.subheadline.weight(.semibold))
+                .font(InteraFont.subheadline(weight: .semibold))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(
                     isSelected && !isDisabled
@@ -349,7 +349,7 @@ struct BookingTimeSlotGrid: View {
             ForEach(periodSections, id: \.period.id) { section in
                 VStack(alignment: .leading, spacing: 10) {
                     Text(section.period.rawValue)
-                        .font(InteraFont.caption.weight(.bold))
+                        .font(InteraFont.caption(weight: .bold))
                         .foregroundStyle(Color.lavaShellCreamTertiary)
 
                     ScrollView(.horizontal, showsIndicators: false) {

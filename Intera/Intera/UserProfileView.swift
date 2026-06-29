@@ -118,7 +118,11 @@ struct UserProfileView: View {
     }
 
     private func campusCutsClient() -> CampusCutsClient {
-        CampusCutsIntegration.makeClient(sessionManager: sessionManager)
+        CampusCutsClient(
+            session: CampusCutsUserSessionAdapter(manager: sessionManager),
+            environment: .production,
+            isProduction: AppConfiguration.campusCutsProductionLiveDataMode
+        )
     }
 
     /// Loads barber bio for edit-form fallback; students/admins do not need extra data here.
@@ -221,7 +225,7 @@ private struct BarberTabSwitcher: View {
                                 .matchedGeometryEffect(id: "barberTabPill", in: namespace)
                         }
                         Text(tab.title)
-                            .font(InteraFont.subheadline.weight(.semibold))
+                            .font(InteraFont.subheadline(weight: .semibold))
                             .foregroundStyle(selection == tab ? Color.primary : Color.secondary)
                             .padding(.vertical, 10)
                             .frame(maxWidth: .infinity)
@@ -266,7 +270,7 @@ private struct UserProfileGlassHeaderCard: View {
 
                         if showVerified {
                             Label("Verified", systemImage: "checkmark.seal.fill")
-                                .font(InteraFont.caption.weight(.bold))
+                                .font(InteraFont.caption(weight: .bold))
                                 .foregroundStyleOliveGreen()
                                 .labelStyle(.titleAndIcon)
                                 .padding(.horizontal, 8)
@@ -279,7 +283,7 @@ private struct UserProfileGlassHeaderCard: View {
                     }
 
                     Text(session.role.displayName)
-                        .font(InteraFont.caption.weight(.semibold))
+                        .font(InteraFont.caption(weight: .semibold))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .background(Color.oliveGreen.opacity(0.12))
@@ -292,7 +296,7 @@ private struct UserProfileGlassHeaderCard: View {
              // Consumer self-bio preview (disabled — not required at this time).
              VStack(alignment: .leading, spacing: 6) {
                  Text("Bio")
-                     .font(InteraFont.caption.weight(.semibold))
+                     .font(InteraFont.caption(weight: .semibold))
                      .foregroundStyle(.secondary)
                  Text(bioText.isEmpty ? "Add a short bio in settings." : bioText)
                      .font(InteraFont.bodyMedium)
@@ -357,7 +361,7 @@ private struct UserProfileAppointmentList: View {
                                 .font(InteraFont.headlineSmall)
                             if let note = item.statusNote, !note.isEmpty {
                                 Text(note)
-                                    .font(InteraFont.caption2.weight(.semibold))
+                                    .font(InteraFont.caption2(weight: .semibold))
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3)
@@ -467,7 +471,7 @@ private struct UserProfileServicesList: View {
                     }
                     Spacer()
                     Text("$\(row.priceUsd)")
-                        .font(InteraFont.bodyLarge.weight(.semibold))
+                        .font(InteraFont.bodyLarge(weight: .semibold))
                         .foregroundStyleOliveGreen()
                 }
                 .padding(16)
@@ -500,7 +504,7 @@ private struct UserProfileReviewsList: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text(r.authorName)
-                            .font(InteraFont.subheadline.weight(.semibold))
+                            .font(InteraFont.subheadline(weight: .semibold))
                         Spacer()
                         HStack(spacing: 2) {
                             ForEach(0..<5, id: \.self) { i in
@@ -861,7 +865,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Pay with Apple Pay")
-                            .font(InteraFont.title3.weight(.bold))
+                            .font(InteraFont.title3(weight: .bold))
                         Text("Typical flow after your provider completes the service:")
                             .font(InteraFont.subheadline)
                             .foregroundStyle(.secondary)
@@ -870,7 +874,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                         ForEach(Array(Self.applePayInstructionSteps.enumerated()), id: \.offset) { index, line in
                             HStack(alignment: .firstTextBaseline, spacing: 12) {
                                 Text("\(index + 1)")
-                                    .font(InteraFont.caption.weight(.bold))
+                                    .font(InteraFont.caption(weight: .bold))
                                     .foregroundStyle(Color.white)
                                     .frame(width: 26, height: 26)
                                     .background {
@@ -958,7 +962,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 if !needsPlatformPasswordForDeletion {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Password")
-                            .font(InteraFont.caption.weight(.semibold))
+                            .font(InteraFont.caption(weight: .semibold))
                             .foregroundStyle(.secondary)
 
                         HStack(spacing: 10) {
@@ -981,7 +985,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                                 deletePasswordVisible.toggle()
                             } label: {
                                 Image(systemName: deletePasswordVisible ? "eye.slash.fill" : "eye.fill")
-                                    .font(InteraFont.body.weight(.medium))
+                                    .font(InteraFont.body(weight: .medium))
                                     .foregroundStyle(.secondary)
                                     .frame(minWidth: 28, minHeight: 28)
                                     .contentShape(Rectangle())
@@ -1006,7 +1010,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                     Task { await performDeleteAccount() }
                 } label: {
                     Text("Delete account")
-                        .font(InteraFont.body.weight(.semibold))
+                        .font(InteraFont.body(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
@@ -1149,7 +1153,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 UserProfileGlassTile {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("First Name")
-                            .font(InteraFont.caption.weight(.semibold))
+                            .font(InteraFont.caption(weight: .semibold))
                             .foregroundStyle(.secondary)
                             .onTapGesture { dismissProfileNameKeyboard() }
                         TextField("First name", text: $firstName)
@@ -1162,7 +1166,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 UserProfileGlassTile {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Last Name")
-                            .font(InteraFont.caption.weight(.semibold))
+                            .font(InteraFont.caption(weight: .semibold))
                             .foregroundStyle(.secondary)
                             .onTapGesture { dismissProfileNameKeyboard() }
                         TextField("Last name", text: $lastName)
@@ -1189,7 +1193,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
             UserProfileGlassTile {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("First Name")
-                        .font(InteraFont.caption.weight(.semibold))
+                        .font(InteraFont.caption(weight: .semibold))
                         .foregroundStyle(.secondary)
                     Text(signInWithAppleReadOnlyFirstLine)
                         .font(InteraFont.body)
@@ -1199,7 +1203,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
             UserProfileGlassTile {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Last Name")
-                        .font(InteraFont.caption.weight(.semibold))
+                        .font(InteraFont.caption(weight: .semibold))
                         .foregroundStyle(.secondary)
                     Text(signInWithAppleReadOnlyLastLine)
                         .font(InteraFont.body)
@@ -1248,7 +1252,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                     showSignOutConfirm = true
                 } label: {
                     Text("Sign Out")
-                        .font(InteraFont.body.weight(.semibold))
+                        .font(InteraFont.body(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
@@ -1263,7 +1267,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 showDeleteConfirm = true
             } label: {
                 Text("Delete Account")
-                    .font(InteraFont.body.weight(.semibold))
+                    .font(InteraFont.body(weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
             }
@@ -1291,7 +1295,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
             UserProfileGlassSectionHeader(title: "Account")
             UserProfileGlassTile {
                 VStack(spacing: 0) {
-                    Link(destination: URL(string: "https://avilaplatforms.com/privacy")!) {
+                    Link(destination: URL(string: "https://pismoplatforms.com/privacy")!) {
                         integratedAccountRow(
                             title: "Privacy Policy"
                         )
@@ -1299,7 +1303,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
 
                     integratedAccountDivider()
 
-                    Link(destination: URL(string: "https://avilaplatforms.com/terms")!) {
+                    Link(destination: URL(string: "https://pismoplatforms.com/terms")!) {
                         integratedAccountRow(
                             title: "Terms of Service"
                         )
