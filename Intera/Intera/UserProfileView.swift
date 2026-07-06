@@ -671,7 +671,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
 
     /// Shown in the Account → Apple Pay & payments sheet (numbered checklist for reviewers and users).
     private static let applePayInstructionSteps: [String] = [
-        "Your service provider marks the service Completed in the CampusCuts Provider platform (their provider-facing CampusCuts Provider app).",
+        "Your service provider marks the service Completed in the \(AppBranding.companyName) provider platform (their provider-facing \(AppBranding.companyName) app).",
         "\(AppBranding.displayName) may open the payment screen automatically; you can tap Pay later to return to the app, then go to Bookings → open that booking → Pay for this service.",
         "On the payment screen, use the Apple Pay button (or Card / Cash). Apple Pay appears when Wallet has a card and merchant configuration is active.",
         "If checkout never appeared, open Bookings, select the completed booking, and tap Pay for this service.",
@@ -1295,7 +1295,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
             UserProfileGlassSectionHeader(title: "Account")
             UserProfileGlassTile {
                 VStack(spacing: 0) {
-                    Link(destination: URL(string: "https://pismoplatforms.com/privacy")!) {
+                    Link(destination: AppBranding.privacyPolicyURL) {
                         integratedAccountRow(
                             title: "Privacy Policy"
                         )
@@ -1303,7 +1303,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
 
                     integratedAccountDivider()
 
-                    Link(destination: URL(string: "https://pismoplatforms.com/terms")!) {
+                    Link(destination: AppBranding.termsOfServiceURL) {
                         integratedAccountRow(
                             title: "Terms of Service"
                         )

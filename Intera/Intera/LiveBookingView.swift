@@ -129,19 +129,15 @@ struct LiveBookingView: View {
     }
 
     private var calendarAllowedDayStarts: Set<Date>? {
-        let monthKey = BookingPacificSchedule.monthCacheKey(for: calendarDisplayedMonth)
-        let weekly = provider.weeklyTemplateDayStarts(in: bookingDateRange)
-
-        if let apiDays = openDaysByMonthKey[monthKey] {
-            if let weekly { return apiDays.intersection(weekly) }
-            return apiDays
-        }
-
-        if loadingOpenDaysMonthKeys.contains(monthKey) {
-            return weekly
-        }
-
-        return weekly
+        BookingPacificSchedule.mergedCalendarAllowedDayStarts(
+            openDaysByMonthKey: openDaysByMonthKey,
+            loadingMonthKeys: loadingOpenDaysMonthKeys,
+            displayedMonth: calendarDisplayedMonth,
+            selectedDate: selectedDate,
+            selectionCommitted: calendarSelectionCommitted,
+            range: bookingDateRange,
+            weeklyTemplate: provider.weeklyTemplateDayStarts(in: bookingDateRange)
+        )
     }
 
     /// Top-leading dismiss: layered blur + cream stroke so the glyph stays sharp on the lava lamp.
@@ -396,7 +392,7 @@ struct LiveBookingView: View {
                 onDaySelected: scheduleSlotReloadForPickedDay,
                 onDisplayedMonthChange: { month in
                     calendarDisplayedMonth = month
-                    Task { await loadOpenDays(forMonth: month) }
+                    Task { await loadOpenDaysForCalendar(displayedMonth: month) }
                 }
             )
         }
@@ -483,6 +479,17 @@ struct LiveBookingView: View {
             packageServiceRows = try await campusCutsClient.fetchBarberServiceRows(barberId: campusCutsBarberId)
         } catch {
             packageServiceRows = []
+        }
+    }
+
+    @MainActor
+    private func loadOpenDaysForCalendar(displayedMonth month: Date) async {
+        let anchors = BookingPacificSchedule.monthAnchorsForCalendarOpenDayPrefetch(
+            containing: month,
+            clippedTo: bookingDateRange
+        )
+        for anchor in anchors {
+            await loadOpenDays(forMonth: anchor)
         }
     }
 

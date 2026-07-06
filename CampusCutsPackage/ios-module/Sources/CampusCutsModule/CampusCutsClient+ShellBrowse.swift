@@ -7,6 +7,32 @@
 
 import Foundation
 
+/// One priced service from a browse-list row (`barbers.pricing`).
+public struct CampusCutsBrowseServiceRow: Sendable, Hashable, Identifiable {
+    public let id: String
+    public let name: String
+    public let price: Int
+    public let durationMinutes: Int?
+
+    public init(id: String, name: String, price: Int, durationMinutes: Int?) {
+        self.id = id
+        self.name = name
+        self.price = price
+        self.durationMinutes = durationMinutes
+    }
+}
+
+/// Min/max from a provider's pricing menu.
+public struct CampusCutsBrowsePriceRange: Sendable, Hashable {
+    public let min: Int
+    public let max: Int
+
+    public init(min: Int, max: Int) {
+        self.min = min
+        self.max = max
+    }
+}
+
 /// One provider row for the Intera browse grid (`GET /api/v1/barbers`).
 public struct CampusCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
     public let id: String
@@ -19,6 +45,9 @@ public struct CampusCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
     public let completedBookings: Int?
     public let isAvailableNow: Bool?
     public let distanceMiles: Double?
+    public let services: [CampusCutsBrowseServiceRow]?
+    public let priceRange: CampusCutsBrowsePriceRange?
+    public let instagramHandle: String?
 
     public init(
         id: String,
@@ -30,7 +59,10 @@ public struct CampusCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
         reviewCount: Int?,
         completedBookings: Int?,
         isAvailableNow: Bool?,
-        distanceMiles: Double?
+        distanceMiles: Double?,
+        services: [CampusCutsBrowseServiceRow]? = nil,
+        priceRange: CampusCutsBrowsePriceRange? = nil,
+        instagramHandle: String? = nil
     ) {
         self.id = id
         self.userId = userId
@@ -42,6 +74,9 @@ public struct CampusCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
         self.completedBookings = completedBookings
         self.isAvailableNow = isAvailableNow
         self.distanceMiles = distanceMiles
+        self.services = services
+        self.priceRange = priceRange
+        self.instagramHandle = instagramHandle
     }
 }
 
@@ -71,6 +106,8 @@ private extension BarberListRowDTO {
             ?? joinedName(first: firstName, last: lastName)
             ?? "Provider"
         let image = trimmedNonEmpty(profilePictureUrl) ?? trimmedNonEmpty(profileImageUrl)
+        let services = mappedBrowseServices()
+        let priceRange = browsePriceRange(from: services)
         return CampusCutsBrowseProviderRow(
             id: id.value,
             userId: userId?.value ?? id.value,
@@ -81,8 +118,31 @@ private extension BarberListRowDTO {
             reviewCount: reviewCount,
             completedBookings: totalBookings,
             isAvailableNow: isActive,
-            distanceMiles: distanceMiles
+            distanceMiles: distanceMiles,
+            services: services,
+            priceRange: priceRange,
+            instagramHandle: trimmedNonEmpty(instagramHandle)
         )
+    }
+
+    func mappedBrowseServices() -> [CampusCutsBrowseServiceRow]? {
+        guard let pricing, !pricing.isEmpty else { return nil }
+        let mapped = pricing.enumerated().map { index, row in
+            CampusCutsBrowseServiceRow(
+                id: row.id?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? "svc-\(index)",
+                name: row.name,
+                price: Int(row.price.value.rounded()),
+                durationMinutes: row.durationMinutes?.value
+            )
+        }
+        return mapped.isEmpty ? nil : mapped
+    }
+
+    func browsePriceRange(from services: [CampusCutsBrowseServiceRow]?) -> CampusCutsBrowsePriceRange? {
+        guard let services, !services.isEmpty else { return nil }
+        let prices = services.map(\.price)
+        guard let min = prices.min(), let max = prices.max() else { return nil }
+        return CampusCutsBrowsePriceRange(min: min, max: max)
     }
 
     func trimmedNonEmpty(_ value: String?) -> String? {
@@ -95,5 +155,12 @@ private extension BarberListRowDTO {
         let parts = [first, last].compactMap { trimmedNonEmpty($0) }
         let combined = parts.joined(separator: " ")
         return combined.isEmpty ? nil : combined
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }

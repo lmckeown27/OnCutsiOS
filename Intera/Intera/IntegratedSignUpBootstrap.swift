@@ -24,7 +24,7 @@ enum IntegratedSignUpBootstrap {
             IntegratedSignUpFlow(
                 id: "campuscuts.email",
                 title: AppBranding.displayName,
-                subtitle: "Liquid Glass onboarding — CampusCuts APIs + verify email + profile."
+                subtitle: "Liquid Glass onboarding — verify email + profile."
             ) { sessionManager, onFinished in
                 if #available(iOS 17.0, macOS 14.0, *) {
                     LiquidGlassSignupFlowView(

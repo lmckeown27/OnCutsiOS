@@ -44,21 +44,44 @@ enum CampusCutsIntegration {
 extension CampusCutsBrowseProviderRow {
     /// Maps module browse rows into the shell `ServiceProvider` model for existing UI.
     func asServiceProvider() -> ServiceProvider {
-        ServiceProvider(
+        let mappedServices: [ServiceProvider.Service]? = {
+            guard let services, !services.isEmpty else { return nil }
+            let rows = services.map { row in
+                ServiceProvider.Service(
+                    id: row.id,
+                    name: row.name,
+                    price: row.price,
+                    duration: row.durationMinutes,
+                    description: nil
+                )
+            }
+            return ServiceProvider.orderServicesForDisplay(rows)
+        }()
+
+        let mappedPriceRange: ServiceProvider.PriceRange? = priceRange.map {
+            ServiceProvider.PriceRange(min: $0.min, max: $0.max)
+        }
+
+        let mappedInstagram: String? = instagramHandle.flatMap { handle in
+            let trimmed = handle.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+
+        return ServiceProvider(
             id: id,
             userId: userId,
             businessName: businessName,
             bio: bio,
-            instagramHandle: nil,
+            instagramHandle: mappedInstagram,
             profileImageUrl: ProfileImageURLResolver.normalizedStorageString(from: profileImageUrl),
             rating: rating,
             reviewCount: reviewCount,
             completedBookings: completedBookings,
             isAvailableNow: isAvailableNow,
-            priceRange: nil,
+            priceRange: mappedPriceRange,
             category: .haircuts,
             specialty: "Barber",
-            services: nil,
+            services: mappedServices,
             availability: nil,
             locations: nil,
             distanceMilesFromUser: distanceMiles,

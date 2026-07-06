@@ -127,6 +127,9 @@ internal struct BarberListRowDTO: Decodable {
     let isActive: Bool?
     let distanceMiles: Double?
     let distanceKm: Double?
+    let instagramHandle: String?
+    /// Service menu from `barbers.pricing` — included on `GET /barbers` list rows.
+    let pricing: [BarberPricingRowDTO]?
 
     func asBarber() -> Barber {
         let business = name?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
@@ -224,6 +227,26 @@ internal struct BarberPricingRowDTO: Decodable {
     let durationMinutes: FlexibleIntValue?
     let description: String?
     let isActive: Bool?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, price, durationMinutes, description, isActive
+        case serviceName
+        case type
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(String.self, forKey: .id)
+        let rawName = try c.decodeIfPresent(String.self, forKey: .name)
+            ?? c.decodeIfPresent(String.self, forKey: .serviceName)
+            ?? c.decodeIfPresent(String.self, forKey: .type)
+        let trimmed = rawName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        name = trimmed.isEmpty ? "Service" : trimmed
+        price = try c.decode(FlexibleDoubleValue.self, forKey: .price)
+        durationMinutes = try c.decodeIfPresent(FlexibleIntValue.self, forKey: .durationMinutes)
+        description = try c.decodeIfPresent(String.self, forKey: .description)
+        isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive)
+    }
 }
 
 internal struct BarberPortfolioImageDTO: Decodable {

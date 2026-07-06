@@ -255,21 +255,21 @@ struct ConsumerBookingDetailView: View {
 
     private var scheduleEditAllowedDayStarts: Set<Date>? {
         let cal = Calendar.current
-        let monthKey = BookingPacificSchedule.monthCacheKey(for: scheduleEditDisplayedMonth)
         let preservedDays: Set<Date> = [
             cal.startOfDay(for: requestChangeBaselineScheduledAt),
             cal.startOfDay(for: draftScheduledAt),
         ]
 
-        if let apiDays = scheduleEditOpenDaysByMonthKey[monthKey] {
-            return apiDays.union(preservedDays)
-        }
-
-        if scheduleEditLoadingOpenDaysMonthKeys.contains(monthKey) {
-            return nil
-        }
-
-        return nil
+        return BookingPacificSchedule.mergedCalendarAllowedDayStarts(
+            openDaysByMonthKey: scheduleEditOpenDaysByMonthKey,
+            loadingMonthKeys: scheduleEditLoadingOpenDaysMonthKeys,
+            displayedMonth: scheduleEditDisplayedMonth,
+            selectedDate: draftScheduledAt,
+            selectionCommitted: draftCalendarCommitted,
+            range: scheduleEditRange,
+            weeklyTemplate: nil,
+            preservedDayStarts: preservedDays
+        )
     }
 
     private var campusCutsClient: CampusCutsClient {
@@ -1560,6 +1560,17 @@ struct ConsumerBookingDetailView: View {
     // MARK: - Schedule edit availability (provider-published slots)
 
     @MainActor
+    private func loadScheduleEditOpenDaysForCalendar(displayedMonth month: Date) async {
+        let anchors = BookingPacificSchedule.monthAnchorsForCalendarOpenDayPrefetch(
+            containing: month,
+            clippedTo: scheduleEditRange
+        )
+        for anchor in anchors {
+            await loadScheduleEditOpenDays(forMonth: anchor)
+        }
+    }
+
+    @MainActor
     private func loadScheduleEditOpenDays(forMonth month: Date) async {
         let monthKey = BookingPacificSchedule.monthCacheKey(for: month)
         guard !monthKey.isEmpty, scheduleEditOpenDaysByMonthKey[monthKey] == nil else { return }
@@ -1708,7 +1719,7 @@ struct ConsumerBookingDetailView: View {
             },
             onDisplayedMonthChange: { month in
                 scheduleEditDisplayedMonth = month
-                Task { await loadScheduleEditOpenDays(forMonth: month) }
+                Task { await loadScheduleEditOpenDaysForCalendar(displayedMonth: month) }
             }
         )
     }
@@ -1880,7 +1891,7 @@ struct ConsumerBookingDetailView: View {
                 if scheduleEditEntry == .time {
                     await loadScheduleEditDaySlots()
                 } else {
-                    await loadScheduleEditOpenDays(forMonth: scheduleEditDisplayedMonth)
+                    await loadScheduleEditOpenDaysForCalendar(displayedMonth: scheduleEditDisplayedMonth)
                 }
             }
             .navigationTitle(scheduleEditEntry == .date ? "Request Schedule Change" : "Choose a Time")

@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "AvilaPlatformsLogo.png",
+      "filename" : "OnCuts_Logo.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "AvilaPlatformsLogo 1.png",
+      "filename" : "OnCuts_Logo 1.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -25,13 +25,13 @@
           "value" : "tinted"
         }
       ],
-      "filename" : "AvilaPlatformsLogo 2.png",
+      "filename" : "OnCuts_Logo 2.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
     },
     {
-      "filename" : "AvilaPlatformsLogo 3.png",
+      "filename" : "OnCuts_Logo 3.png",
       "idiom" : "mac",
       "scale" : "2x",
       "size" : "512x512"

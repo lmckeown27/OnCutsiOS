@@ -229,6 +229,122 @@ enum BookingPacificSchedule {
         guard let y = c.year, let m = c.month else { return "" }
         return String(format: "%04d-%02d", y, m)
     }
+
+    /// Month starts to prefetch for a calendar grid: displayed month plus leading/trailing padding months.
+    static func monthAnchorsForCalendarOpenDayPrefetch(
+        containing displayedMonth: Date,
+        clippedTo range: ClosedRange<Date>
+    ) -> [Date] {
+        let cal = Calendar.current
+        guard let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: displayedMonth)) else {
+            return [displayedMonth]
+        }
+
+        var anchors: [Date] = []
+        func appendUnique(_ anchor: Date) {
+            let key = monthCacheKey(for: anchor)
+            guard !key.isEmpty else { return }
+            guard !anchors.contains(where: { monthCacheKey(for: $0) == key }) else { return }
+            guard !dayStartsInMonth(containing: anchor, clippedTo: range).isEmpty else { return }
+            anchors.append(anchor)
+        }
+
+        appendUnique(monthStart)
+        if let previous = cal.date(byAdding: .month, value: -1, to: monthStart) {
+            appendUnique(previous)
+        }
+        if let next = cal.date(byAdding: .month, value: 1, to: monthStart) {
+            appendUnique(next)
+        }
+        return anchors
+    }
+
+    /// Merges cached open-day sets for all months visible on the calendar (displayed + padding + selected month).
+    static func mergedCalendarAllowedDayStarts(
+        openDaysByMonthKey: [String: Set<Date>],
+        loadingMonthKeys: Set<String>,
+        displayedMonth: Date,
+        selectedDate: Date?,
+        selectionCommitted: Bool,
+        range: ClosedRange<Date>,
+        weeklyTemplate: Set<Date>?,
+        preservedDayStarts: Set<Date> = []
+    ) -> Set<Date>? {
+        let cal = Calendar.current
+        var monthAnchors = monthAnchorsForCalendarOpenDayPrefetch(containing: displayedMonth, clippedTo: range)
+
+        if selectionCommitted, let selectedDate {
+            let selectedMonth = cal.date(from: cal.dateComponents([.year, .month], from: selectedDate)) ?? selectedDate
+            let selectedKey = monthCacheKey(for: selectedMonth)
+            if !selectedKey.isEmpty,
+               !monthAnchors.contains(where: { monthCacheKey(for: $0) == selectedKey }) {
+                monthAnchors.append(selectedMonth)
+            }
+        }
+
+        var merged = preservedDayStarts
+        var loadedAny = !preservedDayStarts.isEmpty
+        var loadingAny = false
+
+        for anchor in monthAnchors {
+            let key = monthCacheKey(for: anchor)
+            guard !key.isEmpty else { continue }
+            if let days = openDaysByMonthKey[key] {
+                merged.formUnion(days)
+                loadedAny = true
+            }
+            if loadingMonthKeys.contains(key) {
+                loadingAny = true
+            }
+        }
+
+        if selectionCommitted, let selectedDate {
+            merged.insert(cal.startOfDay(for: selectedDate))
+        }
+
+        if loadedAny {
+            if let weeklyTemplate {
+                var allowed = merged.intersection(weeklyTemplate)
+                allowed.formUnion(preservedDayStarts)
+                if selectionCommitted, let selectedDate {
+                    allowed.insert(cal.startOfDay(for: selectedDate))
+                }
+                return allowed
+            }
+            return merged
+        }
+
+        if loadingAny {
+            return weeklyTemplate
+        }
+
+        return weeklyTemplate
+    }
+
+    /// Last bookable start-of-day in `monthAnchor`'s month (within `range`) from `allowedDayStarts`, or any in-range day when `allowed` is `nil`.
+    static func latestAvailableDayInMonth(
+        containing monthAnchor: Date,
+        allowedDayStarts: Set<Date>?,
+        range: ClosedRange<Date>
+    ) -> Date? {
+        let cal = Calendar.current
+        guard let monthStart = cal.date(from: cal.dateComponents([.year, .month], from: monthAnchor)) else {
+            return nil
+        }
+        let rangeLower = cal.startOfDay(for: range.lowerBound)
+        let rangeUpper = cal.startOfDay(for: range.upperBound)
+        let days = dayStartsInMonth(containing: monthAnchor, clippedTo: range)
+        let candidates: [Date]
+        if let allowedDayStarts {
+            candidates = days.filter { allowedDayStarts.contains(cal.startOfDay(for: $0)) }
+        } else {
+            candidates = days
+        }
+        return candidates
+            .map { cal.startOfDay(for: $0) }
+            .filter { $0 >= rangeLower && $0 <= rangeUpper }
+            .max()
+    }
 }
 
 enum BookingWeekdaySchedule {

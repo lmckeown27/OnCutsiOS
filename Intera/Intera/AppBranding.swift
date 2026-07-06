@@ -10,10 +10,26 @@
 import Foundation
 
 enum AppBranding {
-    /// Platform brand shown under the app icon and in user-visible strings (Guideline 2.3.8).
-    static let displayName = "Pismo"
-    /// Repo / Xcode product label — not renamed in the target to avoid breaking bundle IDs and schemes.
-    static let productName = "PismoiOS"
+    /// Consumer product brand — app icon label, in-app copy, OAuth system name.
+    static let displayName = "OnCuts"
+    /// Internal repo / docs product label (Xcode target remains `Intera` for bundle IDs and schemes).
+    static let productName = "OnCuts"
+    /// Legal entity / company behind the product (Terms, support, provider platform references).
+    static let companyName = "OnCuts"
+    static let companyWebsiteHost = "oncuts.com"
+    static let supportEmail = "support@oncuts.com"
+
+    static var companyWebsiteURL: URL {
+        URL(string: "https://\(companyWebsiteHost)")!
+    }
+
+    static var termsOfServiceURL: URL {
+        URL(string: "https://\(companyWebsiteHost)/terms")!
+    }
+
+    static var privacyPolicyURL: URL {
+        URL(string: "https://\(companyWebsiteHost)/privacy")!
+    }
 }
 
 extension Bundle {

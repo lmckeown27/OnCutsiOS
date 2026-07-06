@@ -36,7 +36,7 @@ public enum AppEnvironment: String, Sendable {
         case .staging:
             return URL(string: "https://staging-api.campuscuts.com")!
         case .production:
-            return URL(string: "https://pismoplatforms.com/api/v1")!
+            return URL(string: "https://oncuts.com/api/v1")!
         }
     }
     

@@ -2285,10 +2285,10 @@ struct MessagingUGCTermsGateView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Link(destination: URL(string: "https://pismoplatforms.com/terms")!) {
+                        Link(destination: AppBranding.termsOfServiceURL) {
                             Label("Terms of Service", systemImage: "doc.text")
                         }
-                        Link(destination: URL(string: "https://pismoplatforms.com/privacy")!) {
+                        Link(destination: AppBranding.privacyPolicyURL) {
                             Label("Privacy Policy", systemImage: "hand.raised")
                         }
                     }

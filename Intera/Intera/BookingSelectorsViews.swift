@@ -25,6 +25,8 @@ struct BookingCalendarGridSelector: View {
     var onDisplayedMonthChange: (Date) -> Void = { _ in }
 
     @State private var displayedMonth: Date
+    /// When month navigation finds no open days yet, retry after availability loads.
+    @State private var pendingLatestDaySnapMonthKey: String?
 
     private let calendar = Calendar.current
 
@@ -82,8 +84,25 @@ struct BookingCalendarGridSelector: View {
             onDisplayedMonthChange(displayedMonth)
         }
         .onChange(of: selectedDate) { _, newValue in
-            displayedMonth = startOfMonth(newValue)
+            // Follow taps on padding days into that month; skip when chevron navigation already set `displayedMonth`.
+            let month = startOfMonth(newValue)
+            if !calendar.isDate(month, equalTo: displayedMonth, toGranularity: .month) {
+                displayedMonth = month
+            }
         }
+        .onChange(of: monthAvailabilityToken) { _, _ in
+            retryPendingLatestDaySnapIfNeeded()
+        }
+    }
+
+    /// Changes when open-day data for the visible month updates (used to retry selection snap after prefetch).
+    private var monthAvailabilityToken: String {
+        let key = BookingPacificSchedule.monthCacheKey(for: displayedMonth)
+        guard let allowedDayStarts else { return "\(key)-all" }
+        let count = allowedDayStarts.filter {
+            calendar.isDate($0, equalTo: displayedMonth, toGranularity: .month)
+        }.count
+        return "\(key)-\(count)"
     }
 
     private var monthNavigationHeader: some View {
@@ -93,7 +112,7 @@ struct BookingCalendarGridSelector: View {
                 withAnimation(BookingSelectorTheme.selectionSpring) {
                     displayedMonth = addMonths(-1, to: displayedMonth)
                 }
-                onDisplayedMonthChange(displayedMonth)
+                navigateToDisplayedMonthSelectingLatestAvailableDay()
             } label: {
                 Image(systemName: "chevron.left")
                     .font(InteraFont.body(weight: .semibold))
@@ -121,7 +140,7 @@ struct BookingCalendarGridSelector: View {
                 withAnimation(BookingSelectorTheme.selectionSpring) {
                     displayedMonth = addMonths(1, to: displayedMonth)
                 }
-                onDisplayedMonthChange(displayedMonth)
+                navigateToDisplayedMonthSelectingLatestAvailableDay()
             } label: {
                 Image(systemName: "chevron.right")
                     .font(InteraFont.body(weight: .semibold))
@@ -188,12 +207,13 @@ struct BookingCalendarGridSelector: View {
             allowedDayStarts == nil || allowedDayStarts!.contains(dayStart)
         let selectable = inSelectableRange && passesAvailability
         let inDisplayedMonth = calendar.isDate(day, equalTo: displayedMonth, toGranularity: .month)
-        let selected = selectionCommitted && calendar.isDate(day, inSameDayAs: selectedDate)
+        let selected = selectionCommitted
+            && calendar.isDate(day, inSameDayAs: selectedDate)
+            && inDisplayedMonth
 
         let labelOpacity: Double = {
             if !inSelectableRange { return 0.22 }
             if allowedDayStarts != nil && !passesAvailability { return 0.22 }
-            if !inDisplayedMonth { return 0.38 }
             return 1
         }()
 
@@ -203,9 +223,14 @@ struct BookingCalendarGridSelector: View {
                 selectionCommitted && calendar.isDate(day, inSameDayAs: selectedDate)
             BookingSelectorTheme.triggerSelectionChangedIfNewSelection(wasSelected: wasSameDaySelected)
             selectionCommitted = true
+            pendingLatestDaySnapMonthKey = nil
             withAnimation(BookingSelectorTheme.selectionSpring) {
                 let preservedTimeKey = BookingPacificSchedule.pacificHHmmKey(from: selectedDate)
                 let pacificDay = BookingPacificSchedule.pacificStartOfDay(for: day)
+                if !inDisplayedMonth {
+                    displayedMonth = startOfMonth(day)
+                    onDisplayedMonthChange(displayedMonth)
+                }
                 if let merged = BookingPacificSchedule.pacificInstant(
                     selectedDay: pacificDay,
                     timeHHmm: preservedTimeKey
@@ -256,6 +281,43 @@ struct BookingCalendarGridSelector: View {
         let wd = calendar.component(.weekday, from: date)
         let first = calendar.firstWeekday
         return (wd - first + 7) % 7
+    }
+
+    private func navigateToDisplayedMonthSelectingLatestAvailableDay() {
+        pendingLatestDaySnapMonthKey = BookingPacificSchedule.monthCacheKey(for: displayedMonth)
+        onDisplayedMonthChange(displayedMonth)
+        applyLatestAvailableDaySelectionInDisplayedMonth(notifyParent: true)
+    }
+
+    private func retryPendingLatestDaySnapIfNeeded() {
+        guard let pending = pendingLatestDaySnapMonthKey, !pending.isEmpty else { return }
+        let current = BookingPacificSchedule.monthCacheKey(for: displayedMonth)
+        guard pending == current else { return }
+        applyLatestAvailableDaySelectionInDisplayedMonth(notifyParent: true)
+    }
+
+    private func applyLatestAvailableDaySelectionInDisplayedMonth(notifyParent: Bool) {
+        guard let latest = BookingPacificSchedule.latestAvailableDayInMonth(
+            containing: displayedMonth,
+            allowedDayStarts: allowedDayStarts,
+            range: range
+        ) else { return }
+
+        pendingLatestDaySnapMonthKey = nil
+        selectionCommitted = true
+        let preservedTimeKey = BookingPacificSchedule.pacificHHmmKey(from: selectedDate)
+        let pacificDay = BookingPacificSchedule.pacificStartOfDay(for: latest)
+        if let merged = BookingPacificSchedule.pacificInstant(
+            selectedDay: pacificDay,
+            timeHHmm: preservedTimeKey
+        ) {
+            selectedDate = merged
+        } else {
+            selectedDate = pacificDay
+        }
+        if notifyParent {
+            onDaySelected()
+        }
     }
 }
 

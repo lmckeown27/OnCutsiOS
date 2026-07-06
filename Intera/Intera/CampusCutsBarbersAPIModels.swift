@@ -53,6 +53,7 @@ private struct CampusCutsBarberDTO: Decodable, Sendable {
     /// Present when `GET /barbers` is called with user `lat`/`lng` — server Haversine distance to the barber’s service point.
     let distanceMiles: Double?
     let distanceKm: Double?
+    let instagramHandle: String?
 }
 
 private struct CampusCutsPricingDTO: Decodable, Sendable {
@@ -242,7 +243,7 @@ private extension CampusCutsBarberDTO {
             userId: uid,
             businessName: business,
             bio: bio.flatMap { $0.trimmedNonEmpty },
-            instagramHandle: nil,
+            instagramHandle: instagramHandle.flatMap { $0.trimmedNonEmpty },
             profileImageUrl: ProfileImageURLResolver.normalizedStorageString(
                 from: [profilePictureUrl, profilePhotoUrl, avatarUrl, avatar]
                     .compactMap { $0?.trimmedNonEmpty }
