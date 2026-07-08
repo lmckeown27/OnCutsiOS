@@ -1,17 +1,17 @@
-# Intera (consumer) — product, UI/UX, and CampusCutsPackage integration
+# Intera (consumer) — product, UI/UX, and OnCutsPackage integration
 
-This document describes the **shipping Intera iOS app** today: purpose, major flows, UI/UX patterns, backend contracts, and how **`CampusCutsPackage`** (`CampusCutsModule` + `Core`) fits in. Use it as direction for a **Provider (barber) companion app** that shares the same **CampusCuts** backend and optionally the same Swift packages.
+This document describes the **shipping Intera iOS app** today: purpose, major flows, UI/UX patterns, backend contracts, and how **`OnCutsPackage`** (`OnCutsModule` + `Core`) fits in. Use it as direction for a **Provider (barber) companion app** that shares the same **OnCuts** backend and optionally the same Swift packages.
 
 ---
 
 ## 1. What Intera is
 
-**Intera** is a **consumer-facing** iOS app for **requesting and managing on-site services** (hair, nails, etc.) from **providers** listed on the **CampusCuts** platform. It is not the barber dashboard; it is the **student / consumer** shell.
+**Intera** is a **consumer-facing** iOS app for **requesting and managing on-site services** (hair, nails, etc.) from **providers** listed on the **OnCuts** platform. It is not the barber dashboard; it is the **student / consumer** shell.
 
 **Primary jobs-to-be-done**
 
 1. **Discover** providers near the user (or full list), filter by service category, search by name.
-2. **Book** a service (intake → confirmation) against the CampusCuts **`bookings-simple`** API.
+2. **Book** a service (intake → confirmation) against the OnCuts **`bookings-simple`** API.
 3. **Message** providers in a booking-linked chat; real-time updates via **Socket.IO**.
 4. **Track bookings** on a unified timeline (pending → accepted → completed → paid).
 5. **Pay** after the provider marks the booking **completed** (Stripe **PaymentSheet**, optional **Apple Pay**, cash path).
@@ -19,8 +19,8 @@ This document describes the **shipping Intera iOS app** today: purpose, major fl
 
 **Backend / brand context**
 
-- API root is configured as **`https://campuscut.com/api/v1`** (see `AppConfiguration` in the Intera target). Same deployment as the CampusCuts web app (`VITE_API_URL=/api/v1` pattern).
-- Intera uses **JWT** (`Authorization: Bearer …`) from CampusCuts auth (`/auth/apple`, `/auth/google`, email login, register).
+- API root is configured as **`https://campuscut.com/api/v1`** (see `AppConfiguration` in the Intera target). Same deployment as the OnCuts web app (`VITE_API_URL=/api/v1` pattern).
+- Intera uses **JWT** (`Authorization: Bearer …`) from OnCuts auth (`/auth/apple`, `/auth/google`, email login, register).
 
 **Roles (in app today)**
 
@@ -36,12 +36,12 @@ The **Provider app** you build would mirror **barber** workflows (accept/reject,
 | Layer | Responsibility |
 |--------|----------------|
 | **Intera app target** | SwiftUI UI, `AppSessionManager`, coordinators, `ChatViewModel`, booking/messaging/payment API wrappers, OAuth sheets, push, design system (`Color.oliveGreen`, lava background, glass chrome). |
-| **`CampusCutsModule`** (SPM) | Shared **models** (`ServiceProvider`), **auth helpers** (`CampusCutsAuthTokenStore`, sign-up flows), **messaging** (`CampusCutsChatManager`), **legal**, **ServiceType** filter enum, **live-data banner**, sample **CampusCutsHomeView** / **BarberDashboardView** (shell demos—not the main Intera consumer UI). |
+| **`OnCutsModule`** (SPM) | Shared **models** (`ServiceProvider`), **auth helpers** (`OnCutsAuthTokenStore`, sign-up flows), **messaging** (`OnCutsChatManager`), **legal**, **ServiceType** filter enum, **live-data banner**, sample **OnCutsHomeView** / **BarberDashboardView** (shell demos—not the main Intera consumer UI). |
 | **`Core`** (SPM) | **Stripe** integration: `CheckoutViewModel`, `BookingCheckoutViewModel`, `StripeManager`, `Bundle+StripeConfig`, Apple Pay coordinator pieces; depends on **StripePaymentSheet** / **StripeApplePay**. |
 
 **Session bridge**
 
-- `CampusCutsSessionSync.appSessionManager` is set from `RootView` so package code that needs the shell session can reach **`AppSessionManager`** (see `CoreUserSessionProtocol` / `CampusCutsSessionSync.swift`).
+- `OnCutsSessionSync.appSessionManager` is set from `RootView` so package code that needs the shell session can reach **`AppSessionManager`** (see `CoreUserSessionProtocol` / `OnCutsSessionSync.swift`).
 
 ---
 
@@ -99,21 +99,21 @@ The **Provider app** should use the same root URL, **`role=barber`** (or whateve
 
 ---
 
-## 5. `CampusCutsPackage` contents (what to reuse)
+## 5. `OnCutsPackage` contents (what to reuse)
 
 **Products** (`Package.swift`):
 
-- **`CampusCutsModule`** — no Stripe dependency; safe for UI + auth + models shared with a provider app if you avoid pulling Stripe into that target.
+- **`OnCutsModule`** — no Stripe dependency; safe for UI + auth + models shared with a provider app if you avoid pulling Stripe into that target.
 - **`Core`** — Stripe + checkout; link only on targets that pay out or take card.
 
-**`CampusCutsModule` highlights** (`ios-module/Sources/CampusCutsModule/`)
+**`OnCutsModule` highlights** (`ios-module/Sources/OnCutsModule/`)
 
 - **`ServiceType`**: public enum for toolbar categories (`.barber`, `.makeup`, …) with `toolbarTitle`, `systemImageName`.
 - **`ServiceProvider`**: public model used by Intera cards and `ProviderViewModel` decoders (check `ServiceProviderCard` / decode extensions in Intera).
-- **Auth**: `CampusCutsAuthService`, `CampusCutsSignUpView`, `CampusCutsSignUpAPI`, `CampusCutsAuthTokenStore` (keychain-like token storage used with `AppSessionManager`).
-- **Messaging**: `CampusCutsChatManager` (Intera also uses bespoke `MessagingView` / `ChatViewModel` wired to same backend).
-- **Legal**: `CampusCutsLegal`.
-- **Views**: `CampusCutsHomeView`, `ConsumerHomeView`, `BarberDashboardView` — **reference / optional**; Intera’s real consumer shell is **`ScreensConsumerHome`** + hub.
+- **Auth**: `OnCutsAuthService`, `OnCutsSignUpView`, `OnCutsSignUpAPI`, `OnCutsAuthTokenStore` (keychain-like token storage used with `AppSessionManager`).
+- **Messaging**: `OnCutsChatManager` (Intera also uses bespoke `MessagingView` / `ChatViewModel` wired to same backend).
+- **Legal**: `OnCutsLegal`.
+- **Views**: `OnCutsHomeView`, `ConsumerHomeView`, `BarberDashboardView` — **reference / optional**; Intera’s real consumer shell is **`ScreensConsumerHome`** + hub.
 
 **`Core` highlights** (`ios-module/Sources/Core/`)
 
@@ -121,15 +121,15 @@ The **Provider app** should use the same root URL, **`role=barber`** (or whateve
 - **`BookingCheckoutViewModel`**, **`BookingCheckoutView`**, **`StripeManager`**, **`StandaloneBookingApplePayCoordinator`**.
 - **`Bundle+StripeConfig`**: reads **`StripePublishableKey`**, **`StripeApplePayMerchantId`**, **`StripeApplePayMerchantCountryCode`** from the **host app Info.plist** (Intera injects these from `GoogleSignInURL.plist` + `StripeKeys.xcconfig`).
 
-For a **Provider app**, you may still need **`Core`** if providers collect **deposits** or **payouts** through the same Stripe Connect story; otherwise you might depend only on **`CampusCutsModule`** plus your own networking.
+For a **Provider app**, you may still need **`Core`** if providers collect **deposits** or **payouts** through the same Stripe Connect story; otherwise you might depend only on **`OnCutsModule`** plus your own networking.
 
 ---
 
-## 6. How Intera wires `CampusCutsModule` and `Core`
+## 6. How Intera wires `OnCutsModule` and `Core`
 
 **Imports (representative)**
 
-- `import CampusCutsModule` — session, `ServiceType`, `ServiceProvider`, sign-up, legal, chat manager, live banner, `UserRole`-related types, Google/OAuth helpers where bridged.
+- `import OnCutsModule` — session, `ServiceType`, `ServiceProvider`, sign-up, legal, chat manager, live banner, `UserRole`-related types, Google/OAuth helpers where bridged.
 - `import Core` — `Bundle.StripeConfig`, `CheckoutViewModel` / payment types from **`ConsumerPaymentTakeoverView`**, **`InteraApp`** Stripe bootstrap (`StripeService.applyPublishableKeyAlignedWithAPIHost`), **`AppConfiguration`** (iOS Stripe publishable key).
 
 **Key files to read in-repo**
@@ -137,7 +137,7 @@ For a **Provider app**, you may still need **`Core`** if providers collect **dep
 | File | Purpose |
 |------|---------|
 | `InteraApp.swift` | Stripe key alignment at launch; deep links (Google, Stripe). |
-| `RootView.swift` | Auth gating, role switch, `ChatViewModel`, payment/review full-screen covers, `CampusCutsSessionSync`. |
+| `RootView.swift` | Auth gating, role switch, `ChatViewModel`, payment/review full-screen covers, `OnCutsSessionSync`. |
 | `ScreensConsumerHome.swift` | Hub `TabView`, browse, messages, bookings, profile shell. |
 | `ProviderViewModel.swift` | Loads providers from `/barbers` + fallback `/providers/list`. |
 | `GlassHeaderProviderBrowse.swift` | Collapsing glass header + profile avatar button. |
@@ -145,14 +145,14 @@ For a **Provider app**, you may still need **`Core`** if providers collect **dep
 | `ChatViewModel.swift` | Socket + bookings refresh + payment takeover state. |
 | `ConsumerPaymentTakeoverView.swift` | Tips + PaymentSheet + Apple Pay + cash. |
 | `AppConfiguration.swift` | API root, URL builders, socket origin. |
-| `CampusCutsPackage/Package.swift` | SPM products and Stripe dependency on `Core`. |
+| `OnCutsPackage/Package.swift` | SPM products and Stripe dependency on `Core`. |
 
 ---
 
 ## 7. Direction for the **Intera Provider** app (Claude / engineering)
 
 1. **Same backend** as Intera consumer: one **`apiV1Root`**, same JWT from same auth endpoints; use **`UserRole.barber`** (or server’s barber user type) consistently.
-2. **Reuse `CampusCutsModule`** for **`ServiceType`**, tokens, optional sign-up/legal; consider reusing **`BarberDashboardViewModel`** patterns or replacing with native provider UX.
+2. **Reuse `OnCutsModule`** for **`ServiceType`**, tokens, optional sign-up/legal; consider reusing **`BarberDashboardViewModel`** patterns or replacing with native provider UX.
 3. **Reuse `Core`** only if the provider app confirms payments or uses PaymentSheet with the same **`bookings-simple`** Stripe pipeline.
 4. **Mirror real-time**: same **Socket.IO** origin + barber-relevant events (new booking, message, status changes).
 5. **Parity lists**: `GET /bookings-simple?role=barber` (confirm query param with backend), barber profile endpoints, complete/mark-paid flows your server defines.
@@ -165,7 +165,7 @@ For a **Provider app**, you may still need **`Core`** if providers collect **dep
 
 | Term | Meaning |
 |------|---------|
-| **CampusCuts** | Backend + web brand; hosts `/api/v1` and Socket.IO. |
+| **OnCuts** | Backend + web brand; hosts `/api/v1` and Socket.IO. |
 | **Intera** | Consumer iOS app in this repo. |
 | **Provider / barber** | Service seller; Provider app target user. |
 | **`bookings-simple`** | Primary booking API surface used by Intera consumer flows. |
@@ -179,7 +179,7 @@ For a **Provider app**, you may still need **`Core`** if providers collect **dep
 
 ## 10. Provider build — backend & socket appendix
 
-A **curated** route table, **`users.id` vs `barbers.id`**, **`GET /bookings-simple` role behavior**, **socket room + event catalog** (from `CampusCutsPackage/backend` + Intera `MessagingRealtime.swift`), and **product checklists** live in:
+A **curated** route table, **`users.id` vs `barbers.id`**, **`GET /bookings-simple` role behavior**, **socket room + event catalog** (from `OnCutsPackage/backend` + Intera `MessagingRealtime.swift`), and **product checklists** live in:
 
 **[`INTERA_PROVIDER_BACKEND_AND_REALTIME_APPENDIX.md`](./INTERA_PROVIDER_BACKEND_AND_REALTIME_APPENDIX.md)**
 

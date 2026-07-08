@@ -1,0 +1,841 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		92220B6F2F8F5C75007B473F /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 92220B6E2F8F5C75007B473F /* FirebaseMessaging */; };
+		929C9C662F5E96AD008F89DD /* OnCutsModule in Frameworks */ = {isa = PBXBuildFile; productRef = 929C9C652F5E96AD008F89DD /* OnCutsModule */; };
+		92AA00042F5E9000008F89DD /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 92AA00022F5E9000008F89DD /* GoogleSignIn */; };
+		92AA00052F5E9000008F89DD /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 92AA00032F5E9000008F89DD /* GoogleSignInSwift */; };
+		92BD6E6F2F778B9A000B491D /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = 92BD6E6E2F778B9A000B491D /* FirebaseAI */; };
+		92BD6E712F778B9A000B491D /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = 92BD6E702F778B9A000B491D /* FirebaseAILogic */; };
+		92BD6E732F778B9A000B491D /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 92BD6E722F778B9A000B491D /* FirebaseAnalytics */; };
+		92BD6E752F778B9A000B491D /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = 92BD6E742F778B9A000B491D /* FirebaseAnalyticsCore */; };
+		92BD6E772F778B9A000B491D /* FirebaseAnalyticsIdentitySupport in Frameworks */ = {isa = PBXBuildFile; productRef = 92BD6E762F778B9A000B491D /* FirebaseAnalyticsIdentitySupport */; };
+		92FBC0012F778B9A000B491D /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 92FBC0002F778B9A000B491D /* FirebaseCore */; };
+		92FC20012F778C000008F00 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 92FC20002F778C000008F00 /* FirebaseAuth */; };
+		92FC20032F778C000008F00 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 92FC20022F778C000008F00 /* FirebaseCrashlytics */; };
+		92FD00032F900600008F00 /* StripePaymentSheet in Frameworks */ = {isa = PBXBuildFile; productRef = 92FD00022F900600008F00 /* StripePaymentSheet */; };
+		92FE00032F900200008F00 /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = 92FE00022F900200008F00 /* SocketIO */; };
+		92FF02052FA000020008F00 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 92FF02042FA000020008F00 /* Core */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		929C9C2A2F5E8513008F89DD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 929C9C122F5E8511008F89DD /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 929C9C192F5E8511008F89DD;
+			remoteInfo = OnCutsiOS;
+		};
+		929C9C342F5E8513008F89DD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 929C9C122F5E8511008F89DD /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 929C9C192F5E8511008F89DD;
+			remoteInfo = OnCutsiOS;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		929C9C1A2F5E8511008F89DD /* OnCutsiOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OnCutsiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		929C9C292F5E8513008F89DD /* OnCutsiOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OnCutsiOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		929C9C332F5E8513008F89DD /* OnCutsiOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OnCutsiOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		92FF01012FA000010008F00 /* StripeKeys.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = StripeKeys.xcconfig; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		929C9C1C2F5E8511008F89DD /* OnCutsiOS */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = OnCutsiOS;
+			sourceTree = "<group>";
+		};
+		929C9C2C2F5E8513008F89DD /* OnCutsiOSTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = OnCutsiOSTests;
+			sourceTree = "<group>";
+		};
+		929C9C362F5E8513008F89DD /* OnCutsiOSUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = OnCutsiOSUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		929C9C172F5E8511008F89DD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				92FBC0012F778B9A000B491D /* FirebaseCore in Frameworks */,
+				92FC20012F778C000008F00 /* FirebaseAuth in Frameworks */,
+				92FC20032F778C000008F00 /* FirebaseCrashlytics in Frameworks */,
+				92BD6E772F778B9A000B491D /* FirebaseAnalyticsIdentitySupport in Frameworks */,
+				92AA00042F5E9000008F89DD /* GoogleSignIn in Frameworks */,
+				92BD6E6F2F778B9A000B491D /* FirebaseAI in Frameworks */,
+				92BD6E732F778B9A000B491D /* FirebaseAnalytics in Frameworks */,
+				92AA00052F5E9000008F89DD /* GoogleSignInSwift in Frameworks */,
+				929C9C662F5E96AD008F89DD /* OnCutsModule in Frameworks */,
+				92FF02052FA000020008F00 /* Core in Frameworks */,
+				92BD6E752F778B9A000B491D /* FirebaseAnalyticsCore in Frameworks */,
+				92BD6E712F778B9A000B491D /* FirebaseAILogic in Frameworks */,
+				92220B6F2F8F5C75007B473F /* FirebaseMessaging in Frameworks */,
+				92FE00032F900200008F00 /* SocketIO in Frameworks */,
+				92FD00032F900600008F00 /* StripePaymentSheet in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		929C9C262F5E8513008F89DD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		929C9C302F5E8513008F89DD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		92220B6D2F8F5C75007B473F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		929C9C112F5E8511008F89DD = {
+			isa = PBXGroup;
+			children = (
+				92FF01022FA000010008F00 /* Config */,
+				929C9C1C2F5E8511008F89DD /* OnCutsiOS */,
+				929C9C2C2F5E8513008F89DD /* OnCutsiOSTests */,
+				929C9C362F5E8513008F89DD /* OnCutsiOSUITests */,
+				92220B6D2F8F5C75007B473F /* Frameworks */,
+				929C9C1B2F5E8511008F89DD /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		929C9C1B2F5E8511008F89DD /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				929C9C1A2F5E8511008F89DD /* OnCutsiOS.app */,
+				929C9C292F5E8513008F89DD /* OnCutsiOSTests.xctest */,
+				929C9C332F5E8513008F89DD /* OnCutsiOSUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		92FF01022FA000010008F00 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				92FF01012FA000010008F00 /* StripeKeys.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		929C9C192F5E8511008F89DD /* OnCutsiOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 929C9C3D2F5E8513008F89DD /* Build configuration list for PBXNativeTarget "OnCutsiOS" */;
+			buildPhases = (
+				929C9C162F5E8511008F89DD /* Sources */,
+				929C9C172F5E8511008F89DD /* Frameworks */,
+				929C9C182F5E8511008F89DD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				929C9C1C2F5E8511008F89DD /* OnCutsiOS */,
+			);
+			name = OnCutsiOS;
+			packageProductDependencies = (
+				929C9C652F5E96AD008F89DD /* OnCutsModule */,
+				92FF02042FA000020008F00 /* Core */,
+				92AA00022F5E9000008F89DD /* GoogleSignIn */,
+				92AA00032F5E9000008F89DD /* GoogleSignInSwift */,
+				92BD6E6E2F778B9A000B491D /* FirebaseAI */,
+				92BD6E702F778B9A000B491D /* FirebaseAILogic */,
+				92BD6E722F778B9A000B491D /* FirebaseAnalytics */,
+				92BD6E742F778B9A000B491D /* FirebaseAnalyticsCore */,
+				92BD6E762F778B9A000B491D /* FirebaseAnalyticsIdentitySupport */,
+				92FBC0002F778B9A000B491D /* FirebaseCore */,
+				92FC20002F778C000008F00 /* FirebaseAuth */,
+				92FC20022F778C000008F00 /* FirebaseCrashlytics */,
+				92FE00022F900200008F00 /* SocketIO */,
+				92FD00022F900600008F00 /* StripePaymentSheet */,
+				92220B6E2F8F5C75007B473F /* FirebaseMessaging */,
+			);
+			productName = OnCutsiOS;
+			productReference = 929C9C1A2F5E8511008F89DD /* OnCutsiOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		929C9C282F5E8513008F89DD /* OnCutsiOSTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 929C9C402F5E8513008F89DD /* Build configuration list for PBXNativeTarget "OnCutsiOSTests" */;
+			buildPhases = (
+				929C9C252F5E8513008F89DD /* Sources */,
+				929C9C262F5E8513008F89DD /* Frameworks */,
+				929C9C272F5E8513008F89DD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				929C9C2B2F5E8513008F89DD /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				929C9C2C2F5E8513008F89DD /* OnCutsiOSTests */,
+			);
+			name = OnCutsiOSTests;
+			packageProductDependencies = (
+			);
+			productName = OnCutsiOSTests;
+			productReference = 929C9C292F5E8513008F89DD /* OnCutsiOSTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		929C9C322F5E8513008F89DD /* OnCutsiOSUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 929C9C432F5E8513008F89DD /* Build configuration list for PBXNativeTarget "OnCutsiOSUITests" */;
+			buildPhases = (
+				929C9C2F2F5E8513008F89DD /* Sources */,
+				929C9C302F5E8513008F89DD /* Frameworks */,
+				929C9C312F5E8513008F89DD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				929C9C352F5E8513008F89DD /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				929C9C362F5E8513008F89DD /* OnCutsiOSUITests */,
+			);
+			name = OnCutsiOSUITests;
+			packageProductDependencies = (
+			);
+			productName = OnCutsiOSUITests;
+			productReference = 929C9C332F5E8513008F89DD /* OnCutsiOSUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		929C9C122F5E8511008F89DD /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					929C9C192F5E8511008F89DD = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					929C9C282F5E8513008F89DD = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 929C9C192F5E8511008F89DD;
+					};
+					929C9C322F5E8513008F89DD = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 929C9C192F5E8511008F89DD;
+					};
+				};
+			};
+			buildConfigurationList = 929C9C152F5E8511008F89DD /* Build configuration list for PBXProject "OnCutsiOS" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 929C9C112F5E8511008F89DD;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				929C9C642F5E96AD008F89DD /* XCLocalSwiftPackageReference "../OnCutsPackage" */,
+				92AA00012F5E9000008F89DD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				92BD6E6D2F778B9A000B491D /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				92FE00012F900200008F00 /* XCRemoteSwiftPackageReference "socket.io-client-swift" */,
+				92FD00012F900600008F00 /* XCRemoteSwiftPackageReference "stripe-ios" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 929C9C1B2F5E8511008F89DD /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				929C9C192F5E8511008F89DD /* OnCutsiOS */,
+				929C9C282F5E8513008F89DD /* OnCutsiOSTests */,
+				929C9C322F5E8513008F89DD /* OnCutsiOSUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		929C9C182F5E8511008F89DD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		929C9C272F5E8513008F89DD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		929C9C312F5E8513008F89DD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		929C9C162F5E8511008F89DD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		929C9C252F5E8513008F89DD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		929C9C2F2F5E8513008F89DD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		929C9C2B2F5E8513008F89DD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 929C9C192F5E8511008F89DD /* OnCutsiOS */;
+			targetProxy = 929C9C2A2F5E8513008F89DD /* PBXContainerItemProxy */;
+		};
+		929C9C352F5E8513008F89DD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 929C9C192F5E8511008F89DD /* OnCutsiOS */;
+			targetProxy = 929C9C342F5E8513008F89DD /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		929C9C3B2F5E8513008F89DD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 92FF01012FA000010008F00 /* StripeKeys.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 2MAGWNY7VS;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		929C9C3C2F5E8513008F89DD /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 92FF01012FA000010008F00 /* StripeKeys.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 2MAGWNY7VS;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		929C9C3E2F5E8513008F89DD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 92FF01012FA000010008F00 /* StripeKeys.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = OnCutsiOS/Intera.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2MAGWNY7VS;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = GoogleSignInURL.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = OnCuts;
+				INFOPLIST_KEY_CFBundleName = OnCuts;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSAppTransportSecurity = "{\n    NSAllowsLocalNetworking = 1;\n}";
+				INFOPLIST_KEY_NSCameraUsageDescription = "OnCuts uses the camera for your profile and to add photos in conversations.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "OnCuts uses your location to show service providers near you.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "OnCuts needs access to your photo library to set your profile picture.";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				INFOPLIST_KEY_UIBackgroundModes = "remote-notification";
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.2.6;
+				PRODUCT_BUNDLE_IDENTIFIER = Liam.Intera;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				STRIPE_PUBLISHABLE_KEY = pk_live_51TnSiJD0GlhKICqh7Pb4wzQUJEsdo78cvRMab7SS7i4wV694zGFJL3iebSJ1AH6bGdyRDEsEcKoZL9F3uux6ALZ5003mhMSbGH;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		929C9C3F2F5E8513008F89DD /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 92FF01012FA000010008F00 /* StripeKeys.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = OnCutsiOS/Intera.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2MAGWNY7VS;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = GoogleSignInURL.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = OnCuts;
+				INFOPLIST_KEY_CFBundleName = OnCuts;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSAppTransportSecurity = "{\n    NSAllowsLocalNetworking = 1;\n}";
+				INFOPLIST_KEY_NSCameraUsageDescription = "OnCuts uses the camera for your profile and to add photos in conversations.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "OnCuts uses your location to show service providers near you.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "OnCuts needs access to your photo library to set your profile picture.";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				INFOPLIST_KEY_UIBackgroundModes = "remote-notification";
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.2.6;
+				PRODUCT_BUNDLE_IDENTIFIER = Liam.Intera;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				STRIPE_PUBLISHABLE_KEY = pk_live_51TnSiJD0GlhKICqh7Pb4wzQUJEsdo78cvRMab7SS7i4wV694zGFJL3iebSJ1AH6bGdyRDEsEcKoZL9F3uux6ALZ5003mhMSbGH;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		929C9C412F5E8513008F89DD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2MAGWNY7VS;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Liam.InteraTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OnCutsiOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OnCutsiOS";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		929C9C422F5E8513008F89DD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2MAGWNY7VS;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Liam.InteraTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/OnCutsiOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/OnCutsiOS";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		929C9C442F5E8513008F89DD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2MAGWNY7VS;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Liam.InteraUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_TARGET_NAME = OnCutsiOS;
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		929C9C452F5E8513008F89DD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2MAGWNY7VS;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Liam.InteraUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_TARGET_NAME = OnCutsiOS;
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		929C9C152F5E8511008F89DD /* Build configuration list for PBXProject "OnCutsiOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				929C9C3B2F5E8513008F89DD /* Debug */,
+				929C9C3C2F5E8513008F89DD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		929C9C3D2F5E8513008F89DD /* Build configuration list for PBXNativeTarget "OnCutsiOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				929C9C3E2F5E8513008F89DD /* Debug */,
+				929C9C3F2F5E8513008F89DD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		929C9C402F5E8513008F89DD /* Build configuration list for PBXNativeTarget "OnCutsiOSTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				929C9C412F5E8513008F89DD /* Debug */,
+				929C9C422F5E8513008F89DD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		929C9C432F5E8513008F89DD /* Build configuration list for PBXNativeTarget "OnCutsiOSUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				929C9C442F5E8513008F89DD /* Debug */,
+				929C9C452F5E8513008F89DD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		929C9C642F5E96AD008F89DD /* XCLocalSwiftPackageReference "../OnCutsPackage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../OnCutsPackage;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		92AA00012F5E9000008F89DD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.0.0;
+			};
+		};
+		92BD6E6D2F778B9A000B491D /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.11.0;
+			};
+		};
+		92FD00012F900600008F00 /* XCRemoteSwiftPackageReference "stripe-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stripe/stripe-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 24.0.0;
+			};
+		};
+		92FE00012F900200008F00 /* XCRemoteSwiftPackageReference "socket.io-client-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/socketio/socket.io-client-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 16.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		92220B6E2F8F5C75007B473F /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 92BD6E6D2F778B9A000B491D /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		929C9C652F5E96AD008F89DD /* OnCutsModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 929C9C642F5E96AD008F89DD /* XCLocalSwiftPackageReference "../OnCutsPackage" */;
+			productName = OnCutsModule;
+		};
+		92AA00022F5E9000008F89DD /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 92AA00012F5E9000008F89DD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		92AA00032F5E9000008F89DD /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 92AA00012F5E9000008F89DD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+		92BD6E6E2F778B9A000B491D /* FirebaseAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 92BD6E6D2F778B9A000B491D /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAI;
+		};
+		92BD6E702F778B9A000B491D /* FirebaseAILogic */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 92BD6E6D2F778B9A000B491D /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAILogic;
+		};
+		92BD6E722F778B9A000B491D /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 92BD6E6D2F778B9A000B491D /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		92BD6E742F778B9A000B491D /* FirebaseAnalyticsCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 92BD6E6D2F778B9A000B491D /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsCore;
+		};
+		92BD6E762F778B9A000B491D /* FirebaseAnalyticsIdentitySupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 92BD6E6D2F778B9A000B491D /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsIdentitySupport;
+		};
+		92FBC0002F778B9A000B491D /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 92BD6E6D2F778B9A000B491D /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		92FC20002F778C000008F00 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 92BD6E6D2F778B9A000B491D /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		92FC20022F778C000008F00 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 92BD6E6D2F778B9A000B491D /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
+		92FD00022F900600008F00 /* StripePaymentSheet */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 92FD00012F900600008F00 /* XCRemoteSwiftPackageReference "stripe-ios" */;
+			productName = StripePaymentSheet;
+		};
+		92FE00022F900200008F00 /* SocketIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 92FE00012F900200008F00 /* XCRemoteSwiftPackageReference "socket.io-client-swift" */;
+			productName = SocketIO;
+		};
+		92FF02042FA000020008F00 /* Core */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 929C9C642F5E96AD008F89DD /* XCLocalSwiftPackageReference "../OnCutsPackage" */;
+			productName = Core;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 929C9C122F5E8511008F89DD /* Project object */;
+}
