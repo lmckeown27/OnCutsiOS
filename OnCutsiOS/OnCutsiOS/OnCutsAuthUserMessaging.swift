@@ -1,6 +1,6 @@
 //
-//  InteraAuthUserMessaging.swift
-//  Intera
+//  OnCutsAuthUserMessaging.swift
+//  OnCuts
 //
 //  Maps provider and API errors to clear titles + messages for alert popups (sign-in / sign-up).
 //
@@ -8,7 +8,7 @@
 import AuthenticationServices
 import Foundation
 
-enum InteraAuthUserMessaging {
+enum OnCutsAuthUserMessaging {
 
     // MARK: - OAuth (Google)
 

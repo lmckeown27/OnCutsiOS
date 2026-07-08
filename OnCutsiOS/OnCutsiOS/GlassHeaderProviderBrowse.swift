@@ -1,6 +1,6 @@
 //
 //  GlassHeaderProviderBrowse.swift
-//  Intera
+//  OnCuts
 //
 //  Scrollable provider list with mesh backdrop and a top **glass capsule toolbar**
 //  (service type, search, profile). Uses `.safeAreaInset(edge: .top)` for Dynamic Island / notch.
@@ -16,7 +16,7 @@ import UIKit
 
 private let utilityPillSearchInputCharcoal = Color(red: 0.12, green: 0.12, blue: 0.14)
 /// Primary typing style in the expanded utility-pill search field (larger / heavier than `.bodyMedium`).
-private let utilityPillSearchInputFont = InteraFont.system(size: 19, weight: .semibold, design: .default)
+private let utilityPillSearchInputFont = OnCutsFont.system(size: 19, weight: .semibold, design: .default)
 
 #if os(iOS)
 /// iPad: SwiftUI still sometimes leaves a default `UITextField` opaque fill on glass toolbars despite `.plain`.
@@ -51,7 +51,7 @@ private struct PadUtilityBrowseSearchTextFieldBackgroundClearer: UIViewRepresent
 }
 #endif
 /// Matches `TimelineSectionHeader` “Today” (28pt bold system).
-private let utilityPillSearchProviderNameFont = InteraFont.system(size: 28, weight: .bold, design: .default)
+private let utilityPillSearchProviderNameFont = OnCutsFont.system(size: 28, weight: .bold, design: .default)
 
 // MARK: - Haptics
 
@@ -232,13 +232,13 @@ private struct GlassToolbarProfileAvatarButton: View {
                                 .resizable()
                                 .scaledToFill()
                         case .failure:
-                            InteraDefaultProfileAvatarGlyph(slotDiameter: 40)
+                            OnCutsDefaultProfileAvatarGlyph(slotDiameter: 40)
                         @unknown default:
                             EmptyView()
                         }
                     }
                 } else {
-                    InteraDefaultProfileAvatarGlyph(slotDiameter: 40)
+                    OnCutsDefaultProfileAvatarGlyph(slotDiameter: 40)
                 }
             }
             .frame(width: 40, height: 40)
@@ -346,7 +346,7 @@ private struct HomeBrowseScrollResyncBridge: UIViewRepresentable {
 
         private func trySample(from anchor: UIView) {
             attempts += 1
-            if let scroll = anchor.intera_enclosingVerticalScrollView() {
+            if let scroll = anchor.onCuts_enclosingVerticalScrollView() {
                 onSample(max(0, scroll.contentOffset.y))
                 return
             }
@@ -361,7 +361,7 @@ private struct HomeBrowseScrollResyncBridge: UIViewRepresentable {
 
 @available(iOS 26.0, *)
 private extension UIView {
-    func intera_enclosingVerticalScrollView() -> UIScrollView? {
+    func onCuts_enclosingVerticalScrollView() -> UIScrollView? {
         var current: UIView? = self
         while let view = current {
             if let scroll = view as? UIScrollView,
@@ -410,7 +410,7 @@ private struct RadiusDistanceSlider: View {
 
             ZStack {
                 Text(milesAwayLabel)
-                    .font(InteraFont.system(size: 14, weight: .medium, design: .default))
+                    .font(OnCutsFont.system(size: 14, weight: .medium, design: .default))
                     .foregroundStyle(Color.lavaShellCream)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
@@ -515,9 +515,9 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     @State private var utilityPillScrollResyncGeneration = 0
     @State private var headerMeasuredHeight: CGFloat = 4 + Self.utilityPillMainBarHeight + GlassHeaderConstants.utilityPillToBookingSpacing
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
-    @Environment(\.interaHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
-    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
-    @Environment(\.interaHubPagingCoordinator) private var hubPagingCoordinator
+    @Environment(\.onCutsHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
+    @Environment(\.onCutsHubBarScrollOffsetHandler) private var hubBarScrollHandler
+    @Environment(\.onCutsHubPagingCoordinator) private var hubPagingCoordinator
 
     @State private var isSearchExpanded = false
     @State private var isServiceTagsExpanded = false
@@ -980,7 +980,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 .refreshable {
                     showsPullRefreshProgressIndicator = true
                     defer { showsPullRefreshProgressIndicator = false }
-                    await InteraPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
+                    await OnCutsPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
                         await onRefresh()
                     }
                 }
@@ -1163,7 +1163,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 dismissServiceTagsPanel()
             } label: {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(InteraFont.title3)
+                    .font(OnCutsFont.title3)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(Color.lavaShellCream)
                     .frame(width: 36, height: 36)
@@ -1197,7 +1197,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 dismissServiceTagsPanel()
             } label: {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(InteraFont.title3)
+                    .font(OnCutsFont.title3)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(Color.lavaShellCream)
                     .frame(width: 36, height: 36)
@@ -1239,7 +1239,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                         }
                     } label: {
                         Text("\(Int(displayedMaxDistanceMiles.rounded())) MI")
-                            .font(InteraFont.system(size: 14, weight: .medium, design: .default))
+                            .font(OnCutsFont.system(size: 14, weight: .medium, design: .default))
                             .foregroundStyle(Color.lavaShellCream)
                             .textCase(.uppercase)
                             .kerning(2.2)
@@ -1291,7 +1291,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 } label: {
                     HStack(spacing: 0) {
                         Image(systemName: "line.3.horizontal.decrease.circle")
-                            .font(InteraFont.body(weight: .semibold))
+                            .font(OnCutsFont.body(weight: .semibold))
                             .foregroundStyle(Color.lavaShellCream)
                             .frame(width: 40, height: 40)
                             .overlay {
@@ -1303,7 +1303,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                                 }
                             }
                         Text("Tags")
-                            .font(InteraFont.system(size: 14, weight: .semibold, design: .default))
+                            .font(OnCutsFont.system(size: 14, weight: .semibold, design: .default))
                             .foregroundStyle(Color.lavaShellCream)
                             .lineLimit(1)
                             .minimumScaleFactor(0.82)
@@ -1349,7 +1349,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         VStack(alignment: .leading, spacing: 12) {
             if !matchingSearchServiceTypes.isEmpty {
                 Text("Services")
-                    .font(InteraFont.caption(weight: .semibold))
+                    .font(OnCutsFont.caption(weight: .semibold))
                     .foregroundStyle(Color.secondary)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -1364,7 +1364,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                                 }
                             } label: {
                                 Text(type.toolbarTitle)
-                                    .font(InteraFont.subheadline(weight: .medium))
+                                    .font(OnCutsFont.subheadline(weight: .medium))
                                     .foregroundStyle(utilityPillSearchInputCharcoal)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 8)
@@ -1382,7 +1382,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
 
             if !matchingSearchProviders.isEmpty {
                 Text("Providers")
-                    .font(InteraFont.caption(weight: .semibold))
+                    .font(OnCutsFont.caption(weight: .semibold))
                     .foregroundStyle(Color.secondary)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
@@ -1428,7 +1428,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 }
             } label: {
                 Text("Done")
-                    .font(InteraFont.subheadline(weight: .semibold))
+                    .font(OnCutsFont.subheadline(weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
             }
@@ -1463,7 +1463,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             if isSearchExpanded {
                 HStack(spacing: 10) {
                     Image(systemName: "magnifyingglass")
-                        .font(InteraFont.system(size: 19, weight: .semibold, design: .default))
+                        .font(OnCutsFont.system(size: 19, weight: .semibold, design: .default))
                         .foregroundStyle(utilityPillSearchInputCharcoal)
                         .accessibilityHidden(true)
 
@@ -1497,7 +1497,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                         }
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(InteraFont.title3)
+                            .font(OnCutsFont.title3)
                             .symbolRenderingMode(.hierarchical)
                             .foregroundStyle(.secondary)
                             .frame(width: 36, height: 36)
@@ -1521,7 +1521,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     }
                 } label: {
                     Image(systemName: "magnifyingglass")
-                        .font(InteraFont.body(weight: .semibold))
+                        .font(OnCutsFont.body(weight: .semibold))
                         .foregroundStyle(Color.lavaShellCream)
                         .padding(.vertical, 4)
                         .padding(.horizontal, 4)
@@ -1572,11 +1572,11 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             onMessagesTap()
         } label: {
             Image(systemName: "bubble.left.and.bubble.right.fill")
-                .font(InteraFont.body(weight: .semibold))
+                .font(OnCutsFont.body(weight: .semibold))
                 .foregroundStyle(.primary)
                 .overlay(alignment: .topTrailing) {
                     if unreadMessageCount > 0 {
-                        InteraTabNotificationNode(isTabActive: false)
+                        OnCutsTabNotificationNode(isTabActive: false)
                             .offset(x: 4, y: -4)
                     }
                 }
@@ -1598,11 +1598,11 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             onBookingsTap()
         } label: {
             Image(systemName: "calendar.badge.clock")
-                .font(InteraFont.body(weight: .semibold))
+                .font(OnCutsFont.body(weight: .semibold))
                 .foregroundStyle(.primary)
                 .overlay(alignment: .topTrailing) {
                     if upcomingBookingCount > 0 {
-                        InteraTabNotificationNode(isTabActive: false)
+                        OnCutsTabNotificationNode(isTabActive: false)
                             .offset(x: 4, y: -4)
                     }
                 }
@@ -1640,7 +1640,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 commitRadiusAdjustment()
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(InteraFont.title3)
+                    .font(OnCutsFont.title3)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.secondary)
                     .frame(width: 40, height: 40)
@@ -1675,7 +1675,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             }
         } label: {
             Text(type.toolbarTitle)
-                .font(InteraFont.subheadline(weight: isSelected ? .semibold : .medium))
+                .font(OnCutsFont.subheadline(weight: isSelected ? .semibold : .medium))
                 .foregroundStyle(isSelected ? Color.white : Color.primary)
             .padding(.vertical, 7)
             .padding(.horizontal, 12)

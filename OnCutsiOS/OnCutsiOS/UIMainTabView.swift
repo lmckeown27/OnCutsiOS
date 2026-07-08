@@ -1,6 +1,6 @@
 //
 //  MainTabView.swift
-//  Intera
+//  OnCuts
 //
 //  Created by Liam McKeown on 3/8/26.
 //
@@ -30,7 +30,7 @@ struct MainTabView: View {
                             destinationView(for: route)
                         }
                         #if os(iOS)
-                        .interaNavigationShellBackgroundClear()
+                        .onCutsNavigationShellBackgroundClear()
                         #endif
                 }
                 .tabItem {
@@ -43,7 +43,7 @@ struct MainTabView: View {
         .sheet(item: $coordinator.presentedSheet) { sheet in
             sheetView(for: sheet)
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaOpenMessagingConversation)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .onCutsOpenMessagingConversation)) { _ in
             coordinator.navigateToTab(.messages)
         }
     }
@@ -164,15 +164,15 @@ struct HomeView: View {
     private var welcomeHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Welcome back,")
-                .font(InteraFont.title3)
+                .font(OnCutsFont.title3)
                 .foregroundStyle(.secondary)
             
             Text(sessionManager.currentSession?.displayName ?? "User")
-                .font(InteraFont.system(size: 32, weight: .bold))
+                .font(OnCutsFont.system(size: 32, weight: .bold))
             
             if let role = sessionManager.currentSession?.role {
                 Text(role.displayName)
-                    .font(InteraFont.subheadline)
+                    .font(OnCutsFont.subheadline)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 4)
                     .background(Color.blue.opacity(0.2))
@@ -186,7 +186,7 @@ struct HomeView: View {
     private var quickActionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Quick Actions")
-                .font(InteraFont.headline)
+                .font(OnCutsFont.headline)
             
             LazyVGrid(columns: [
                 GridItem(.flexible()),
@@ -230,7 +230,7 @@ struct HomeView: View {
     private var recentActivitySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Recent Activity")
-                .font(InteraFont.headline)
+                .font(OnCutsFont.headline)
             
             VStack(spacing: 12) {
                 ActivityRow(
@@ -270,11 +270,11 @@ struct QuickActionCard: View {
         Button(action: action) {
             VStack(spacing: 12) {
                 Image(systemName: icon)
-                    .font(InteraFont.system(size: 32))
+                    .font(OnCutsFont.system(size: 32))
                     .foregroundStyle(color)
                 
                 Text(title)
-                    .font(InteraFont.subheadline)
+                    .font(OnCutsFont.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(.primary)
             }
@@ -303,15 +303,15 @@ struct ActivityRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .foregroundStyle(color)
-                .font(InteraFont.title3)
+                .font(OnCutsFont.title3)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(InteraFont.subheadline)
+                    .font(OnCutsFont.subheadline)
                     .fontWeight(.medium)
                 
                 Text(subtitle)
-                    .font(InteraFont.caption)
+                    .font(OnCutsFont.caption)
                     .foregroundStyle(.secondary)
             }
             

@@ -1,6 +1,6 @@
 //
-//  InteraChatImagePreparation.swift
-//  Intera
+//  OnCutsChatImagePreparation.swift
+//  OnCuts
 //
 //  Downscales and JPEG-compresses chat images before upload so requests stay under typical
 //  reverse-proxy body limits (nginx default 1m) and upload is faster.
@@ -9,7 +9,7 @@
 #if canImport(UIKit)
 import UIKit
 
-enum InteraChatImagePreparation {
+enum OnCutsChatImagePreparation {
     /// Pixels; long edge cap for full-resolution photos from library/camera.
     private static let maxLongEdge: CGFloat = 1920
     private static let jpegQuality: CGFloat = 0.78

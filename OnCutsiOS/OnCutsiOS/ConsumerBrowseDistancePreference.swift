@@ -1,6 +1,6 @@
 //
 //  ConsumerBrowseDistancePreference.swift
-//  Intera
+//  OnCuts
 //
 //  Persisted max search radius (miles) for GET /barbers when lat/lng are sent (iOS).
 //
@@ -15,17 +15,17 @@ extension Notification.Name {
     /// Posted after the user blocks someone so inbox lists refetch and hide that counterparty immediately.
     static let messagingBlockedUserDidChange = Notification.Name("messagingBlockedUserDidChange")
     /// Posted when the user opens a **message** push notification; `userInfo["conversationId"]` is the thread id.
-    static let interaOpenMessagingConversation = Notification.Name("interaOpenMessagingConversation")
+    static let onCutsOpenMessagingConversation = Notification.Name("onCutsOpenMessagingConversation")
     /// Posted when the user opens a **booking status** push (confirmed, reminder, cancelled, etc.); `userInfo["bookingId"]` opens `ConsumerBookingDetailView`.
-    static let interaOpenBookingDetail = Notification.Name("interaOpenBookingDetail")
+    static let onCutsOpenBookingDetail = Notification.Name("onCutsOpenBookingDetail")
     /// Posted after the consumer successfully pays (card or cash) so the app returns to Home and clears booking-detail navigation (paid booking is past / detail would error).
-    static let interaNavigateToConsumerHomeAfterPayment = Notification.Name("interaNavigateToConsumerHomeAfterPayment")
+    static let onCutsNavigateToConsumerHomeAfterPayment = Notification.Name("onCutsNavigateToConsumerHomeAfterPayment")
     /// Posted when the hub switches to the **Messages** tab so ``ConsumerBookingsHubView`` pops booking detail / thread (same as leaving Bookings for Messages).
     static let consumerBookingsHubShouldPopToRoot = Notification.Name("consumerBookingsHubShouldPopToRoot")
 }
 
 /// Parses push / deep-link payload fields from `NotificationCenter` `userInfo`.
-enum InteraPushNavigationPayload {
+enum OnCutsPushNavigationPayload {
     static func conversationId(from userInfo: [AnyHashable: Any]?) -> String? {
         guard let userInfo else { return nil }
         var flat: [String: Any] = [:]

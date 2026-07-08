@@ -1,6 +1,6 @@
 //
 //  ProviderGlassSkeletonViews.swift
-//  Intera
+//  OnCuts
 //
 //  Shimmering glass placeholders that mirror `ServiceProviderCard` layout during `.loading`.
 //

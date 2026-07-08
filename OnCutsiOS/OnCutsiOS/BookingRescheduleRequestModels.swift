@@ -1,6 +1,6 @@
 //
 //  BookingRescheduleRequestModels.swift
-//  Intera
+//  OnCuts
 //
 //  Consumer schedule change requests (`POST …/bookings-simple/:id/reschedule-request`).
 //

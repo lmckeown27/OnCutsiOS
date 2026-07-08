@@ -1,6 +1,6 @@
 //
 //  FirebaseAuthSignOutSupport.swift
-//  Intera
+//  OnCuts
 //
 //  Clears Firebase Auth when logging out (avoids “ghost” sessions alongside Google Sign-In).
 //

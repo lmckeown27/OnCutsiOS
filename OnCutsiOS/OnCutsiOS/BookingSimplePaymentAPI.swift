@@ -1,6 +1,6 @@
 //
 //  BookingSimplePaymentAPI.swift
-//  Intera
+//  OnCuts
 //
 //  Native checkout: `create-payment-intent` + `confirm-payment` (see `booking-simple.routes.ts`).
 //

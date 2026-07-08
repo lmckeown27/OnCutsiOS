@@ -1,6 +1,6 @@
 //
 //  MessagingInboxConversationCards.swift
-//  Intera
+//  OnCuts
 //
 //  Containerized conversation cards for the consumer messaging inbox — explicit tap targets,
 //  action ribbon, and unread affordances (hub Messages tab + legacy MessagingView).
@@ -94,10 +94,10 @@ private enum ConversationInboxCardMetrics {
     static let cardShadowY: CGFloat = 3
     static let unreadBorderWidth: CGFloat = 1.5
     static let unreadAccentColor = Color.oliveLight
-    static let providerNameFont = InteraFont.system(size: 22, weight: .bold, design: .default)
-    static let previewFont = InteraFont.system(size: 16, weight: .regular, design: .serif)
+    static let providerNameFont = OnCutsFont.system(size: 22, weight: .bold, design: .default)
+    static let previewFont = OnCutsFont.system(size: 16, weight: .regular, design: .serif)
     static let previewLineSpacing: CGFloat = 3
-    static let metaFont = InteraFont.system(size: 13, weight: .medium, design: .default)
+    static let metaFont = OnCutsFont.system(size: 13, weight: .medium, design: .default)
     static let metaKerning: CGFloat = 1.4
 }
 
@@ -240,7 +240,7 @@ struct ConversationInboxThreadCard: View {
                             .fill(ConversationInboxCardMetrics.unreadAccentColor)
                             .frame(width: 10, height: 10)
                         Text("New Message")
-                            .font(InteraFont.subheadline(weight: .bold))
+                            .font(OnCutsFont.subheadline(weight: .bold))
                             .foregroundStyle(ConversationInboxCardMetrics.unreadAccentColor)
                     }
                 }
@@ -249,10 +249,10 @@ struct ConversationInboxThreadCard: View {
                     Text("View Conversation")
                         .foregroundStyleOliveGreen()
                     Image(systemName: "chevron.right")
-                        .font(InteraFont.caption(weight: .bold))
-                        .foregroundStyleInteraShellIconSecondary()
+                        .font(OnCutsFont.caption(weight: .bold))
+                        .foregroundStyleOnCutsShellIconSecondary()
                 }
-                .font(InteraFont.subheadline(weight: .semibold))
+                .font(OnCutsFont.subheadline(weight: .semibold))
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)

@@ -1,6 +1,6 @@
 //
 //  OAuthProviderSignInSheet.swift
-//  Intera
+//  OnCuts
 //
 //  Sign in with Apple, Google, and email. (Phone placeholder commented out until SMS sign-in is integrated.)
 //
@@ -237,10 +237,10 @@ struct OAuthProviderSignInOptionsContent: View {
             Spacer(minLength: 0)
             HStack(spacing: 14) {
                 Image(systemName: "apple.logo")
-                    .font(InteraFont.title3(weight: .semibold))
+                    .font(OnCutsFont.title3(weight: .semibold))
                     .foregroundStyle(Self.applePillText)
                 Text("Sign in with Apple")
-                    .font(InteraFont.body(weight: .semibold))
+                    .font(OnCutsFont.body(weight: .semibold))
                     .foregroundStyle(Self.applePillText)
             }
             Spacer(minLength: 0)
@@ -305,7 +305,7 @@ struct OAuthProviderSignInOptionsContent: View {
                     onSignedIn()
                 } catch {
                     appleOAuthFollowUp.appleBackendExchangeInProgress = false
-                    let outcome = InteraAuthUserMessaging.appleSignInOutcome(for: error)
+                    let outcome = OnCutsAuthUserMessaging.appleSignInOutcome(for: error)
                     authOutcomeTitle = outcome.title
                     authOutcomeMessage = outcome.message
                     showAuthOutcomeAlert = true
@@ -316,7 +316,7 @@ struct OAuthProviderSignInOptionsContent: View {
                 if let authErr = error as? ASAuthorizationError, authErr.code == .canceled {
                     return
                 }
-                let outcome = InteraAuthUserMessaging.appleSignInOutcome(for: error)
+                let outcome = OnCutsAuthUserMessaging.appleSignInOutcome(for: error)
                 authOutcomeTitle = outcome.title
                 authOutcomeMessage = outcome.message
                 showAuthOutcomeAlert = true
@@ -364,7 +364,7 @@ struct OAuthProviderSignInOptionsContent: View {
     #if os(iOS) || os(visionOS)
     private var signInWithApplePillCompactChrome: some View {
         Image(systemName: "apple.logo")
-            .font(InteraFont.title3(weight: .semibold))
+            .font(OnCutsFont.title3(weight: .semibold))
             .foregroundStyle(Self.applePillText)
             .frame(maxWidth: .infinity)
             .frame(height: Self.compactOAuthPillHeight)
@@ -387,8 +387,8 @@ struct OAuthProviderSignInOptionsContent: View {
                     try await GoogleSignInAppSupport.signInInteractively(sessionManager: sessionManager)
                     onSignedIn()
                 } catch {
-                    guard !InteraAuthUserMessaging.isGoogleSignInCancellation(error) else { return }
-                    let outcome = InteraAuthUserMessaging.googleSignInOutcome(for: error)
+                    guard !OnCutsAuthUserMessaging.isGoogleSignInCancellation(error) else { return }
+                    let outcome = OnCutsAuthUserMessaging.googleSignInOutcome(for: error)
                     authOutcomeTitle = outcome.title
                     authOutcomeMessage = outcome.message
                     showAuthOutcomeAlert = true
@@ -420,8 +420,8 @@ struct OAuthProviderSignInOptionsContent: View {
                     try await GoogleSignInAppSupport.signInInteractively(sessionManager: sessionManager)
                     onSignedIn()
                 } catch {
-                    guard !InteraAuthUserMessaging.isGoogleSignInCancellation(error) else { return }
-                    let outcome = InteraAuthUserMessaging.googleSignInOutcome(for: error)
+                    guard !OnCutsAuthUserMessaging.isGoogleSignInCancellation(error) else { return }
+                    let outcome = OnCutsAuthUserMessaging.googleSignInOutcome(for: error)
                     authOutcomeTitle = outcome.title
                     authOutcomeMessage = outcome.message
                     showAuthOutcomeAlert = true
@@ -434,7 +434,7 @@ struct OAuthProviderSignInOptionsContent: View {
                 HStack(spacing: 14) {
                     googleSignInAssetIcon(size: 22)
                     Text("Sign in with Google")
-                        .font(InteraFont.body(weight: .semibold))
+                        .font(OnCutsFont.body(weight: .semibold))
                         .foregroundStyle(Self.googleButtonText)
                 }
                 Spacer(minLength: 0)
@@ -470,7 +470,7 @@ struct OAuthProviderSignInOptionsContent: View {
             onNavigateToEmail()
         } label: {
             Text("Manual Sign-In")
-                .font(InteraFont.body(weight: .semibold))
+                .font(OnCutsFont.body(weight: .semibold))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
@@ -488,7 +488,7 @@ struct OAuthProviderSignInOptionsContent: View {
 
     private var oauthOrDivider: some View {
         Text("or")
-            .font(InteraFont.caption(weight: .medium))
+            .font(OnCutsFont.caption(weight: .medium))
             .foregroundStyle(BookingSelectorTheme.cream.opacity(0.62))
             .frame(maxWidth: .infinity)
     }
@@ -496,14 +496,14 @@ struct OAuthProviderSignInOptionsContent: View {
     private func createAccountLink(action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text("Create Account")
-                .font(InteraFont.subheadline(weight: .semibold))
+                .font(OnCutsFont.subheadline(weight: .semibold))
                 .foregroundStyleOliveGreen()
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background {
                     Capsule(style: .continuous)
                         .strokeBorder(
-                            InteraOliveGreenTextStyle.outlineColor(for: colorScheme),
+                            OnCutsOliveGreenTextStyle.outlineColor(for: colorScheme),
                             lineWidth: 1.5
                         )
                 }

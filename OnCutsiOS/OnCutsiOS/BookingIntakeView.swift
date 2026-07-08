@@ -1,6 +1,6 @@
 //
 //  BookingIntakeView.swift
-//  Intera
+//  OnCuts
 //
 //  Barber booking intake: shrinking header, glass form, availability-driven time slots,
 //  Pacific `scheduledAt` for the backend, review then auth-aware submit.
@@ -33,7 +33,7 @@ private struct GlassFormFieldChrome: ViewModifier {
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(Color.interaShellGlassStroke, lineWidth: 1)
+                    .strokeBorder(Color.onCutsShellGlassStroke, lineWidth: 1)
             }
     }
 }
@@ -50,7 +50,7 @@ private struct SoftFieldErrorText: View {
     var body: some View {
         if let message, !message.isEmpty {
             Text(message)
-                .font(InteraFont.caption)
+                .font(OnCutsFont.caption)
                 .foregroundStyle(Color.red.opacity(0.95))
                 .shadow(color: Color.red.opacity(0.5), radius: 4, x: 0, y: 0)
                 .shadow(color: Color.red.opacity(0.35), radius: 10, x: 0, y: 0)
@@ -119,7 +119,7 @@ struct BookingIntakeView: View {
             Color.clear
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             #else
-            InteraLiquidMeshBackground()
+            OnCutsLiquidMeshBackground()
             #endif
             NavigationStack(path: $navPath) {
                 ZStack(alignment: .top) {
@@ -149,7 +149,7 @@ struct BookingIntakeView: View {
                                             serviceChip(service: s, isSelected: selectedServiceId == s.id) {
                                                 selectedServiceId = s.id
                                                 #if os(iOS)
-                                                InteraLiquidGlassHaptics.selectionChanged()
+                                                OnCutsLiquidGlassHaptics.selectionChanged()
                                                 #endif
                                             }
                                         }
@@ -158,7 +158,7 @@ struct BookingIntakeView: View {
                                 }
                             } else {
                                 TextField("Service type", text: $customServiceName)
-                                    .font(InteraFont.body)
+                                    .font(OnCutsFont.body)
                                     .textInputAutocapitalization(.words)
                                     .glassFormField()
                             }
@@ -295,7 +295,7 @@ struct BookingIntakeView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(provider.businessName)
-                    .font(InteraLiquidGlassTypography.title(max(16, nameSize), weight: .semibold))
+                    .font(OnCutsLiquidGlassTypography.title(max(16, nameSize), weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(headerCollapse > 0.85 ? 1 : 2)
 
@@ -303,10 +303,10 @@ struct BookingIntakeView: View {
                     Link(destination: igURL) {
                         HStack(spacing: 6) {
                             Image(systemName: "camera.fill")
-                                .font(InteraFont.caption(weight: .semibold))
-                                .foregroundStyleInteraShellIconSecondary()
+                                .font(OnCutsFont.caption(weight: .semibold))
+                                .foregroundStyleOnCutsShellIconSecondary()
                             Text("Instagram")
-                                .font(InteraFont.subheadline(weight: .medium))
+                                .font(OnCutsFont.subheadline(weight: .medium))
                                 .foregroundStyleOliveGreen()
                         }
                     }
@@ -319,14 +319,14 @@ struct BookingIntakeView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12 - 4 * headerCollapse)
-        .interaGlassSurface(cornerRadius: 20)
+        .onCutsGlassSurface(cornerRadius: 20)
         .padding(.horizontal, 12)
         .padding(.top, 6)
     }
 
     private var placeholderInitials: some View {
         Text(provider.businessName.prefix(2).uppercased())
-            .font(InteraFont.headline)
+            .font(OnCutsFont.headline)
             .foregroundStyleOliveGreen()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.brand.opacity(0.15))
@@ -352,7 +352,7 @@ struct BookingIntakeView: View {
             }
         } else if let one = locs.first {
             Text(one)
-                .font(InteraFont.bodyMedium)
+                .font(OnCutsFont.bodyMedium)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .glassFormField()
                 .onAppear { if locationText.isEmpty { locationText = one } }
@@ -365,14 +365,14 @@ struct BookingIntakeView: View {
 
     private func sectionTitle(_ s: String) -> some View {
         Text(s)
-            .font(InteraFont.headlineSmall)
+            .font(OnCutsFont.headlineSmall)
             .foregroundStyle(.primary)
     }
 
     private func serviceChip(service: ServiceProvider.Service, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text("\(service.name)  $\(service.price)")
-                .font(InteraFont.body(weight: .semibold))
+                .font(OnCutsFont.body(weight: .semibold))
                 .foregroundStyle(isSelected ? Color.white : Color.primary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -391,14 +391,14 @@ struct BookingIntakeView: View {
     private var locationAmberCallout: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "mappin.and.ellipse")
-                .font(InteraFont.body(weight: .semibold))
+                .font(OnCutsFont.body(weight: .semibold))
                 #if canImport(UIKit)
                 .foregroundStyle(Color(UIColor.systemYellow))
                 #else
                 .foregroundStyle(.yellow)
                 #endif
             Text("Add a meeting location so your provider knows where to find you.")
-                .font(InteraFont.body)
+                .font(OnCutsFont.body)
                 .foregroundStyle(.primary)
         }
         .padding(16)
@@ -468,7 +468,7 @@ struct BookingIntakeView: View {
                 availableKeys: availableTimeKeys
             )
         } catch {
-            if InteraRefreshCancellation.isBenignCancellation(error) { return }
+            if OnCutsRefreshCancellation.isBenignCancellation(error) { return }
             slots = []
             slotsLoadError = "Couldn’t load times. Pull to refresh or pick another date."
             #if DEBUG
@@ -556,7 +556,7 @@ struct BookingIntakeView: View {
             pricingBaselineUsd: pricingBaseline
         )
         #if os(iOS)
-        InteraLiquidGlassHaptics.notification(.success)
+        OnCutsLiquidGlassHaptics.notification(.success)
         #endif
         navPath.append(BookingNavigationDestination.review(state))
     }
@@ -581,15 +581,15 @@ struct BookingIntakeView: View {
                     bearerToken: sessionManager.currentSession?.token
                 )
                 #if os(iOS)
-                InteraLiquidGlassHaptics.notification(.success)
+                OnCutsLiquidGlassHaptics.notification(.success)
                 #endif
                 AlertManager.shared.present("Your booking request was sent.")
                 navPath = NavigationPath()
                 onDismiss()
                 NotificationCenter.default.post(
-                    name: .interaNavigateToBookingsAfterBookingRequest,
+                    name: .onCutsNavigateToBookingsAfterBookingRequest,
                     object: nil,
-                    userInfo: [InteraBookingsUserInfoKeys.focusUpcomingSection: true]
+                    userInfo: [OnCutsBookingsUserInfoKeys.focusUpcomingSection: true]
                 )
             } catch {
                 if AppointmentCreateAPI.isUnauthorizedError(error) {

@@ -1,6 +1,6 @@
 //
 //  AppBranding.swift
-//  Intera
+//  OnCuts
 //
 //  User-facing product name (App Store / home screen / in-app copy). Keep in sync with
 //  `CFBundleDisplayName` and `CFBundleName` in `GoogleSignInURL.plist`.
@@ -12,7 +12,7 @@ import Foundation
 enum AppBranding {
     /// Consumer product brand — app icon label, in-app copy, OAuth system name.
     static let displayName = "OnCuts"
-    /// Internal repo / docs product label (Xcode target remains `Intera` for bundle IDs and schemes).
+    /// Internal repo / docs product label (bundle ID remains `Liam.Intera` for App Store continuity).
     static let productName = "OnCuts"
     /// Legal entity / company behind the product (Terms, support, provider platform references).
     static let companyName = "OnCuts"

@@ -1,6 +1,6 @@
 //
-//  InteraApp.swift
-//  Intera
+//  OnCutsApp.swift
+//  OnCuts
 //
 //  Created by Liam McKeown on 3/8/26.
 //
@@ -19,11 +19,11 @@ import FirebaseCore
 #endif
 
 @main
-struct InteraApp: App {
+struct OnCutsApp: App {
     // MARK: - Core Dependencies
 
     #if canImport(UIKit) && !os(watchOS)
-    @UIApplicationDelegateAdaptor(InteraAppDelegate.self) private var appDelegate
+    @UIApplicationDelegateAdaptor(OnCutsAppDelegate.self) private var appDelegate
     #endif
     
     /// Global session manager (the "Brain")
@@ -63,7 +63,7 @@ struct InteraApp: App {
         #if os(iOS) || os(visionOS)
         StripeService.applyPublishableKeyAlignedWithAPIHost(apiRootTrimmed: AppConfiguration.messagingAPIRootTrimmed)
         #endif
-        InteraFont.installGlobalAppearanceIfNeeded()
+        OnCutsFont.installGlobalAppearanceIfNeeded()
     }
 
     // MARK: - App Scene
@@ -95,11 +95,11 @@ struct InteraApp: App {
 }
 // MARK: - App Configuration
 
-extension InteraApp {
+extension OnCutsApp {
     /// Configure for production vs development
     static func configure(environment: AppEnvironment) {
         // Setup logging, analytics, crash reporting, etc.
-        print("🚀 Intera starting in \(environment.rawValue) mode")
+        print("🚀 OnCuts starting in \(environment.rawValue) mode")
         
         #if DEBUG
         print("📱 Debug mode enabled")

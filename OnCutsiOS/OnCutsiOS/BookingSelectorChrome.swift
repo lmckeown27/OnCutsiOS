@@ -1,6 +1,6 @@
 //
 //  BookingSelectorChrome.swift
-//  Intera
+//  OnCuts
 //
 //  Shared ghost/solid cream styling, spring, and selection haptics for live booking selectors.
 //
@@ -12,15 +12,15 @@ import UIKit
 
 enum BookingSelectorTheme {
     /// Label on a selected cream/foreground chip (inverse of shell foreground).
-    static var deepCharcoal: Color { Color.interaShellBackground }
-    static var cream: Color { Color.interaShellForeground }
+    static var deepCharcoal: Color { Color.onCutsShellBackground }
+    static var cream: Color { Color.onCutsShellForeground }
     static let cornerRadius: CGFloat = 12
     static let selectionSpring = Animation.spring(response: 0.3, dampingFraction: 0.7)
 
     /// Timeline **Today** bold (service title / shop name / day number).
-    static let todayBoldFont = InteraFont.font(size: 28, weight: .bold)
+    static let todayBoldFont = OnCutsFont.font(size: 28, weight: .bold)
     /// Scroll wheel rows in **Choose a Time** (open-slot picker).
-    static let timeWheelFont = InteraFont.font(size: 24, weight: .semibold)
+    static let timeWheelFont = OnCutsFont.font(size: 24, weight: .semibold)
     static let timeWheelUIFontSize: CGFloat = 24
 
     static func triggerSelectionChangedIfNewSelection(wasSelected: Bool) {
@@ -36,7 +36,7 @@ enum BookingSelectorTheme {
 private struct PastLabelModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .font(InteraFont.font(size: 14, weight: .medium))
+            .font(OnCutsFont.font(size: 14, weight: .medium))
             .textCase(.uppercase)
             .kerning(2.2)
     }
@@ -48,7 +48,7 @@ private struct CalendarWeekdayLabelModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .font(InteraFont.font(size: fontSize, weight: .medium))
+            .font(OnCutsFont.font(size: fontSize, weight: .medium))
             .textCase(.uppercase)
             .kerning(fontSize * 0.15)
     }
@@ -58,7 +58,7 @@ private struct CalendarWeekdayLabelModifier: ViewModifier {
 private struct BookingDetailFieldTitleModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .font(InteraFont.system(size: 14, weight: .semibold, design: .default))
+            .font(OnCutsFont.system(size: 14, weight: .semibold, design: .default))
             .foregroundStyle(Color.lavaShellCreamSecondary)
             .underline()
     }

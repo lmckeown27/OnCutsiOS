@@ -1,6 +1,6 @@
 //
 //  ServiceSelectionScreen.swift
-//  Intera
+//  OnCuts
 //
 //  Service selection screen - user picks Beauty or Haircuts
 //
@@ -92,18 +92,18 @@ struct ServiceCard: View {
                         .frame(width: 64, height: 64)
                     
                     Image(systemName: service.icon)
-                        .font(InteraFont.system(size: 28))
+                        .font(OnCutsFont.system(size: 28))
                         .foregroundStyle(service.color)
                 }
                 
                 // Info
                 VStack(alignment: .leading, spacing: .space1) {
                     Text(service.name)
-                        .font(InteraFont.headlineMedium)
+                        .font(OnCutsFont.headlineMedium)
                         .foregroundStyle(Color.neutral800)
                     
                     Text(service.description)
-                        .font(InteraFont.bodySmall)
+                        .font(OnCutsFont.bodySmall)
                         .foregroundStyle(Color.neutral500)
                         .lineLimit(2)
                 }
@@ -112,7 +112,7 @@ struct ServiceCard: View {
                 
                 // Arrow
                 Image(systemName: "chevron.right")
-                    .font(InteraFont.body)
+                    .font(OnCutsFont.body)
                     .foregroundStyle(Color.neutral400)
             }
             .padding(.space5)

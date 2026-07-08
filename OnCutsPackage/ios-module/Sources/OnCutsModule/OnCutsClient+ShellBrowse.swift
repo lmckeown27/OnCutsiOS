@@ -2,7 +2,7 @@
 //  OnCutsClient+ShellBrowse.swift
 //  OnCutsModule
 //
-//  Public browse-list API for host apps (Intera) — same `/barbers` payload the shell decodes locally.
+//  Public browse-list API for host apps (OnCutsiOS) — same `/barbers` payload the shell decodes locally.
 //
 
 import Foundation
@@ -33,7 +33,7 @@ public struct OnCutsBrowsePriceRange: Sendable, Hashable {
     }
 }
 
-/// One provider row for the Intera browse grid (`GET /api/v1/barbers`).
+/// One provider row for the OnCuts browse grid (`GET /api/v1/barbers`).
 public struct OnCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
     public let id: String
     public let userId: String

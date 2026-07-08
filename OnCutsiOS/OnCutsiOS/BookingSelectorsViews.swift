@@ -1,6 +1,6 @@
 //
 //  BookingSelectorsViews.swift
-//  Intera
+//  OnCuts
 //
 //  Date (month calendar grid), time (period-grouped horizontal rows), and location rows aligned with Service & pricing UX.
 //
@@ -115,7 +115,7 @@ struct BookingCalendarGridSelector: View {
                 navigateToDisplayedMonthSelectingLatestAvailableDay()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(InteraFont.body(weight: .semibold))
+                    .font(OnCutsFont.body(weight: .semibold))
                     .foregroundStyle(BookingSelectorTheme.cream)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -143,7 +143,7 @@ struct BookingCalendarGridSelector: View {
                 navigateToDisplayedMonthSelectingLatestAvailableDay()
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(InteraFont.body(weight: .semibold))
+                    .font(OnCutsFont.body(weight: .semibold))
                     .foregroundStyle(BookingSelectorTheme.cream)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
@@ -248,7 +248,7 @@ struct BookingCalendarGridSelector: View {
                     .animation(BookingSelectorTheme.selectionSpring, value: selected)
 
                 Text("\(calendar.component(.day, from: day))")
-                    .font(InteraFont.system(size: 17, weight: .semibold, design: .rounded))
+                    .font(OnCutsFont.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundStyle(selected ? BookingSelectorTheme.deepCharcoal : BookingSelectorTheme.cream)
                     .opacity(labelOpacity)
             }
@@ -339,7 +339,7 @@ private struct BookingTimeSlotChip: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(InteraFont.subheadline(weight: .semibold))
+                .font(OnCutsFont.subheadline(weight: .semibold))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(
                     isSelected && !isDisabled
@@ -411,7 +411,7 @@ struct BookingTimeSlotGrid: View {
             ForEach(periodSections, id: \.period.id) { section in
                 VStack(alignment: .leading, spacing: 10) {
                     Text(section.period.rawValue)
-                        .font(InteraFont.caption(weight: .bold))
+                        .font(OnCutsFont.caption(weight: .bold))
                         .foregroundStyle(Color.lavaShellCreamTertiary)
 
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -481,17 +481,17 @@ struct BookingMinuteTimePicker: View {
                     ProgressView()
                         .tint(Color.oliveGreen)
                     Text("Loading times…")
-                        .font(InteraFont.body)
+                        .font(OnCutsFont.body)
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else if let err = loadError {
                 Text(err)
-                    .font(InteraFont.body)
+                    .font(OnCutsFont.body)
                     .foregroundStyle(.secondary)
             } else if !hasOpenTimes {
                 Text(emptyMessage)
-                    .font(InteraFont.body)
+                    .font(OnCutsFont.body)
                     .foregroundStyle(.secondary)
             } else {
                 Group {
@@ -641,7 +641,7 @@ private struct BookingAvailableTimeWheelUIKit: UIViewRepresentable {
         func pickerView(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int, reusing view: UIView?) -> UIView {
             let label = (view as? UILabel) ?? UILabel()
             label.text = row < labels.count ? labels[row] : ""
-            label.font = InteraFont.uiFont(size: BookingSelectorTheme.timeWheelUIFontSize, weight: .semibold)
+            label.font = OnCutsFont.uiFont(size: BookingSelectorTheme.timeWheelUIFontSize, weight: .semibold)
             label.textAlignment = .center
             label.textColor = UIColor(Color.lavaShellCream)
             label.adjustsFontSizeToFitWidth = true

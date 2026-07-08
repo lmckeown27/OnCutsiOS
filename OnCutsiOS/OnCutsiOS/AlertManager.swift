@@ -1,6 +1,6 @@
 //
 //  AlertManager.swift
-//  Intera
+//  OnCuts
 //
 //  Global toast messages for network and auth failures (paired with `GlassErrorToastOverlay`).
 //
@@ -59,7 +59,7 @@ final class AlertManager {
 
     /// Maps common transport errors to copy that mentions campus Wi‑Fi where appropriate.
     func presentUserFriendlyMessage(for error: Error) {
-        if InteraRefreshCancellation.isBenignCancellation(error) { return }
+        if OnCutsRefreshCancellation.isBenignCancellation(error) { return }
         let message = Self.friendlyMessage(for: error)
         present(message)
     }

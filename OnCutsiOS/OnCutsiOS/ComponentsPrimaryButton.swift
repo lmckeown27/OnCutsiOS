@@ -1,6 +1,6 @@
 //
 //  PrimaryButton.swift
-//  Intera
+//  OnCuts
 //
 //  OnCuts primary button component
 //
@@ -51,7 +51,7 @@ struct PrimaryButton: View {
             case .outline: return .oliveGreen
             case .danger: return .white
             case .ghost: return .oliveGreen
-            case .shell: return .interaShellBackground
+            case .shell: return .onCutsShellBackground
             }
         }
         
@@ -131,8 +131,8 @@ struct PrimaryButton: View {
     var body: some View {
         Button(action: action) {
             buttonLabel
-                .interaOliveGreenTextOutline(when: !isDisabled && (variant == .outline || variant == .ghost))
-                .interaFilledPrimaryButtonLabelOutline(
+                .onCutsOliveGreenTextOutline(when: !isDisabled && (variant == .outline || variant == .ghost))
+                .onCutsFilledPrimaryButtonLabelOutline(
                     when: !isDisabled && titleUsesOutline && variant == .primary && size != .prominent
                 )
                 .modifier(PrimaryButtonShapeModifier(
@@ -159,7 +159,7 @@ struct PrimaryButton: View {
                     prominentOutlinedTitleLabel
                 } else {
                     Text(title)
-                        .font(InteraFont.system(size: size.fontSize, weight: size.fontWeight, design: size.fontDesign))
+                        .font(OnCutsFont.system(size: size.fontSize, weight: size.fontWeight, design: size.fontDesign))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .center)
@@ -174,16 +174,16 @@ struct PrimaryButton: View {
 
     private var prominentOutlinedTitleLabel: some View {
         Text(title)
-            .font(InteraFont.system(size: size.fontSize, weight: size.fontWeight, design: size.fontDesign))
+            .font(OnCutsFont.system(size: size.fontSize, weight: size.fontWeight, design: size.fontDesign))
             .lineLimit(2)
             .minimumScaleFactor(0.78)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
-            .interaFilledPrimaryButtonLabelOutline(when: true, width: 0.58, opacity: 0.96, strong: true)
+            .onCutsFilledPrimaryButtonLabelOutline(when: true, width: 0.58, opacity: 0.96, strong: true)
     }
 }
 
-private struct InteraFilledPrimaryButtonLabelOutlineModifier: ViewModifier {
+private struct OnCutsFilledPrimaryButtonLabelOutlineModifier: ViewModifier {
     var isEnabled: Bool
     var width: CGFloat = 0.48
     var opacity: CGFloat = 0.88
@@ -195,11 +195,11 @@ private struct InteraFilledPrimaryButtonLabelOutlineModifier: ViewModifier {
             let outline = Color.black.opacity(opacity)
             if strong {
                 content
-                    .modifier(InteraGlyphOutlineShadows(color: outline, width: width))
-                    .modifier(InteraGlyphOutlineShadows(color: outline, width: width * 0.62))
+                    .modifier(OnCutsGlyphOutlineShadows(color: outline, width: width))
+                    .modifier(OnCutsGlyphOutlineShadows(color: outline, width: width * 0.62))
             } else {
                 content
-                    .modifier(InteraGlyphOutlineShadows(color: outline, width: width))
+                    .modifier(OnCutsGlyphOutlineShadows(color: outline, width: width))
             }
         } else {
             content
@@ -207,7 +207,7 @@ private struct InteraFilledPrimaryButtonLabelOutlineModifier: ViewModifier {
     }
 }
 
-private struct InteraGlyphOutlineShadows: ViewModifier {
+private struct OnCutsGlyphOutlineShadows: ViewModifier {
     let color: Color
     let width: CGFloat
 
@@ -225,13 +225,13 @@ private struct InteraGlyphOutlineShadows: ViewModifier {
 }
 
 private extension View {
-    func interaFilledPrimaryButtonLabelOutline(
+    func onCutsFilledPrimaryButtonLabelOutline(
         when isEnabled: Bool,
         width: CGFloat = 0.48,
         opacity: CGFloat = 0.88,
         strong: Bool = false
     ) -> some View {
-        modifier(InteraFilledPrimaryButtonLabelOutlineModifier(
+        modifier(OnCutsFilledPrimaryButtonLabelOutlineModifier(
             isEnabled: isEnabled,
             width: width,
             opacity: opacity,

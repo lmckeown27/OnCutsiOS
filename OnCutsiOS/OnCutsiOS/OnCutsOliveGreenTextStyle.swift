@@ -1,6 +1,6 @@
 //
-//  InteraOliveGreenTextStyle.swift
-//  Intera
+//  OnCutsOliveGreenTextStyle.swift
+//  OnCuts
 //
 //  Olive-green foreground with an adaptive glyph outline (black in light mode, white in dark mode).
 //
@@ -10,14 +10,14 @@ import SwiftUI
 import UIKit
 #endif
 
-enum InteraOliveGreenTextStyle {
+enum OnCutsOliveGreenTextStyle {
     /// Negative stroke width draws an outline around the fill (UIKit attributed-string technique).
     static let uiKitOutlineStrokeWidth: CGFloat = -0.85
     /// Shadow offset for SwiftUI `Text` / symbol outlines.
     static let swiftUIOutlineWidth: CGFloat = 0.22
     /// Outline strength (shadow / stroke reads lighter below 1).
     static let outlineOpacity: CGFloat = 0.72
-    /// Extra point size for UIKit outlined labels (`InteraOutlinedOliveGreenLabel`).
+    /// Extra point size for UIKit outlined labels (`OnCutsOutlinedOliveGreenLabel`).
     static let uiKitFontSizeIncrease: CGFloat = 2
 
     static func outlineColor(for colorScheme: ColorScheme) -> Color {
@@ -74,7 +74,7 @@ enum InteraOliveGreenTextStyle {
 
 #if canImport(UIKit)
 /// UIKit label for multi-line olive-green copy with an adaptive outline.
-struct InteraOutlinedOliveGreenLabel: UIViewRepresentable {
+struct OnCutsOutlinedOliveGreenLabel: UIViewRepresentable {
     let text: String
     let font: UIFont
     var opacity: CGFloat = 1
@@ -91,7 +91,7 @@ struct InteraOutlinedOliveGreenLabel: UIViewRepresentable {
     }
 
     func updateUIView(_ label: UILabel, context: Context) {
-        label.attributedText = InteraOliveGreenTextStyle.attributedString(text, font: font, opacity: opacity)
+        label.attributedText = OnCutsOliveGreenTextStyle.attributedString(text, font: font, opacity: opacity)
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UILabel, context: Context) -> CGSize? {
@@ -102,21 +102,21 @@ struct InteraOutlinedOliveGreenLabel: UIViewRepresentable {
 }
 #endif
 
-private struct InteraOliveGreenTextOutlineModifier: ViewModifier {
+private struct OnCutsOliveGreenTextOutlineModifier: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    var width: CGFloat = InteraOliveGreenTextStyle.swiftUIOutlineWidth
+    var width: CGFloat = OnCutsOliveGreenTextStyle.swiftUIOutlineWidth
     var isEnabled: Bool = true
 
     private var outlineColor: Color {
-        InteraOliveGreenTextStyle.outlineColor(for: colorScheme)
+        OnCutsOliveGreenTextStyle.outlineColor(for: colorScheme)
     }
 
     @ViewBuilder
     func body(content: Content) -> some View {
         if isEnabled {
             content
-                .dynamicTypeSize(InteraOliveGreenTextStyle.bumpedDynamicTypeSize(from: dynamicTypeSize))
+                .dynamicTypeSize(OnCutsOliveGreenTextStyle.bumpedDynamicTypeSize(from: dynamicTypeSize))
                 .shadow(color: outlineColor, radius: 0, x: -width, y: 0)
                 .shadow(color: outlineColor, radius: 0, x: width, y: 0)
                 .shadow(color: outlineColor, radius: 0, x: 0, y: -width)
@@ -134,27 +134,27 @@ private struct InteraOliveGreenTextOutlineModifier: ViewModifier {
 extension View {
     /// Applies a black (light) or white (dark) glyph outline for olive-green foreground content.
     @ViewBuilder
-    func interaOliveGreenTextOutline(
+    func onCutsOliveGreenTextOutline(
         when isEnabled: Bool = true,
-        width: CGFloat = InteraOliveGreenTextStyle.swiftUIOutlineWidth
+        width: CGFloat = OnCutsOliveGreenTextStyle.swiftUIOutlineWidth
     ) -> some View {
-        modifier(InteraOliveGreenTextOutlineModifier(width: width, isEnabled: isEnabled))
+        modifier(OnCutsOliveGreenTextOutlineModifier(width: width, isEnabled: isEnabled))
     }
 
     /// Olive-green foreground with an adaptive outline and slightly larger type for legibility.
-    /// Use on **text** only — SF Symbols should use ``foregroundStyleInteraShellIcon()`` instead.
+    /// Use on **text** only — SF Symbols should use ``foregroundStyleOnCutsShellIcon()`` instead.
     func foregroundStyleOliveGreen(opacity: Double = 1) -> some View {
         foregroundStyle(Color.oliveGreen.opacity(opacity))
-            .interaOliveGreenTextOutline()
+            .onCutsOliveGreenTextOutline()
     }
 
     /// Appearance-aware icon tint (no olive outline). Prefer over ``foregroundStyleOliveGreen()`` on SF Symbols.
-    func foregroundStyleInteraShellIcon() -> some View {
-        foregroundStyle(Color.interaShellForeground)
+    func foregroundStyleOnCutsShellIcon() -> some View {
+        foregroundStyle(Color.onCutsShellForeground)
     }
 
     /// De-emphasized shell icon tint for secondary glyphs (chevrons, pins, toolbar icons).
-    func foregroundStyleInteraShellIconSecondary() -> some View {
-        foregroundStyle(Color.interaShellForegroundSecondary)
+    func foregroundStyleOnCutsShellIconSecondary() -> some View {
+        foregroundStyle(Color.onCutsShellForegroundSecondary)
     }
 }

@@ -1,6 +1,6 @@
 //
 //  TimelineSectionHeader.swift
-//  Intera
+//  OnCuts
 //
 //  Pinned section chrome: no solid grey fills; optional translucent blur when content
 //  scrolls underneath; Past / Today / Upcoming typography; short left-fading divider.
@@ -87,17 +87,17 @@ struct TimelineSectionHeader: View {
         switch position {
         case .past:
             Text("Past")
-                .font(InteraFont.system(size: 14, weight: .medium, design: .default))
+                .font(OnCutsFont.system(size: 14, weight: .medium, design: .default))
                 .foregroundStyle(Color.lavaShellCreamSecondary)
                 .textCase(.uppercase)
                 .kerning(2.2)
         case .today:
             Text("Today")
-                .font(InteraFont.system(size: 28, weight: .bold, design: .default))
+                .font(OnCutsFont.system(size: 28, weight: .bold, design: .default))
                 .foregroundStyle(Color.lavaShellCream)
         case .upcoming:
             Text("Upcoming")
-                .font(InteraFont.system(size: 20, weight: .semibold, design: .default))
+                .font(OnCutsFont.system(size: 20, weight: .semibold, design: .default))
                 .foregroundStyle(Color.lavaShellCream)
         }
     }

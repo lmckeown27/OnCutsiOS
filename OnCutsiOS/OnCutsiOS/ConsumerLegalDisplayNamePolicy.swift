@@ -1,6 +1,6 @@
 //
 //  ConsumerLegalDisplayNamePolicy.swift
-//  Intera
+//  OnCuts
 //
 //  Heuristic for when a consumer display name looks like a placeholder (relay / legacy tokens).
 //  Sign-in with Apple must not be followed by mandatory manual name collection (App Store Guideline 4).

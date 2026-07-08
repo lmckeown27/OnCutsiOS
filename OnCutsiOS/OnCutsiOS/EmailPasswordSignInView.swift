@@ -1,6 +1,6 @@
 //
 //  EmailPasswordSignInView.swift
-//  Intera
+//  OnCuts
 //
 //  OnCuts email handshake + password sign-in for use inside the sign-in sheet stack.
 //  UI aligned with `PhoneNumberSignInPlaceholderView` (intro copy, field chrome, olive buttons).
@@ -32,7 +32,7 @@ struct EmailPasswordSignInView: View {
             VStack(alignment: .leading, spacing: 16) {
                 if didCompleteEmailHandshake {
                     Text("Enter your password to sign in.")
-                        .font(InteraFont.subheadline)
+                        .font(OnCutsFont.subheadline)
                         .foregroundStyle(.secondary)
 
                     HStack(spacing: 10) {
@@ -53,7 +53,7 @@ struct EmailPasswordSignInView: View {
                             isPasswordVisible.toggle()
                         } label: {
                             Image(systemName: isPasswordVisible ? "eye.slash.fill" : "eye.fill")
-                                .font(InteraFont.body(weight: .medium))
+                                .font(OnCutsFont.body(weight: .medium))
                                 .foregroundStyle(.secondary)
                                 .frame(minWidth: 28, minHeight: 28)
                                 .contentShape(Rectangle())
@@ -76,7 +76,7 @@ struct EmailPasswordSignInView: View {
                     }
                 } else {
                     Text("Enter your email address. We’ll check if you already have an account.")
-                        .font(InteraFont.subheadline)
+                        .font(OnCutsFont.subheadline)
                         .foregroundStyle(.secondary)
 
                     TextField("Email", text: $email)
@@ -124,7 +124,7 @@ struct EmailPasswordSignInView: View {
                         .tint(.white)
                 }
                 Text(title)
-                    .font(InteraFont.body(weight: .semibold))
+                    .font(OnCutsFont.body(weight: .semibold))
                     .opacity(isBusy ? 0 : 1)
             }
             .frame(maxWidth: .infinity)
@@ -138,7 +138,7 @@ struct EmailPasswordSignInView: View {
     private func handshakeCheckAccount() async {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.contains("@") else {
-            let o = InteraAuthUserMessaging.invalidEmailFormatOutcome()
+            let o = OnCutsAuthUserMessaging.invalidEmailFormatOutcome()
             authOutcomeTitle = o.title
             authOutcomeMessage = o.message
             showAuthOutcomeAlert = true
@@ -157,7 +157,7 @@ struct EmailPasswordSignInView: View {
                 onRequestSignUp()
             }
         } catch {
-            let o = InteraAuthUserMessaging.emailPasswordOutcome(for: error)
+            let o = OnCutsAuthUserMessaging.emailPasswordOutcome(for: error)
             authOutcomeTitle = o.title
             authOutcomeMessage = o.message
             showAuthOutcomeAlert = true
@@ -179,7 +179,7 @@ struct EmailPasswordSignInView: View {
             await sessionManager.refreshProfileFromServer()
             onSignedIn()
         } catch {
-            let o = InteraAuthUserMessaging.emailPasswordOutcome(for: error)
+            let o = OnCutsAuthUserMessaging.emailPasswordOutcome(for: error)
             authOutcomeTitle = o.title
             authOutcomeMessage = o.message
             showAuthOutcomeAlert = true

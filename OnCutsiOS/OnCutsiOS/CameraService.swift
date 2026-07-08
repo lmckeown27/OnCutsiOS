@@ -1,6 +1,6 @@
 //
 //  CameraService.swift
-//  Intera
+//  OnCuts
 //
 //  AVFoundation camera session with Snapchat-style front-camera mirroring.
 //
@@ -20,7 +20,7 @@ final class CameraService: NSObject, ObservableObject {
     @Published private(set) var isAuthorized = false
     @Published private(set) var setupFailed = false
 
-    private let sessionQueue = DispatchQueue(label: "com.intera.camera.session", qos: .userInitiated)
+    private let sessionQueue = DispatchQueue(label: "com.oncuts.camera.session", qos: .userInitiated)
     private let photoOutput = AVCapturePhotoOutput()
     private var photoDelegateRetain: PhotoCaptureDelegate?
 
@@ -330,7 +330,7 @@ struct ProfileCameraCaptureView: View {
                     isPresented = false
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(InteraFont.system(size: 28))
+                        .font(OnCutsFont.system(size: 28))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.white)
                 }
@@ -345,7 +345,7 @@ struct ProfileCameraCaptureView: View {
                     }
                 } label: {
                     Image(systemName: flashOn ? "bolt.fill" : "bolt.slash.fill")
-                        .font(InteraFont.system(size: 22))
+                        .font(OnCutsFont.system(size: 22))
                         .foregroundStyle(.white)
                 }
                 .padding(.trailing, 20)
@@ -365,7 +365,7 @@ struct ProfileCameraCaptureView: View {
                         camera.flipCamera()
                     } label: {
                         Image(systemName: "camera.rotate.fill")
-                            .font(InteraFont.system(size: 26))
+                            .font(OnCutsFont.system(size: 26))
                             .foregroundStyle(.white)
                     }
 
@@ -407,7 +407,7 @@ struct ProfileCameraCaptureView: View {
                             camera.configureAndStart()
                         } label: {
                             Image(systemName: "xmark")
-                                .font(InteraFont.system(size: 20, weight: .semibold))
+                                .font(OnCutsFont.system(size: 20, weight: .semibold))
                                 .foregroundStyle(.primary)
                                 .frame(width: 56, height: 56)
                                 .background {
@@ -431,7 +431,7 @@ struct ProfileCameraCaptureView: View {
                             }
                         } label: {
                             Image(systemName: "checkmark")
-                                .font(InteraFont.system(size: 22, weight: .semibold))
+                                .font(OnCutsFont.system(size: 22, weight: .semibold))
                                 .foregroundStyle(.primary)
                                 .frame(width: 56, height: 56)
                                 .background {

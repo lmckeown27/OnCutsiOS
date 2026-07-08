@@ -1,6 +1,6 @@
 //
 //  BookingFlowSheetPresentation.swift
-//  Intera
+//  OnCuts
 //
 //  `LiveBookingView` is presented as a sheet from provider detail / rebook.
 //  From iPadOS 18 / iOS 18, SwiftUI’s default sheet is a compact “form” sheet;
@@ -16,7 +16,7 @@ import UIKit
 
 extension View {
     /// iPad: large page-style sheet (iOS 18+) or tall height detent (iOS 17). iPhone: standard large detent.
-    func interaBookingFlowSheetPresentation() -> some View {
+    func onCutsBookingFlowSheetPresentation() -> some View {
         modifier(BookingFlowSheetPresentationModifier())
     }
 }

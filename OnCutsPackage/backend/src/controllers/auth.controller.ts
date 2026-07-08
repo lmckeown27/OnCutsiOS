@@ -841,7 +841,7 @@ export const checkEmailExists = async (req: Request, res: Response, next: NextFu
 };
 
 /**
- * POST /api/v1/auth/google — Intera (and other clients): exchange Google `id_token` for CampusCuts JWTs.
+ * POST /api/v1/auth/google — OnCutsiOS (and other clients): exchange Google `id_token` for CampusCuts JWTs.
  * Set GOOGLE_OAUTH_IOS_CLIENT_ID and/or GOOGLE_OAUTH_WEB_CLIENT_ID to match token audiences.
  */
 export const googleIdTokenLogin = async (req: Request, res: Response, next: NextFunction) => {

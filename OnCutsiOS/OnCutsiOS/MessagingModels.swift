@@ -1,6 +1,6 @@
 //
 //  MessagingModels.swift
-//  Intera
+//  OnCuts
 //
 //  Decodable DTOs for OnCuts messaging REST + socket payloads (snake_case JSON).
 //

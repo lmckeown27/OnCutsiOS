@@ -1,6 +1,6 @@
 //
 //  BookingOpenDaysLoader.swift
-//  Intera
+//  OnCuts
 //
 //  Prefetches which calendar days have at least one open booking slot.
 //
@@ -63,7 +63,7 @@ enum BookingOpenDaysLoader {
                     return true
                 }
             } catch {
-                if InteraRefreshCancellation.isBenignCancellation(error) { return false }
+                if OnCutsRefreshCancellation.isBenignCancellation(error) { return false }
             }
         }
 
@@ -75,7 +75,7 @@ enum BookingOpenDaysLoader {
             )
             return rows.contains(where: \.available)
         } catch {
-            if InteraRefreshCancellation.isBenignCancellation(error) { return false }
+            if OnCutsRefreshCancellation.isBenignCancellation(error) { return false }
             return false
         }
     }

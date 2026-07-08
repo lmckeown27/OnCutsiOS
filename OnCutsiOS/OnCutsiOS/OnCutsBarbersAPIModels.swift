@@ -1,6 +1,6 @@
 //
 //  OnCutsBarbersAPIModels.swift
-//  Intera
+//  OnCuts
 //
 //  Decodes GET /api/v1/barbers — { success, data, pagination, meta } — into ServiceProvider.
 //

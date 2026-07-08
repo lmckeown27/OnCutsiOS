@@ -1,6 +1,6 @@
 //
 //  BookingCard.swift
-//  Intera
+//  OnCuts
 //
 //  Card component for displaying booking information
 //
@@ -27,11 +27,11 @@ struct BookingCard: View {
                     
                     VStack(alignment: .leading, spacing: .space1) {
                         Text(booking.barberName)
-                            .font(InteraFont.labelLarge)
+                            .font(OnCutsFont.labelLarge)
                             .foregroundStyle(Color.neutral800)
                         
                         Text(booking.serviceName)
-                            .font(InteraFont.caption)
+                            .font(OnCutsFont.caption)
                             .foregroundStyle(Color.neutral500)
                     }
                     
@@ -106,12 +106,12 @@ private struct DetailRow: View {
     var body: some View {
         HStack(spacing: .space2) {
             Image(systemName: icon)
-                .font(InteraFont.caption)
+                .font(OnCutsFont.caption)
                 .foregroundStyle(Color.neutral400)
                 .frame(width: 16)
             
             Text(text)
-                .font(InteraFont.bodySmall)
+                .font(OnCutsFont.bodySmall)
                 .foregroundStyle(Color.neutral600)
         }
     }
@@ -264,7 +264,7 @@ struct Booking: Identifiable, Codable {
     ScrollView {
         VStack(spacing: .space4) {
             Text("UPCOMING")
-                .font(InteraFont.labelSmall)
+                .font(OnCutsFont.labelSmall)
                 .foregroundStyle(Color.neutral500)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
@@ -278,7 +278,7 @@ struct Booking: Identifiable, Codable {
             }
             
             Text("PAST")
-                .font(InteraFont.labelSmall)
+                .font(OnCutsFont.labelSmall)
                 .foregroundStyle(Color.neutral500)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, .space4)

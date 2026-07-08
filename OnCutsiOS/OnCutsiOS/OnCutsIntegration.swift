@@ -1,8 +1,8 @@
 //
 //  OnCutsIntegration.swift
-//  Intera
+//  OnCuts
 //
-//  Single bridge between the Intera shell and OnCutsModule (API root, session, client factory).
+//  Single bridge between the OnCuts shell and OnCutsModule (API root, session, client factory).
 //
 
 import Foundation

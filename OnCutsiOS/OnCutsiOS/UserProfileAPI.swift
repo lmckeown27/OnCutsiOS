@@ -1,6 +1,6 @@
 //
 //  UserProfileAPI.swift
-//  Intera
+//  OnCuts
 //
 //  OnCuts user profile REST client: GET/PUT `/api/v1/users/:id`,
 //  multipart profile photo upload, and account deletion. The deployed Express API uses **PUT**

@@ -1,6 +1,6 @@
 //
 //  SignupOnboardingPersistence.swift
-//  Intera
+//  OnCuts
 //
 //  Resume liquid signup after background: verification email + optional verified session (Keychain).
 //

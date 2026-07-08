@@ -1,6 +1,6 @@
 //
 //  MessagingAPIService.swift
-//  Intera
+//  OnCuts
 //
 //  REST client for OnCuts messaging (conversations, read receipts, send, upload, delete).
 //

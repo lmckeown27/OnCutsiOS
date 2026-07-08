@@ -1,6 +1,6 @@
 //
 //  ConsumerHiddenBookingsStore.swift
-//  Intera
+//  OnCuts
 //
 //  When the API `POST …/hide-from-list` is unavailable (404) or before the backend is deployed,
 //  we still hide past rows locally so the Bookings timeline stays usable. Scoped per consumer user id.

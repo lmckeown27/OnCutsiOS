@@ -1,13 +1,13 @@
 //
-//  InteraTermsOfService.swift
-//  Intera
+//  OnCutsTermsOfService.swift
+//  OnCuts
 //
 //  In-app Terms of Service for OnCuts.
 //
 
 import Foundation
 
-enum InteraTermsOfService {
+enum OnCutsTermsOfService {
     /// Full plain-text terms shown during signup and wherever in-app consent is required.
     static var fullText: String {
         """

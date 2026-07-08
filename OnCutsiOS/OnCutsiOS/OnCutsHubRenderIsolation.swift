@@ -1,6 +1,6 @@
 //
-//  InteraHubRenderIsolation.swift
-//  Intera
+//  OnCutsHubRenderIsolation.swift
+//  OnCuts
 //
 //  Prevents the paged hub `TabView` (and scroll bridge) from re-rendering when unrelated
 //  shell state changes (hub bar collapse, unread counts, bubble icon tint, etc.).
@@ -9,7 +9,7 @@
 import SwiftUI
 
 /// Re-renders `content` only when `hubPageIndex` or `messagesHubNavigationStackEpoch` change.
-struct InteraHubPagerRenderGate<Content: View>: View, Equatable {
+struct OnCutsHubPagerRenderGate<Content: View>: View, Equatable {
     var hubPageIndex: Int
     var messagesHubNavigationStackEpoch: Int
     @ViewBuilder var content: () -> Content
@@ -26,7 +26,7 @@ struct InteraHubPagerRenderGate<Content: View>: View, Equatable {
 
 #if os(iOS)
 /// Re-renders the UIKit scroll bridge only when paging sync / lock inputs change.
-struct InteraHubScrollBridgeRenderGate<Content: View>: View, Equatable {
+struct OnCutsHubScrollBridgeRenderGate<Content: View>: View, Equatable {
     var hubPageIndex: Int
     var isPagingInteractionEnabled: Bool
     var syncPagingScrollToSelection: Bool

@@ -1,6 +1,6 @@
 //
 //  DesignSystem+Spacing.swift
-//  Intera
+//  OnCuts
 //
 //  OnCuts spacing and layout system (8pt grid)
 //

@@ -1,6 +1,6 @@
 //
 //  BookButtonPressStyle.swift
-//  Intera
+//  OnCuts
 //
 //  Shared press scale + timing for provider **Book** CTA, live booking controls, and `PrimaryButton`.
 //

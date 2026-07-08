@@ -1,6 +1,6 @@
 //
 //  DynamicActivityHeader.swift
-//  Intera
+//  OnCuts
 //
 //  Home “glass hero” pill for the next active booking (today or upcoming): countdown, barber thumb — detail via parent navigation.
 //
@@ -212,23 +212,23 @@ struct HomeTodayBookingReminderGlassCard: View {
                 providerAvatar
                 VStack(alignment: .leading, spacing: 4) {
                     Text(highlight.barberDisplayName)
-                        .font(InteraFont.system(size: 28, weight: .bold, design: .default))
+                        .font(OnCutsFont.system(size: 28, weight: .bold, design: .default))
                         .foregroundStyle(Color.lavaShellCream)
                         .lineLimit(1)
                         .minimumScaleFactor(0.45)
                     Text(serviceAndStatusLine)
-                        .font(InteraFont.headlineSmall)
+                        .font(OnCutsFont.headlineSmall)
                         .foregroundStyle(Color.lavaShellCream)
                         .lineLimit(2)
                         .minimumScaleFactor(0.85)
                     AppointmentMinuteCountdownText(scheduledAt: highlight.scheduledAt)
-                        .font(InteraFont.subheadline(weight: .semibold))
+                        .font(OnCutsFont.subheadline(weight: .semibold))
                         .foregroundStyle(Color.lavaShellCream)
                         .monospacedDigit()
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "chevron.right.circle.fill")
-                    .font(InteraFont.title3)
+                    .font(OnCutsFont.title3)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(Color.lavaShellCream.opacity(0.55))
                     .accessibilityHidden(true)
@@ -292,7 +292,7 @@ struct HomeTodayBookingReminderGlassCard: View {
             RoundedRectangle(cornerRadius: avatarCornerRadius, style: .continuous)
                 .fill(Color.primary.opacity(0.1))
             Text(highlight.barberDisplayName.prefix(1).uppercased())
-                .font(InteraFont.title3(weight: .bold))
+                .font(OnCutsFont.title3(weight: .bold))
                 .foregroundStyle(Color.lavaShellCream.opacity(0.85))
         }
         .frame(width: avatarSize, height: avatarSize)
@@ -318,22 +318,22 @@ struct HomePendingPaymentReminderGlassCard: View {
                 providerAvatar
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Payment due")
-                        .font(InteraFont.subheadline(weight: .semibold))
+                        .font(OnCutsFont.subheadline(weight: .semibold))
                         .foregroundStyle(Color.lavaShellCream.opacity(0.92))
                     Text(highlight.barberDisplayName)
-                        .font(InteraFont.system(size: 28, weight: .bold, design: .default))
+                        .font(OnCutsFont.system(size: 28, weight: .bold, design: .default))
                         .foregroundStyle(Color.lavaShellCream)
                         .lineLimit(1)
                         .minimumScaleFactor(0.45)
                     Text("\(highlight.serviceTitle) · \(highlight.priceFormatted)")
-                        .font(InteraFont.headlineSmall)
+                        .font(OnCutsFont.headlineSmall)
                         .foregroundStyle(Color.lavaShellCream)
                         .lineLimit(2)
                         .minimumScaleFactor(0.85)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "creditcard.circle.fill")
-                    .font(InteraFont.title3)
+                    .font(OnCutsFont.title3)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(Color.lavaShellCream.opacity(0.55))
                     .accessibilityHidden(true)
@@ -385,7 +385,7 @@ struct HomePendingPaymentReminderGlassCard: View {
             RoundedRectangle(cornerRadius: avatarCornerRadius, style: .continuous)
                 .fill(Color.primary.opacity(0.1))
             Text(highlight.barberDisplayName.prefix(1).uppercased())
-                .font(InteraFont.title3(weight: .bold))
+                .font(OnCutsFont.title3(weight: .bold))
                 .foregroundStyle(Color.lavaShellCream.opacity(0.85))
         }
         .frame(width: avatarSize, height: avatarSize)

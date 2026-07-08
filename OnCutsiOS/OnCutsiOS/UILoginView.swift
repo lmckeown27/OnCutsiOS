@@ -1,6 +1,6 @@
 //
 //  LoginView.swift
-//  Intera
+//  OnCuts
 //
 //  Created by Liam McKeown on 3/8/26.
 //
@@ -49,7 +49,7 @@ struct LoginView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                InteraShellBackground()
+                OnCutsShellBackground()
 
                 GeometryReader { geo in
                     let pageWidth = geo.size.width
@@ -123,7 +123,7 @@ struct LoginView: View {
             } message: {
                 Text(authOutcomeMessage)
             }
-            .interaConsumerShellAppearance()
+            .onCutsConsumerShellAppearance()
         }
     }
 
@@ -163,11 +163,11 @@ struct LoginView: View {
     private var logoSection: some View {
         VStack(spacing: .space4) {
             Image(systemName: "scissors.circle.fill")
-                .font(InteraFont.system(size: 80))
+                .font(OnCutsFont.system(size: 80))
                 .foregroundStyle(Color.brand.gradient)
 
             Text("Sign in")
-                .font(InteraFont.displayLarge)
+                .font(OnCutsFont.displayLarge)
                 .foregroundStyle(Color.lavaShellCream)
 
             Text("Book when you're ready")
@@ -230,7 +230,7 @@ struct LoginView: View {
                             isPasswordVisible.toggle()
                         } label: {
                             Image(systemName: isPasswordVisible ? "eye.slash.fill" : "eye.fill")
-                                .font(InteraFont.body(weight: .medium))
+                                .font(OnCutsFont.body(weight: .medium))
                                 .foregroundStyle(Color.neutral600)
                                 .frame(minWidth: 28, minHeight: 28)
                                 .contentShape(Rectangle())
@@ -279,7 +279,7 @@ struct LoginView: View {
                 .frame(height: 1)
 
             Text("OR")
-                .font(InteraFont.caption)
+                .font(OnCutsFont.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)
 
@@ -349,7 +349,7 @@ struct LoginView: View {
             }
             .buttonStyle(.plain)
         }
-        .font(InteraFont.subheadline)
+        .font(OnCutsFont.subheadline)
     }
 
     // MARK: - Account not found overlay
@@ -362,7 +362,7 @@ struct LoginView: View {
 
             VStack(spacing: 22) {
                 Text("No account found for this email.")
-                    .font(InteraFont.subheadline(weight: .semibold))
+                    .font(OnCutsFont.subheadline(weight: .semibold))
                     .foregroundStyle(.primary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
@@ -378,7 +378,7 @@ struct LoginView: View {
                     }
 
                 Text("We couldn't find an account with that email. Would you like to create one now?")
-                    .font(InteraFont.subheadline)
+                    .font(OnCutsFont.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 8)
@@ -392,7 +392,7 @@ struct LoginView: View {
                     }
                 } label: {
                     Text("Start Registration")
-                        .font(InteraFont.body(weight: .semibold))
+                        .font(OnCutsFont.body(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .foregroundStyle(.white)
@@ -419,7 +419,7 @@ struct LoginView: View {
                         showCreateAccountPrompt = false
                     }
                 }
-                .font(InteraFont.subheadline(weight: .medium))
+                .font(OnCutsFont.subheadline(weight: .medium))
                 .foregroundStyle(.secondary)
             }
             .padding(28)
@@ -442,7 +442,7 @@ struct LoginView: View {
     private func handshakeCheckAccount() async {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.contains("@") else {
-            let o = InteraAuthUserMessaging.invalidEmailFormatOutcome()
+            let o = OnCutsAuthUserMessaging.invalidEmailFormatOutcome()
             authOutcomeTitle = o.title
             authOutcomeMessage = o.message
             showAuthOutcomeAlert = true
@@ -464,7 +464,7 @@ struct LoginView: View {
                 }
             }
         } catch {
-            let o = InteraAuthUserMessaging.emailPasswordOutcome(for: error)
+            let o = OnCutsAuthUserMessaging.emailPasswordOutcome(for: error)
             authOutcomeTitle = o.title
             authOutcomeMessage = o.message
             showAuthOutcomeAlert = true
@@ -498,7 +498,7 @@ struct LoginView: View {
             sessionManager.login(session: UserSession(onCutsVerified: verified))
             await sessionManager.refreshProfileFromServer()
         } catch {
-            let o = InteraAuthUserMessaging.emailPasswordOutcome(for: error)
+            let o = OnCutsAuthUserMessaging.emailPasswordOutcome(for: error)
             authOutcomeTitle = o.title
             authOutcomeMessage = o.message
             showAuthOutcomeAlert = true

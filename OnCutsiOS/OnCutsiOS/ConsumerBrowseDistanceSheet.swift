@@ -1,6 +1,6 @@
 //
 //  ConsumerBrowseDistanceSheet.swift
-//  Intera
+//  OnCuts
 //
 //  Dating-style “maximum distance” control for the provider browse list.
 //
@@ -26,13 +26,13 @@ struct ConsumerBrowseDistanceSheet: View {
 
                 if constrainDistance {
                     Text("Only providers within this radius are included. Closest providers appear first.")
-                        .font(InteraFont.subheadline)
+                        .font(OnCutsFont.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Within \(displayMiles) mi")
-                            .font(InteraFont.title2(weight: .semibold))
+                            .font(OnCutsFont.title2(weight: .semibold))
                         Slider(
                             value: $miles,
                             in: ConsumerBrowseDistancePreference.minimumMiles ... ConsumerBrowseDistancePreference.maximumMiles,
@@ -41,17 +41,17 @@ struct ConsumerBrowseDistanceSheet: View {
                         .tint(Color.oliveGreen)
                         HStack {
                             Text("\(Int(ConsumerBrowseDistancePreference.minimumMiles)) mi")
-                                .font(InteraFont.caption)
+                                .font(OnCutsFont.caption)
                                 .foregroundStyle(.tertiary)
                             Spacer()
                             Text("\(Int(ConsumerBrowseDistancePreference.maximumMiles)) mi")
-                                .font(InteraFont.caption)
+                                .font(OnCutsFont.caption)
                                 .foregroundStyle(.tertiary)
                         }
                     }
                 } else {
                     Text("Shows every provider the app can load (same as turning location off for this list). Sorted by rating, not distance.")
-                        .font(InteraFont.subheadline)
+                        .font(OnCutsFont.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

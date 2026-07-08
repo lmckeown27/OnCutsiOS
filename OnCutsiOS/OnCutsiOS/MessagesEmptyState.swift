@@ -1,6 +1,6 @@
 //
 //  MessagesEmptyState.swift
-//  Intera
+//  OnCuts
 //
 //  Shown only when `GET /messages/conversations` returns **no rows** yet (`ChatViewModel.rows` empty).
 //  Branch B is **not** a “quick reply” widget — it is the **empty-inbox + active booking** affordance so a
@@ -53,12 +53,12 @@ struct MessagesEmptyState: View {
 
             VStack(spacing: 10) {
                 Text("Find a service provider")
-                    .font(InteraFont.title3(weight: .semibold))
+                    .font(OnCutsFont.title3(weight: .semibold))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Color.lavaShellCream)
 
                 Text("Book with a service provider to start a private conversation here.")
-                    .font(InteraFont.subheadline)
+                    .font(OnCutsFont.subheadline)
                     .foregroundStyle(Color.lavaShellCreamSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -67,7 +67,7 @@ struct MessagesEmptyState: View {
 
             Button(action: onBrowseServiceProviders) {
                 Text("Browse providers")
-                    .font(InteraFont.headline(weight: .semibold))
+                    .font(OnCutsFont.headline(weight: .semibold))
                     .foregroundStyle(Color.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
@@ -112,24 +112,24 @@ struct MessagesEmptyState: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(name)
-                    .font(InteraFont.title3(weight: .semibold))
+                    .font(OnCutsFont.title3(weight: .semibold))
                     .foregroundStyle(Color.lavaShellCream)
                     .multilineTextAlignment(.leading)
 
                 Text(service)
-                    .font(InteraFont.subheadline(weight: .medium))
+                    .font(OnCutsFont.subheadline(weight: .medium))
                     .foregroundStyle(Color.lavaShellCreamSecondary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
 
                 Text(timeLine)
-                    .font(InteraFont.footnote(weight: .medium))
+                    .font(OnCutsFont.footnote(weight: .medium))
                     .foregroundStyle(Color.lavaShellCreamTertiary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Image(systemName: "chevron.right")
-                .font(InteraFont.body(weight: .semibold))
+                .font(OnCutsFont.body(weight: .semibold))
                 .foregroundStyle(Color.lavaShellCream.opacity(0.55))
         }
         .padding(18)

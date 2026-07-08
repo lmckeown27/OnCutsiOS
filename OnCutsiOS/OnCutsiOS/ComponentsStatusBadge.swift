@@ -1,6 +1,6 @@
 //
 //  StatusBadge.swift
-//  Intera
+//  OnCuts
 //
 //  Status badge for booking states
 //
@@ -12,7 +12,7 @@ struct StatusBadge: View {
     
     var body: some View {
         Text(status.displayName)
-            .font(InteraFont.labelSmall)
+            .font(OnCutsFont.labelSmall)
             .fontWeight(.medium)
             .padding(.horizontal, .space2)
             .padding(.vertical, .space1)

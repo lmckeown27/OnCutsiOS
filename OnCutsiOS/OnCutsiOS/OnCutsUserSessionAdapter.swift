@@ -1,6 +1,6 @@
 //
 //  OnCutsUserSessionAdapter.swift
-//  Intera
+//  OnCuts
 //
 //  Bridges `AppSessionManager` + `UserSession` to `OnCutsModule.UserSessionProtocol`
 //  without colliding with the shell's own `UserSessionProtocol`.

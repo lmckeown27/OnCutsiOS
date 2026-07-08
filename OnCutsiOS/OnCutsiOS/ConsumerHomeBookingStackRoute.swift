@@ -1,6 +1,6 @@
 //
 //  ConsumerHomeBookingStackRoute.swift
-//  Intera
+//  OnCuts
 //
 //  Single `Hashable` type for booking detail **and** booking-thread pushes on the same `NavigationStack`.
 //  **Detail routes store only `bookingId` + `presentationID`**, not full `ConsumerBookingSimpleRow`, so a

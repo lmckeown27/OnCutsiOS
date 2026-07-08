@@ -1,6 +1,6 @@
 //
 //  AuthBackendVerification.swift
-//  Intera
+//  OnCuts
 //
 //  POSTs Google ID tokens to `AppConfiguration.urlAuthGoogle` (`POST /api/v1/auth/google`).
 //  Expects the same JSON shape as email login: `{ "success": true, "data": { "accessToken", "refreshToken", "user" } }`.

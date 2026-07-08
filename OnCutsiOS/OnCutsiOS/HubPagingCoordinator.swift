@@ -1,6 +1,6 @@
 //
 //  HubPagingCoordinator.swift
-//  Intera
+//  OnCuts
 //
 //  Drives the hub cream bubble from the paging `UIScrollView` via UIKit layout (no SwiftUI
 //  invalidation per scroll frame). Icon tint progress is reported on a throttled cadence only.
@@ -20,7 +20,7 @@ private final class HubPageWeakContainer {
 // MARK: - UIColor helpers (match ConsumerStickyHubNavigation semantic colors)
 
 extension UIColor {
-    static var interaHubBubbleFill: UIColor {
+    static var onCutsHubBubbleFill: UIColor {
         UIColor { traits in
             traits.userInterfaceStyle == .dark
                 ? UIColor(red: 245 / 255, green: 245 / 255, blue: 220 / 255, alpha: 1)
@@ -60,7 +60,7 @@ final class HubBubbleHostView: UIView {
         super.init(frame: frame)
         isUserInteractionEnabled = false
         backgroundColor = .clear
-        bubble.backgroundColor = .interaHubBubbleFill
+        bubble.backgroundColor = .onCutsHubBubbleFill
         bubble.layer.cornerCurve = .continuous
         bubble.isUserInteractionEnabled = false
         addSubview(bubble)
@@ -76,7 +76,7 @@ final class HubBubbleHostView: UIView {
         bubble.layer.cornerRadius = metrics.cornerRadius
         bubble.transform = CGAffineTransform(scaleX: visualScale, y: visualScale)
         if dragGlow {
-            bubble.layer.shadowColor = UIColor.interaHubBubbleFill.cgColor
+            bubble.layer.shadowColor = UIColor.onCutsHubBubbleFill.cgColor
             bubble.layer.shadowRadius = 10
             bubble.layer.shadowOpacity = 0.85
             bubble.layer.shadowOffset = .zero
@@ -404,11 +404,11 @@ final class HubPagingCoordinator: NSObject {
         }
         guard let root = window.rootViewController else { return }
         let scroll: UIScrollView? = {
-            if let pvc = intera_hubFindPageViewController(from: root),
-               let s = pvc.view.intera_hubHorizontalPagingScrollView() {
+            if let pvc = onCuts_hubFindPageViewController(from: root),
+               let s = pvc.view.onCuts_hubHorizontalPagingScrollView() {
                 return s
             }
-            return window.intera_hubHorizontalPagingScrollView()
+            return window.onCuts_hubHorizontalPagingScrollView()
         }()
         guard let scroll else {
             scheduleRetry(anchoredTo: uiView)
@@ -450,7 +450,7 @@ final class HubPagingCoordinator: NSObject {
     private var pageContainers: [Int: HubPageWeakContainer] = [:]
 
     func registerPageContainer(pageIndex: Int, anchor: UIView) {
-        guard let container = anchor.intera_hubPageContainerAncestor() else { return }
+        guard let container = anchor.onCuts_hubPageContainerAncestor() else { return }
         if pageContainers[pageIndex]?.value === container { return }
         pageContainers[pageIndex] = HubPageWeakContainer(container)
         refreshPageInteractionLocks()
@@ -571,7 +571,7 @@ struct HubPageInteractionGate: UIViewRepresentable {
 
 private extension UIView {
     /// The page content container under the horizontal paging `UIScrollView`.
-    func intera_hubPageContainerAncestor() -> UIView? {
+    func onCuts_hubPageContainerAncestor() -> UIView? {
         var current: UIView? = self
         while let view = current {
             if let scroll = view.superview as? UIScrollView, scroll.isPagingEnabled {
@@ -585,7 +585,7 @@ private extension UIView {
 
 extension View {
     /// UIKit hit-test lock so inactive hub tabs do not intercept touches (no SwiftUI pager invalidation).
-    func interaHubPageInteractionLock(pageIndex: Int, coordinator: HubPagingCoordinator) -> some View {
+    func onCutsHubPageInteractionLock(pageIndex: Int, coordinator: HubPagingCoordinator) -> some View {
         background {
             HubPageInteractionGate(pageIndex: pageIndex, coordinator: coordinator)
         }
@@ -594,14 +594,14 @@ extension View {
 
 // MARK: - Environment (browse / inbox scroll bridges read horizontal paging without shell re-renders)
 
-private struct InteraHubPagingCoordinatorKey: EnvironmentKey {
+private struct OnCutsHubPagingCoordinatorKey: EnvironmentKey {
     static var defaultValue: HubPagingCoordinator?
 }
 
 extension EnvironmentValues {
-    var interaHubPagingCoordinator: HubPagingCoordinator? {
-        get { self[InteraHubPagingCoordinatorKey.self] }
-        set { self[InteraHubPagingCoordinatorKey.self] = newValue }
+    var onCutsHubPagingCoordinator: HubPagingCoordinator? {
+        get { self[OnCutsHubPagingCoordinatorKey.self] }
+        set { self[OnCutsHubPagingCoordinatorKey.self] = newValue }
     }
 }
 
@@ -666,7 +666,7 @@ struct HubPagingScrollOffsetReader: UIViewRepresentable {
 // MARK: - View hierarchy search (file-local)
 
 private extension UIView {
-    func intera_hubHorizontalPagingScrollView() -> UIScrollView? {
+    func onCuts_hubHorizontalPagingScrollView() -> UIScrollView? {
         func scan(_ v: UIView) -> UIScrollView? {
             if let s = v as? UIScrollView, s.isPagingEnabled, s.contentSize.width > s.bounds.width + 2 {
                 return s
@@ -680,28 +680,28 @@ private extension UIView {
     }
 }
 
-private func intera_hubFindPageViewController(from root: UIViewController) -> UIPageViewController? {
+private func onCuts_hubFindPageViewController(from root: UIViewController) -> UIPageViewController? {
     if let p = root as? UIPageViewController { return p }
     for child in root.children {
-        if let found = intera_hubFindPageViewController(from: child) { return found }
+        if let found = onCuts_hubFindPageViewController(from: child) { return found }
     }
     if let nav = root as? UINavigationController {
         for vc in nav.viewControllers {
-            if let found = intera_hubFindPageViewController(from: vc) { return found }
+            if let found = onCuts_hubFindPageViewController(from: vc) { return found }
         }
     }
     if let tab = root as? UITabBarController {
         for vc in tab.viewControllers ?? [] {
-            if let found = intera_hubFindPageViewController(from: vc) { return found }
+            if let found = onCuts_hubFindPageViewController(from: vc) { return found }
         }
     }
     if let split = root as? UISplitViewController {
         for vc in split.viewControllers {
-            if let found = intera_hubFindPageViewController(from: vc) { return found }
+            if let found = onCuts_hubFindPageViewController(from: vc) { return found }
         }
     }
     if let presented = root.presentedViewController {
-        return intera_hubFindPageViewController(from: presented)
+        return onCuts_hubFindPageViewController(from: presented)
     }
     return nil
 }

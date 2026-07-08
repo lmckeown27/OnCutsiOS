@@ -1,6 +1,6 @@
 //
 //  ConsumerPostPaymentReviewView.swift
-//  Intera
+//  OnCuts
 //
 //  After paying, rate the provider (0 = no rating) and optionally leave a written review.
 //
@@ -24,14 +24,14 @@ struct ConsumerPostPaymentReviewView: View {
 
     var body: some View {
         ZStack {
-            InteraLavaLampBackground()
+            OnCutsLavaLampBackground()
 
             ScrollView {
                 VStack(spacing: 0) {
                     reviewGlassCard {
                         VStack(spacing: 28) {
                             Text("How was your service?")
-                                .font(InteraFont.system(size: 22, weight: .bold, design: .default))
+                                .font(OnCutsFont.system(size: 22, weight: .bold, design: .default))
                                 .foregroundStyle(Color.lavaShellCream)
                                 .multilineTextAlignment(.center)
                                 .onTapGesture { dismissReviewKeyboard() }
@@ -42,14 +42,14 @@ struct ConsumerPostPaymentReviewView: View {
 
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Written review (optional)")
-                                    .font(InteraFont.subheadline(weight: .semibold))
+                                    .font(OnCutsFont.subheadline(weight: .semibold))
                                     .foregroundStyle(Color.lavaShellCreamSecondary)
                                     .onTapGesture { dismissReviewKeyboard() }
 
                                 ZStack(alignment: .topLeading) {
                                     if comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                         Text("Share feedback about your service…")
-                                            .font(InteraFont.body)
+                                            .font(OnCutsFont.body)
                                             .foregroundStyle(Color.paymentFieldPlaceholder)
                                             .padding(.horizontal, 18)
                                             .padding(.vertical, 18)
@@ -57,8 +57,8 @@ struct ConsumerPostPaymentReviewView: View {
                                     }
                                     TextEditor(text: $comment)
                                         .scrollContentBackground(.hidden)
-                                        .font(InteraFont.body)
-                                        .interaAdaptiveTextEditorForeground()
+                                        .font(OnCutsFont.body)
+                                        .onCutsAdaptiveTextEditorForeground()
                                         .focused($isReviewCommentFocused)
                                         .frame(minHeight: 120)
                                         .padding(10)
@@ -69,13 +69,13 @@ struct ConsumerPostPaymentReviewView: View {
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .stroke(Color.interaShellGlassStroke, lineWidth: 1)
+                                        .stroke(Color.onCutsShellGlassStroke, lineWidth: 1)
                                 )
                             }
 
                             if let bannerError {
                                 Text(bannerError)
-                                    .font(InteraFont.footnote)
+                                    .font(OnCutsFont.footnote)
                                     .foregroundStyle(.orange)
                                     .multilineTextAlignment(.center)
                             }
@@ -91,7 +91,7 @@ struct ConsumerPostPaymentReviewView: View {
                                                 .tint(Color.paymentFilledButtonLabel)
                                         }
                                         Text("Submit")
-                                            .font(InteraFont.system(size: 18, weight: .bold))
+                                            .font(OnCutsFont.system(size: 18, weight: .bold))
                                     }
                                     .frame(maxWidth: .infinity)
                                     .frame(minHeight: 52)
@@ -108,7 +108,7 @@ struct ConsumerPostPaymentReviewView: View {
                                     dismissReviewKeyboard()
                                     Task { await skipWithoutSubmitting() }
                                 }
-                                .font(InteraFont.subheadline(weight: .semibold))
+                                .font(OnCutsFont.subheadline(weight: .semibold))
                                 .foregroundStyle(Color.paymentOutlineButtonLabel)
                             }
                         }
@@ -142,11 +142,11 @@ struct ConsumerPostPaymentReviewView: View {
                     }
                 } label: {
                     Image(systemName: index <= starRating ? "star.fill" : "star")
-                        .font(InteraFont.system(size: 36, weight: .medium))
+                        .font(OnCutsFont.system(size: 36, weight: .medium))
                         .foregroundStyle(
                             index <= starRating
                                 ? Color(red: 1, green: 0.84, blue: 0.35)
-                                : Color.interaShellForegroundTertiary
+                                : Color.onCutsShellForegroundTertiary
                         )
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
@@ -171,7 +171,7 @@ struct ConsumerPostPaymentReviewView: View {
             }
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.interaShellGlassStroke, lineWidth: 1)
+                    .stroke(Color.onCutsShellGlassStroke, lineWidth: 1)
             )
     }
 

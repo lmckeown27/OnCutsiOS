@@ -83,7 +83,7 @@ export const updateUserProfile = async (req: Request, res: Response) => {
 };
 
 /**
- * PUT /api/v1/users/me — same body as `PUT /users/:id` but uses Bearer auth (Intera).
+ * PUT /api/v1/users/me — same body as `PUT /users/:id` but uses Bearer auth (OnCutsiOS).
  */
 export const updateMyUserProfile = async (req: AuthRequest, res: Response) => {
   try {

@@ -1,6 +1,6 @@
 //
 //  IntegratedSignUpSheet.swift
-//  Intera
+//  OnCuts
 //
 //  Presents one or more registered package sign-up flows.
 //
@@ -21,7 +21,7 @@ struct IntegratedSignUpSheet: View {
         ZStack {
             // Single flow (`LiquidGlassSignupFlowView`) paints its own lava; avoid stacking two lamps.
             if flows.count != 1 {
-                InteraShellBackground()
+                OnCutsShellBackground()
             }
 
             NavigationStack(path: $path) {
@@ -46,11 +46,11 @@ struct IntegratedSignUpSheet: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(flow.title)
-                                        .font(InteraFont.headline)
+                                        .font(OnCutsFont.headline)
                                         .foregroundStyle(Color.lavaShellCream)
                                     if let subtitle = flow.subtitle, !subtitle.isEmpty {
                                         Text(subtitle)
-                                            .font(InteraFont.caption)
+                                            .font(OnCutsFont.caption)
                                             .foregroundStyle(Color.lavaShellCreamSecondary)
                                     }
                                 }
@@ -87,7 +87,7 @@ struct IntegratedSignUpSheet: View {
             }
             #if os(iOS)
             .toolbarBackground(.hidden, for: .navigationBar)
-            .interaNavigationShellBackgroundClear()
+            .onCutsNavigationShellBackgroundClear()
             #endif
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

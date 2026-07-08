@@ -1,6 +1,6 @@
 //
 //  ProfileBlockedMessagingUsersView.swift
-//  Intera
+//  OnCuts
 //
 //  Lists messaging blocks from `GET /messages/blocks` and supports `POST /messages/unblock`.
 //
@@ -47,7 +47,7 @@ struct ProfileBlockedMessagingUsersView: View {
                             )
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(user.displayName)
-                                    .font(InteraFont.headline(weight: .semibold))
+                                    .font(OnCutsFont.headline(weight: .semibold))
                                     .foregroundStyle(.primary)
                                     .lineLimit(2)
                                     .minimumScaleFactor(0.85)
@@ -61,7 +61,7 @@ struct ProfileBlockedMessagingUsersView: View {
                                     unblockTarget = user
                                 } label: {
                                     Text("Unblock")
-                                        .font(InteraFont.body(weight: .semibold))
+                                        .font(OnCutsFont.body(weight: .semibold))
                                 }
                                 .buttonStyle(.bordered)
                                 .tint(Color.red)

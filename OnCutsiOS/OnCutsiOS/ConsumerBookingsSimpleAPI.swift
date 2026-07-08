@@ -1,6 +1,6 @@
 //
 //  ConsumerBookingsSimpleAPI.swift
-//  Intera
+//  OnCuts
 //
 //  Fetches consumer bookings from `GET /api/v1/bookings-simple?role=consumer` (same as the OnCuts web app).
 //

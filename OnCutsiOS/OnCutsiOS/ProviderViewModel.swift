@@ -1,6 +1,6 @@
 //
 //  ProviderViewModel.swift
-//  Intera
+//  OnCuts
 //
 //  Loads providers: OnCuts `GET /api/v1/barbers` first, then legacy `/providers/list`.
 //
@@ -87,7 +87,7 @@ final class ProviderViewModel {
                 prefetchProviderProfileImages(providers)
                 return
             } catch {
-                if InteraRefreshCancellation.isBenignCancellation(error) {
+                if OnCutsRefreshCancellation.isBenignCancellation(error) {
                     if !lastSuccessfulProviders.isEmpty {
                         state = .success(lastSuccessfulProviders)
                     } else {
@@ -159,7 +159,7 @@ final class ProviderViewModel {
                 prefetchProviderProfileImages(providers)
                 return
             } catch {
-                if InteraRefreshCancellation.isBenignCancellation(error) {
+                if OnCutsRefreshCancellation.isBenignCancellation(error) {
                     if !lastSuccessfulProviders.isEmpty {
                         state = .success(lastSuccessfulProviders)
                     } else {
@@ -175,7 +175,7 @@ final class ProviderViewModel {
         }
 
         let err = lastError ?? URLError(.cannotConnectToHost)
-        if InteraRefreshCancellation.isBenignCancellation(err) {
+        if OnCutsRefreshCancellation.isBenignCancellation(err) {
             if !lastSuccessfulProviders.isEmpty {
                 state = .success(lastSuccessfulProviders)
             } else {

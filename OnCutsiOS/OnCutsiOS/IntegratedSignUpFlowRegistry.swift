@@ -1,6 +1,6 @@
 //
 //  IntegratedSignUpFlowRegistry.swift
-//  Intera
+//  OnCuts
 //
 //  Register sign-up flows from integrated packages (OnCutsModule today; more modules later).
 //

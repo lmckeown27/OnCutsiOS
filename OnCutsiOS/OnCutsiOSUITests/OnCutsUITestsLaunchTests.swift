@@ -1,13 +1,13 @@
 //
-//  InteraUITestsLaunchTests.swift
-//  InteraUITests
+//  OnCutsUITestsLaunchTests.swift
+//  OnCutsUITests
 //
 //  Created by Liam McKeown on 3/8/26.
 //
 
 import XCTest
 
-final class InteraUITestsLaunchTests: XCTestCase {
+final class OnCutsUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

@@ -1,6 +1,6 @@
 //
-//  InteraAppDelegate.swift
-//  Intera
+//  OnCutsAppDelegate.swift
+//  OnCuts
 //
 //  Firebase (and Google Sign-In) startup on iOS / iPadOS / visionOS / Mac Catalyst.
 //  Remote notifications: APNs + Firebase Messaging, registration with OnCuts API.
@@ -13,11 +13,11 @@ import OSLog
 import UserNotifications
 import UIKit
 
-private let interaPushDelegateLog = Logger(subsystem: "com.intera", category: "AppDelegate")
+private let onCutsPushDelegateLog = Logger(subsystem: "com.oncuts", category: "AppDelegate")
 
 /// Registers with `UIApplicationDelegateAdaptor` so `FirebaseApp.configure()` runs at process launch.
 /// `GIDSignIn` is configured from `CLIENT_ID` in `GoogleService-Info.plist` via `GoogleSignInAppSupport`.
-final class InteraAppDelegate: NSObject, UIApplicationDelegate {
+final class OnCutsAppDelegate: NSObject, UIApplicationDelegate {
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
@@ -38,7 +38,7 @@ final class InteraAppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         #if os(iOS) || os(visionOS)
         let hex = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-        interaPushDelegateLog.notice("APNs device token received length=\(hex.count) prefix=\(String(hex.prefix(16)))…")
+        onCutsPushDelegateLog.notice("APNs device token received length=\(hex.count) prefix=\(String(hex.prefix(16)))…")
         Messaging.messaging().apnsToken = deviceToken
         PushDeviceRegistration.persistAPNsDeviceToken(deviceToken)
         Task {
@@ -48,7 +48,7 @@ final class InteraAppDelegate: NSObject, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        interaPushDelegateLog.error("APNs registerForRemoteNotifications failed: \(error.localizedDescription)")
+        onCutsPushDelegateLog.error("APNs registerForRemoteNotifications failed: \(error.localizedDescription)")
     }
 
     /// Required when `FirebaseAppDelegateProxyEnabled` is false: forward remote payloads to Firebase Messaging.
@@ -70,9 +70,9 @@ final class InteraAppDelegate: NSObject, UIApplicationDelegate {
         let options: UNAuthorizationOptions = [.alert, .badge, .sound]
         UNUserNotificationCenter.current().requestAuthorization(options: options) { granted, error in
             if let error {
-                interaPushDelegateLog.error("Notification permission request failed: \(error.localizedDescription)")
+                onCutsPushDelegateLog.error("Notification permission request failed: \(error.localizedDescription)")
             } else {
-                interaPushDelegateLog.notice("Notification permission granted=\(granted)")
+                onCutsPushDelegateLog.notice("Notification permission granted=\(granted)")
             }
             DispatchQueue.main.async {
                 application.registerForRemoteNotifications()
@@ -83,7 +83,7 @@ final class InteraAppDelegate: NSObject, UIApplicationDelegate {
 }
 
 #if os(iOS) || os(visionOS)
-extension InteraAppDelegate: UNUserNotificationCenterDelegate {
+extension OnCutsAppDelegate: UNUserNotificationCenterDelegate {
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
@@ -120,9 +120,9 @@ extension InteraAppDelegate: UNUserNotificationCenterDelegate {
         let flat = flattenRemoteNotificationUserInfo(userInfo)
         let type = (flat["type"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         guard type == "message" else { return }
-        guard let cid = InteraPushNavigationPayload.conversationId(from: userInfo) else { return }
+        guard let cid = OnCutsPushNavigationPayload.conversationId(from: userInfo) else { return }
         NotificationCenter.default.post(
-            name: .interaOpenMessagingConversation,
+            name: .onCutsOpenMessagingConversation,
             object: nil,
             userInfo: ["conversationId": cid]
         )
@@ -184,14 +184,14 @@ extension InteraAppDelegate: UNUserNotificationCenterDelegate {
         guard opensDetailTypes.contains(type) else { return }
 
         NotificationCenter.default.post(
-            name: .interaOpenBookingDetail,
+            name: .onCutsOpenBookingDetail,
             object: nil,
             userInfo: ["bookingId": bid]
         )
     }
 }
 
-extension InteraAppDelegate: MessagingDelegate {
+extension OnCutsAppDelegate: MessagingDelegate {
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         // OnCuts currently delivers iOS pushes via APNs using the hex token from `register-device`.
         // FCM token is still refreshed here for Firebase Console / future use.

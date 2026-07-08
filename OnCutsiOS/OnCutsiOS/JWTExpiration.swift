@@ -1,6 +1,6 @@
 //
 //  JWTExpiration.swift
-//  Intera
+//  OnCuts
 //
 //  Reads `exp` from JWT payloads without verifying signatures (client-side scheduling only).
 //

@@ -1,6 +1,6 @@
 //
 //  ServiceType+ProviderFilter.swift
-//  Intera
+//  OnCuts
 //
 //  Infers `ServiceType` from `ServiceProvider` and filters the browse list.
 //

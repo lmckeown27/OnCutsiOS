@@ -1,6 +1,6 @@
 //
 //  MessagingGlassComponents.swift
-//  Intera
+//  OnCuts
 //
 //  Layered glass UI for the messaging flow: inbox tiles, liquid bubbles, pinned booking header, motion + haptics.
 //
@@ -27,7 +27,7 @@ enum MessagingFlowHaptics {
     }
 
     static func sentMessage() {
-        InteraLiquidGlassHaptics.notification(.success)
+        OnCutsLiquidGlassHaptics.notification(.success)
     }
     #else
     static func receivedMessage() {}
@@ -195,26 +195,26 @@ struct PinnedBookingHeader: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 6) {
                         Image(systemName: "calendar.badge.clock")
-                            .font(InteraFont.caption(weight: .semibold))
-                            .foregroundStyleInteraShellIconSecondary()
+                            .font(OnCutsFont.caption(weight: .semibold))
+                            .foregroundStyleOnCutsShellIconSecondary()
                         Text("Latest booking")
-                            .font(InteraFont.caption(weight: .semibold))
+                            .font(OnCutsFont.caption(weight: .semibold))
                             .foregroundStyle(.secondary)
                     }
                     Text(row.displayServiceName)
-                        .font(InteraFont.headlineSmall)
+                        .font(OnCutsFont.headlineSmall)
                         .foregroundStyle(.primary)
                     Text(row.displayStatus)
-                        .font(InteraFont.caption(weight: .semibold))
+                        .font(OnCutsFont.caption(weight: .semibold))
                         .foregroundStyleOliveGreen(opacity: 0.95)
                     if let when = formattedSchedule(row) {
                         Text(when)
-                            .font(InteraFont.subheadline)
+                            .font(OnCutsFont.subheadline)
                             .foregroundStyle(.secondary)
                     }
                     if let loc = row.location?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty {
                         Label(loc, systemImage: "mappin.and.ellipse")
-                            .font(InteraFont.caption)
+                            .font(OnCutsFont.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                     }
@@ -227,7 +227,7 @@ struct PinnedBookingHeader: View {
                 }
             } else if loadFailed {
                 Text("Couldn’t refresh booking details")
-                    .font(InteraFont.caption)
+                    .font(OnCutsFont.caption)
                     .foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 4)
@@ -263,7 +263,7 @@ struct PinnedBookingHeader: View {
                 consumerUserId: sessionManager.currentSession?.userId
             )
         } catch {
-            if InteraRefreshCancellation.isBenignCancellation(error) { return }
+            if OnCutsRefreshCancellation.isBenignCancellation(error) { return }
             bookings = []
             loadFailed = true
         }

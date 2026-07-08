@@ -1,6 +1,6 @@
 //
 //  ProductionLogging.swift
-//  Intera
+//  OnCuts
 //
 //  Non-fatal error reporting to Firebase Crashlytics (when linked).
 //
@@ -27,6 +27,6 @@ enum ProductionLogging {
     }
 
     static func recordNonFatal(message: String, context: [String: String] = [:]) {
-        recordNonFatal(NSError(domain: "Intera", code: -1, userInfo: [NSLocalizedDescriptionKey: message]), context: context)
+        recordNonFatal(NSError(domain: "OnCuts", code: -1, userInfo: [NSLocalizedDescriptionKey: message]), context: context)
     }
 }

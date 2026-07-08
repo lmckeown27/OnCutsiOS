@@ -1,6 +1,6 @@
 //
 //  ServiceProviderCard.swift
-//  Intera
+//  OnCuts
 //
 //  Platform-agnostic card component for displaying service provider information
 //  Works for any service platform: haircuts, beauty, wellness, fitness, etc.
@@ -73,25 +73,25 @@ struct ServiceProviderCard: View {
 
     private var cardPrimaryTextColor: Color {
         if usesLiquidGlassMorphChrome { return .primary }
-        if usesOpaqueBrowseChrome { return .interaShellForeground }
+        if usesOpaqueBrowseChrome { return .onCutsShellForeground }
         return .neutral800
     }
 
     private var cardSecondaryTextColor: Color {
         if usesLiquidGlassMorphChrome { return .secondary }
-        if usesOpaqueBrowseChrome { return .interaShellForegroundSecondary }
+        if usesOpaqueBrowseChrome { return .onCutsShellForegroundSecondary }
         return .neutral600
     }
 
     private var kindPillForegroundColor: Color {
         if usesLiquidGlassMorphChrome { return .white }
-        if usesOpaqueBrowseChrome { return .interaShellForegroundSecondary }
+        if usesOpaqueBrowseChrome { return .onCutsShellForegroundSecondary }
         return .neutral600
     }
 
     private var kindPillBackgroundColor: Color {
         if usesLiquidGlassMorphChrome { return Color.white.opacity(0.22) }
-        if usesOpaqueBrowseChrome { return Color.interaShellForeground.opacity(0.1) }
+        if usesOpaqueBrowseChrome { return Color.onCutsShellForeground.opacity(0.1) }
         return Color.neutral200
     }
 
@@ -121,7 +121,7 @@ struct ServiceProviderCard: View {
                 VStack(alignment: .leading, spacing: .space2) {
                     // Name
                     Text(provider.businessName)
-                        .font(InteraFont.headlineSmall)
+                        .font(OnCutsFont.headlineSmall)
                         .foregroundStyle(cardPrimaryTextColor)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
@@ -130,14 +130,14 @@ struct ServiceProviderCard: View {
                     if shouldShowStarRatingOnCard, let rating = provider.rating {
                         HStack(spacing: 5) {
                             Image(systemName: "star.fill")
-                                .font(InteraFont.subheadline(weight: .semibold))
+                                .font(OnCutsFont.subheadline(weight: .semibold))
                                 .foregroundStyle(.yellow)
                             Text(String(format: "%.1f", rating))
-                                .font(InteraFont.subheadline(weight: .semibold))
+                                .font(OnCutsFont.subheadline(weight: .semibold))
                                 .foregroundStyle(cardPrimaryTextColor)
                             if let count = provider.reviewCount, count > 0 {
                                 Text("(\(count))")
-                                    .font(InteraFont.caption(weight: .medium))
+                                    .font(OnCutsFont.caption(weight: .medium))
                                     .foregroundStyle(cardSecondaryTextColor)
                             }
                         }
@@ -150,7 +150,7 @@ struct ServiceProviderCard: View {
                     
                     // Provider kind (Barber, Makeup, Nails, …) — not individual services / haircut names
                     Text(provider.providerKindDisplayName)
-                        .font(InteraFont.caption)
+                        .font(OnCutsFont.caption)
                         .fontWeight(.medium)
                         .foregroundStyle(kindPillForegroundColor)
                         .padding(.horizontal, 8)
@@ -161,7 +161,7 @@ struct ServiceProviderCard: View {
                     // Instagram handle (visible only; open profile from detail sheet to visit)
                     if !provider.instagramDisplayHandle.isEmpty {
                         Text(provider.instagramDisplayHandle)
-                            .font(InteraFont.bodySmall)
+                            .font(OnCutsFont.bodySmall)
                             .foregroundStyle(cardSecondaryTextColor)
                             .multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
@@ -176,7 +176,7 @@ struct ServiceProviderCard: View {
                     VStack(alignment: .trailing, spacing: .space1) {
                         if let priceRange = provider.priceRange {
                             Text(priceRange.displayLabel)
-                                .font(InteraFont.headlineSmall)
+                                .font(OnCutsFont.headlineSmall)
                                 .multilineTextAlignment(.trailing)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .modifier(ServiceProviderCardPriceLabelStyle(
@@ -186,10 +186,10 @@ struct ServiceProviderCard: View {
                         if let distanceLabel = provider.formattedDistanceFromUser {
                             HStack(spacing: 4) {
                                 Image(systemName: "location.fill")
-                                    .font(InteraFont.caption(weight: .semibold))
+                                    .font(OnCutsFont.caption(weight: .semibold))
                                     .accessibilityHidden(true)
                                 Text(distanceLabel)
-                                    .font(InteraFont.caption(weight: .semibold))
+                                    .font(OnCutsFont.caption(weight: .semibold))
                             }
                             .foregroundStyle(cardSecondaryTextColor)
                             .accessibilityElement(children: .combine)
@@ -247,13 +247,13 @@ private struct ServiceProviderCardOpaqueBrowseChrome: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         shape
-            .fill(Color.interaShellBackground.opacity(0.96))
+            .fill(Color.onCutsShellBackground.opacity(0.96))
             .overlay {
-                shape.strokeBorder(Color.interaShellGlassStroke, lineWidth: 0.5)
+                shape.strokeBorder(Color.onCutsShellGlassStroke, lineWidth: 0.5)
             }
             .overlay {
                 if isPressed {
-                    shape.fill(Color.interaShellForeground.opacity(0.07))
+                    shape.fill(Color.onCutsShellForeground.opacity(0.07))
                 }
             }
     }
@@ -876,7 +876,7 @@ extension ServiceProvider {
     ScrollView {
         VStack(spacing: .space4) {
             Text("HAIRCUTS")
-                .font(InteraFont.labelSmall)
+                .font(OnCutsFont.labelSmall)
                 .foregroundStyle(Color.neutral500)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
@@ -885,7 +885,7 @@ extension ServiceProvider {
             }
             
             Text("BEAUTY")
-                .font(InteraFont.labelSmall)
+                .font(OnCutsFont.labelSmall)
                 .foregroundStyle(Color.neutral500)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, .space4)

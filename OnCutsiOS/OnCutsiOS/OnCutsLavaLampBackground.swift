@@ -1,6 +1,6 @@
 //
-//  InteraLavaLampBackground.swift
-//  Intera
+//  OnCutsLavaLampBackground.swift
+//  OnCuts
 //
 //  Adaptive consumer shell background (white in light mode, black in dark mode).
 //
@@ -11,9 +11,9 @@ import UIKit
 #endif
 
 /// Full-screen shell backdrop that follows the system appearance.
-struct InteraShellBackground: View {
+struct OnCutsShellBackground: View {
     var body: some View {
-        Color.interaShellBackground
+        Color.onCutsShellBackground
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea()
             .allowsHitTesting(false)
@@ -21,14 +21,14 @@ struct InteraShellBackground: View {
 }
 
 /// Backward-compatible name for call sites that still reference the lava lamp type.
-typealias InteraLavaLampBackground = InteraShellBackground
+typealias OnCutsLavaLampBackground = OnCutsShellBackground
 
 // MARK: - Consumer hub shell (paged `TabView`)
 
 /// One shared adaptive backdrop behind `UnifiedProviderHomeScreen` so hub tabs do not flash mismatched backgrounds during swipes.
-struct InteraHubTabShellBackground: View {
+struct OnCutsHubTabShellBackground: View {
     var body: some View {
-        InteraShellBackground()
+        OnCutsShellBackground()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
@@ -36,7 +36,7 @@ struct InteraHubTabShellBackground: View {
 #if os(iOS)
 /// SwiftUI’s navigation host often paints an opaque system background over the window; without this,
 /// the root shell backdrop stays covered.
-private struct InteraNavigationShellBackgroundClearModifier: ViewModifier {
+private struct OnCutsNavigationShellBackgroundClearModifier: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
             content.containerBackground(Color.clear, for: .navigation)
@@ -48,18 +48,18 @@ private struct InteraNavigationShellBackgroundClearModifier: ViewModifier {
 
 extension View {
     /// Apply to the root view inside a `NavigationStack` so the shell background remains visible behind clear content.
-    func interaNavigationShellBackgroundClear() -> some View {
-        modifier(InteraNavigationShellBackgroundClearModifier())
+    func onCutsNavigationShellBackgroundClear() -> some View {
+        modifier(OnCutsNavigationShellBackgroundClearModifier())
     }
 
     /// Re-enables the edge swipe-to-pop gesture when the navigation bar is hidden (e.g. conversation chrome).
-    func interaEnableNavigationSwipeBack() -> some View {
-        background(InteraNavigationInteractivePopEnabler())
+    func onCutsEnableNavigationSwipeBack() -> some View {
+        background(OnCutsNavigationInteractivePopEnabler())
     }
 }
 
 /// Keeps `UINavigationController`'s interactive pop alive when SwiftUI hides the navigation bar.
-private struct InteraNavigationInteractivePopEnabler: UIViewControllerRepresentable {
+private struct OnCutsNavigationInteractivePopEnabler: UIViewControllerRepresentable {
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }

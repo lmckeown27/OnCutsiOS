@@ -1,6 +1,6 @@
 //
 //  BookingTimelineRow.swift
-//  Intera
+//  OnCuts
 //
 //  Modular row for the bookings timeline: past (muted), today (emphasis + tap → detail),
 //  upcoming (time-forward).
@@ -110,16 +110,16 @@ struct BookingTimelineRow: View {
     private var compactLabels: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(row.displayServiceName)
-                .font(InteraFont.headlineSmall)
+                .font(OnCutsFont.headlineSmall)
                 .foregroundStyle(Color.lavaShellCream)
             Text(providerLine)
-                .font(InteraFont.subheadline)
+                .font(OnCutsFont.subheadline)
                 .foregroundStyle(Color.lavaShellCreamSecondary)
             Text(scheduleLine)
-                .font(InteraFont.caption)
+                .font(OnCutsFont.caption)
                 .foregroundStyle(Color.lavaShellCream.opacity(position == .past ? 0.62 : 0.92))
             Text(row.displayStatus)
-                .font(InteraFont.caption2(weight: .semibold))
+                .font(OnCutsFont.caption2(weight: .semibold))
                 .foregroundStyle(Color.lavaShellCreamTertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

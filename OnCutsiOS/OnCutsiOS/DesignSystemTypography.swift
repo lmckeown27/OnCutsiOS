@@ -1,8 +1,8 @@
 //
 //  DesignSystem+Typography.swift
-//  Intera
+//  OnCuts
 //
-//  Intera typography — Inter Variable.
+//  OnCuts typography — Inter Variable.
 //
 
 import SwiftUI
@@ -11,32 +11,32 @@ extension Font {
     
     // MARK: - Display (Largest headlines)
     
-    static let displayLarge = InteraFont.displayLarge
-    static let displayMedium = InteraFont.displayMedium
-    static let displaySmall = InteraFont.displaySmall
+    static let displayLarge = OnCutsFont.displayLarge
+    static let displayMedium = OnCutsFont.displayMedium
+    static let displaySmall = OnCutsFont.displaySmall
     
     // MARK: - Headlines
     
-    static let headlineLarge = InteraFont.headlineLarge
-    static let headlineMedium = InteraFont.headlineMedium
-    static let headlineSmall = InteraFont.headlineSmall
+    static let headlineLarge = OnCutsFont.headlineLarge
+    static let headlineMedium = OnCutsFont.headlineMedium
+    static let headlineSmall = OnCutsFont.headlineSmall
     
     // MARK: - Body Text
     
-    static let bodyLarge = InteraFont.bodyLarge
-    static let bodyMedium = InteraFont.bodyMedium
-    static let bodySmall = InteraFont.bodySmall
+    static let bodyLarge = OnCutsFont.bodyLarge
+    static let bodyMedium = OnCutsFont.bodyMedium
+    static let bodySmall = OnCutsFont.bodySmall
     
     // MARK: - Labels (UI elements)
     
-    static let labelLarge = InteraFont.labelLarge
-    static let labelMedium = InteraFont.labelMedium
-    static let labelSmall = InteraFont.labelSmall
+    static let labelLarge = OnCutsFont.labelLarge
+    static let labelMedium = OnCutsFont.labelMedium
+    static let labelSmall = OnCutsFont.labelSmall
     
     // MARK: - Captions
     
-    static let caption = InteraFont.caption
-    static let captionSmall = InteraFont.captionSmall
+    static let caption = OnCutsFont.caption
+    static let captionSmall = OnCutsFont.captionSmall
 }
 
 // MARK: - Text Styles (Custom ViewModifier)
@@ -73,25 +73,25 @@ struct OnCutsTextStyle: ViewModifier {
                 switch self {
                 case .displayLarge, .displayMedium, .displaySmall,
                      .headlineLarge, .headlineMedium, .headlineSmall:
-                    return .interaShellForeground
+                    return .onCutsShellForeground
                 case .bodyLarge, .bodyMedium, .bodySmall:
-                    return .interaShellForegroundSecondary
+                    return .onCutsShellForegroundSecondary
                 case .labelLarge, .labelMedium, .labelSmall:
-                    return .interaShellForegroundSecondary
+                    return .onCutsShellForegroundSecondary
                 case .caption, .captionSmall:
-                    return .interaShellForegroundTertiary
+                    return .onCutsShellForegroundTertiary
                 }
             }
             switch self {
             case .displayLarge, .displayMedium, .displaySmall,
                  .headlineLarge, .headlineMedium, .headlineSmall:
-                return .interaShellForeground
+                return .onCutsShellForeground
             case .bodyLarge, .bodyMedium, .bodySmall:
-                return .interaShellForegroundSecondary
+                return .onCutsShellForegroundSecondary
             case .labelLarge, .labelMedium, .labelSmall:
-                return .interaShellForegroundSecondary
+                return .onCutsShellForegroundSecondary
             case .caption, .captionSmall:
-                return .interaShellForegroundTertiary
+                return .onCutsShellForegroundTertiary
             }
         }
     }

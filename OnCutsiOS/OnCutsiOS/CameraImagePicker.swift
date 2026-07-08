@@ -1,6 +1,6 @@
 //
 //  CameraImagePicker.swift
-//  Intera
+//  OnCuts
 //
 //  Presents `UIImagePickerController` for `.camera` from SwiftUI (e.g. message composer).
 //

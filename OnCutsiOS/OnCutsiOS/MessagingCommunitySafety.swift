@@ -1,6 +1,6 @@
 //
 //  MessagingCommunitySafety.swift
-//  Intera
+//  OnCuts
 //
 //  Terms gate + blocked-user set for messaging (App Store UGC / Guideline 1.2).
 //
@@ -55,7 +55,7 @@ enum MessagingCommunitySafety {
     }
 }
 
-enum InteraMessagingContentFilter {
+enum OnCutsMessagingContentFilter {
     /// Lightweight client-side filter for obvious abuse (not a substitute for human moderation).
     static func textViolatesCommunityRules(_ raw: String) -> Bool {
         let s = raw.folding(options: .diacriticInsensitive, locale: .current).lowercased()

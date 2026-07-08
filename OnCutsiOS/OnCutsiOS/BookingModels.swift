@@ -1,6 +1,6 @@
 //
 //  BookingModels.swift
-//  Intera
+//  OnCuts
 //
 //  Booking intake and review metadata. `scheduledAt` is formatted for Pacific per backend contract.
 //

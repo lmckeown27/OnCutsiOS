@@ -1,6 +1,6 @@
 //
 //  GoogleSignInAppSupport.swift
-//  Intera
+//  OnCuts
 //
 //  Configures the Google Sign-In SDK, restores sessions, runs interactive sign-in,
 //  and maps `GIDGoogleUser` into `UserSession` (email + profile image for the app profile).

@@ -1,5 +1,5 @@
 // `STRIPE_PUBLISHABLE_KEY` is substituted into `GoogleSignInURL.plist` as `StripePublishableKey` at build time.
-// Debug and Release both use this file as the Intera target’s base xcconfig — one source of truth.
+// Debug and Release both use this file as the OnCutsiOS target’s base xcconfig — one source of truth.
 // Also linked at the Project (not only Target) configurations so `$(STRIPE_PUBLISHABLE_KEY)` resolves reliably.
 // If the built app’s Info.plist still shows `$(STRIPE_PUBLISHABLE_KEY)` literally: Product → Clean Build Folder, delete the app, rebuild.
 //
@@ -12,7 +12,7 @@
 //
 // Apple Pay (PaymentSheet shows cards from Wallet): set `STRIPE_APPLE_PAY_MERCHANT_ID` to your
 // `merchant.…` id from Apple Developer → Identifiers → Merchant IDs, enable the Apple Pay capability
-// on the Intera target, and register Apple Pay in Stripe Dashboard → Settings → Payment methods.
+// on the OnCutsiOS target, and register Apple Pay in Stripe Dashboard → Settings → Payment methods.
 
 STRIPE_APPLE_PAY_MERCHANT_ID = merchant.com.liammckeown.Intera
 STRIPE_APPLE_PAY_MERCHANT_COUNTRY_CODE = US

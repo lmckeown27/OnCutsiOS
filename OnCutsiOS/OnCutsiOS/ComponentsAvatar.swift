@@ -1,6 +1,6 @@
 //
 //  AvatarView.swift
-//  Intera
+//  OnCuts
 //
 //  Avatar component with olive outline person placeholder when no photo (or image load fails).
 //
@@ -93,8 +93,8 @@ struct ServiceProviderProfileThumbnail: View {
                 Text(businessName.prefix(2).uppercased())
                     .font(
                         size >= 100
-                            ? InteraFont.title
-                            : (size >= 72 ? InteraFont.headline : InteraFont.caption(weight: .bold))
+                            ? OnCutsFont.title
+                            : (size >= 72 ? OnCutsFont.headline : OnCutsFont.caption(weight: .bold))
                     )
                     .foregroundStyleOliveGreen()
             }
@@ -108,7 +108,7 @@ enum AvatarClipStyle: Equatable {
 }
 
 /// Empty-state avatar: olive **outline** `person` (same glyph family as the Profile hub tab’s `person.fill`).
-struct InteraDefaultProfileAvatarGlyph: View {
+struct OnCutsDefaultProfileAvatarGlyph: View {
     /// Outer size of the avatar slot (width and height of the clipped area).
     var slotDiameter: CGFloat
 
@@ -120,8 +120,8 @@ struct InteraDefaultProfileAvatarGlyph: View {
         ZStack {
             Color.oliveGreen.opacity(0.08)
             Image(systemName: "person")
-                .font(InteraFont.system(size: iconFontSize, weight: .semibold))
-                .foregroundStyleInteraShellIconSecondary()
+                .font(OnCutsFont.system(size: iconFontSize, weight: .semibold))
+                .foregroundStyleOnCutsShellIconSecondary()
         }
         .accessibilityHidden(true)
     }
@@ -164,7 +164,7 @@ struct AvatarView: View {
     }
 
     private var placeholderGlyph: some View {
-        InteraDefaultProfileAvatarGlyph(slotDiameter: size)
+        OnCutsDefaultProfileAvatarGlyph(slotDiameter: size)
     }
 
     private var accessibilityLabel: String {

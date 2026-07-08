@@ -1,6 +1,6 @@
 //
 //  PastProviderBookingsGroupView.swift
-//  Intera
+//  OnCuts
 //
 //  Collapses multiple past services with the same service provider into one card;
 //  expanding shows compact rows for each booking.
@@ -81,7 +81,7 @@ struct PastProviderBookingsGroupView: View {
                                 .scaledToFill()
                         default:
                             Image(systemName: "person.crop.square.fill")
-                                .font(InteraFont.title2)
+                                .font(OnCutsFont.title2)
                                 .foregroundStyle(Color.lavaShellCreamTertiary)
                         }
                     }
@@ -89,7 +89,7 @@ struct PastProviderBookingsGroupView: View {
                     .clipShape(avatarRect)
                 } else {
                     Image(systemName: "person.crop.square.fill")
-                        .font(InteraFont.title2)
+                        .font(OnCutsFont.title2)
                         .foregroundStyle(Color.lavaShellCreamTertiary)
                 }
             }
@@ -98,10 +98,10 @@ struct PastProviderBookingsGroupView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(group.providerDisplayName)
-                    .font(InteraFont.headlineSmall)
+                    .font(OnCutsFont.headlineSmall)
                     .foregroundStyle(Color.lavaShellCream)
                 Text(visitSubtitle)
-                    .font(InteraFont.caption(weight: .semibold))
+                    .font(OnCutsFont.caption(weight: .semibold))
                     .foregroundStyle(Color.lavaShellCreamTertiary)
             }
             Spacer(minLength: 8)
@@ -116,23 +116,23 @@ struct PastProviderBookingsGroupView: View {
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(row.displayServiceName)
-                        .font(InteraFont.subheadline(weight: .semibold))
+                        .font(OnCutsFont.subheadline(weight: .semibold))
                         .foregroundStyle(Color.lavaShellCream)
                     HStack(spacing: 6) {
                         Text(scheduleLine(row))
-                            .font(InteraFont.caption)
+                            .font(OnCutsFont.caption)
                             .foregroundStyle(Color.lavaShellCream.opacity(0.88))
                         Spacer(minLength: 0)
                         Text(row.displayStatus)
-                            .font(InteraFont.caption2(weight: .semibold))
+                            .font(OnCutsFont.caption2(weight: .semibold))
                             .foregroundStyle(Color.lavaShellCreamTertiary)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: "chevron.right")
-                    .font(InteraFont.caption(weight: .bold))
-                    .foregroundStyleInteraShellIconSecondary()
+                    .font(OnCutsFont.caption(weight: .bold))
+                    .foregroundStyleOnCutsShellIconSecondary()
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, 12)

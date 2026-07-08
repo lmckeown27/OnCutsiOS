@@ -1,5 +1,5 @@
 /**
- * Add to OnCuts backend (deployed repo) so Intera POST /api/v1/auth/google works.
+ * Add to OnCuts backend (deployed repo) so OnCutsiOS POST /api/v1/auth/google works.
  *
  * 1) npm deps: `google-auth-library` (already in OnCuts backend).
  * 2) Env (EC2/pm2): set at least one audience your tokens use:

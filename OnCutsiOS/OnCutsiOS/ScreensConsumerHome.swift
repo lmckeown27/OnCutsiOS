@@ -1,6 +1,6 @@
 //
 //  ConsumerHomeScreen.swift
-//  Intera
+//  OnCuts
 //
 //  Main home screen for consumers to browse service providers and manage bookings
 //
@@ -195,7 +195,7 @@ struct ConsumerHomeScreen: View {
             counterpartyUserId: handoff.counterpartyMessagingUserId
         )
         #if os(iOS)
-        .interaNavigationShellBackgroundClear()
+        .onCutsNavigationShellBackgroundClear()
         #endif
     }
 
@@ -214,7 +214,7 @@ struct ConsumerHomeScreen: View {
                 )
                 .id(presentationID)
                 #if os(iOS)
-                .interaNavigationShellBackgroundClear()
+                .onCutsNavigationShellBackgroundClear()
                 #endif
             } else {
                 ContentUnavailableView(
@@ -262,10 +262,10 @@ struct ConsumerHomeScreen: View {
                     } label: {
                         HStack(spacing: .space1) {
                             Image(systemName: "chevron.left")
-                                .font(InteraFont.body)
-                                .foregroundStyleInteraShellIcon()
+                                .font(OnCutsFont.body)
+                                .foregroundStyleOnCutsShellIcon()
                             Text("Services")
-                                .font(InteraFont.bodyMedium)
+                                .font(OnCutsFont.bodyMedium)
                                 .foregroundStyleOliveGreen()
                         }
                     }
@@ -283,8 +283,8 @@ struct ConsumerHomeScreen: View {
                             showMaxDistanceSheet = true
                         } label: {
                             Image(systemName: "location.circle")
-                                .font(InteraFont.body(weight: .semibold))
-                                .foregroundStyleInteraShellIcon()
+                                .font(OnCutsFont.body(weight: .semibold))
+                                .foregroundStyleOnCutsShellIcon()
                         }
                         .accessibilityLabel("Maximum search distance")
                     }
@@ -298,7 +298,7 @@ struct ConsumerHomeScreen: View {
                 #endif
             }
             #if os(iOS)
-            .interaNavigationShellBackgroundClear()
+            .onCutsNavigationShellBackgroundClear()
             .sheet(isPresented: $showMaxDistanceSheet) {
                 ConsumerBrowseDistanceSheet {
                     Task { await loadProviders() }
@@ -411,7 +411,7 @@ struct ConsumerHomeScreen: View {
                     onShowLogin: { showOAuthSignInSheet = true }
                 )
                 #if os(iOS)
-                .interaNavigationShellBackgroundClear()
+                .onCutsNavigationShellBackgroundClear()
                 #endif
             }
             .overlay {
@@ -486,9 +486,9 @@ struct ConsumerHomeScreen: View {
                 openChatForBarberProfileId(id)
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaOpenMessagingConversation)) { output in
+        .onReceive(NotificationCenter.default.publisher(for: .onCutsOpenMessagingConversation)) { output in
             Task { @MainActor in
-                guard let cid = InteraPushNavigationPayload.conversationId(from: output.userInfo) else { return }
+                guard let cid = OnCutsPushNavigationPayload.conversationId(from: output.userInfo) else { return }
                 chatViewModel.pendingPushConversationId = cid
                 showMessagesInbox = true
                 await Task.yield()
@@ -500,7 +500,7 @@ struct ConsumerHomeScreen: View {
                 )
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaOpenBookingDetail)) { output in
+        .onReceive(NotificationCenter.default.publisher(for: .onCutsOpenBookingDetail)) { output in
             guard let raw = output.userInfo?["bookingId"] else { return }
             let bid: String? = {
                 if let s = raw as? String { return s.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -514,7 +514,7 @@ struct ConsumerHomeScreen: View {
                 showBookingChatsHub = true
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaNavigateToBookingsAfterBookingRequest)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .onCutsNavigateToBookingsAfterBookingRequest)) { _ in
             Task { @MainActor in
                 showBookingChatsHub = false
                 await loadConsumerBookingsForHome()
@@ -523,7 +523,7 @@ struct ConsumerHomeScreen: View {
         .onReceive(NotificationCenter.default.publisher(for: .consumerBookingsListShouldRefresh)) { _ in
             Task { await loadConsumerBookingsForHome() }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaNavigateToConsumerHomeAfterPayment)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .onCutsNavigateToConsumerHomeAfterPayment)) { _ in
             Task { @MainActor in
                 chatViewModel.pendingOpenBookingDetailId = nil
                 chatViewModel.homeStackMessagingHandoff = nil
@@ -826,11 +826,11 @@ struct ConsumerHomeScreen: View {
                 Spacer()
 
                 Image(systemName: trimmed.isEmpty ? "scissors" : "magnifyingglass")
-                    .font(InteraFont.system(size: 60))
+                    .font(OnCutsFont.system(size: 60))
                     .foregroundStyle(Color.lavaShellCreamTertiary)
 
                 Text(trimmed.isEmpty ? "No providers available" : "No matching providers")
-                    .font(InteraFont.headlineMedium)
+                    .font(OnCutsFont.headlineMedium)
                     .foregroundStyle(Color.lavaShellCream)
 
                 Text(trimmed.isEmpty ? "Check back later for available service providers" : "Try a different search or category.")
@@ -852,7 +852,7 @@ struct ConsumerHomeScreen: View {
                 if let current = currentBooking {
                     VStack(alignment: .leading, spacing: .space3) {
                         Text("YOUR BOOKING")
-                            .font(InteraFont.labelSmall)
+                            .font(OnCutsFont.labelSmall)
                             .foregroundStyle(Color.neutral500)
                             .padding(.horizontal, .space4)
                         
@@ -875,7 +875,7 @@ struct ConsumerHomeScreen: View {
                 if !pastBookings.isEmpty {
                     VStack(alignment: .leading, spacing: .space3) {
                         Text("HISTORY")
-                            .font(InteraFont.labelSmall)
+                            .font(OnCutsFont.labelSmall)
                             .foregroundStyle(Color.neutral500)
                             .padding(.horizontal, .space4)
                             .padding(.top, .space6)
@@ -887,7 +887,7 @@ struct ConsumerHomeScreen: View {
                         
                         if pastBookings.count > 3 {
                             Text("+ \(pastBookings.count - 3) more")
-                                .font(InteraFont.bodySmall)
+                                .font(OnCutsFont.bodySmall)
                                 .foregroundStyle(Color.neutral500)
                                 .padding(.horizontal, .space4)
                                 .padding(.top, .space2)
@@ -905,11 +905,11 @@ struct ConsumerHomeScreen: View {
     private var emptyBookingsState: some View {
         VStack(spacing: .space4) {
             Image(systemName: "calendar")
-                .font(InteraFont.system(size: 60))
+                .font(OnCutsFont.system(size: 60))
                 .foregroundStyle(Color.lavaShellCreamTertiary)
             
             Text("No booking yet")
-                .font(InteraFont.headlineMedium)
+                .font(OnCutsFont.headlineMedium)
                 .foregroundStyle(Color.lavaShellCream)
             
             Text("Select a service provider to book your appointment")
@@ -930,7 +930,7 @@ struct ConsumerHomeScreen: View {
 
     @MainActor
     private func loadProvidersForPullToRefresh() async {
-        await InteraPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
+        await OnCutsPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
             await loadProviders()
         }
     }
@@ -1147,7 +1147,7 @@ private struct ServiceProviderLiquidGlassNavigationDetailPage: View {
     var body: some View {
         ZStack {
             #if os(iOS)
-            InteraLavaLampBackground()
+            OnCutsLavaLampBackground()
             #else
             ServiceProviderBrowseMeshBackdrop()
                 .ignoresSafeArea()
@@ -1286,10 +1286,10 @@ private struct ServiceProviderDetailPresentationOverlay: View {
 // MARK: - Service Provider detail Reserve button (cream / deep charcoal, spring press + olive glow)
 
 /// Label on the foreground-filled Book CTA (white on black in light mode, charcoal on cream in dark mode).
-private var serviceProviderBookButtonLabelColor: Color { Color.interaShellBackground }
+private var serviceProviderBookButtonLabelColor: Color { Color.onCutsShellBackground }
 
 /// Same as `TimelineSectionHeader` “Today”: 28pt **bold** (system).
-private let serviceProviderReserveTitleFont = InteraFont.system(size: 28, weight: .bold, design: .default)
+private let serviceProviderReserveTitleFont = OnCutsFont.system(size: 28, weight: .bold, design: .default)
 
 /// Brief delay after finger lifts so the press spring can start before presenting booking (keep small for snappy navigation).
 private let serviceProviderBookButtonSpringSettleSeconds: TimeInterval = 0.16
@@ -1514,7 +1514,7 @@ struct ServiceProviderDetailSheet: View {
             )
             barberReviewsState = .loaded(rows)
         } catch {
-            if InteraRefreshCancellation.isBenignCancellation(error) {
+            if OnCutsRefreshCancellation.isBenignCancellation(error) {
                 barberReviewsState = .idle
             } else {
                 barberReviewsState = .failed
@@ -1539,16 +1539,16 @@ struct ServiceProviderDetailSheet: View {
                         // Name & availability only — rating lives in its own section below (not stacked on the hero).
                         VStack(spacing: 12) {
                             Text(provider.businessName)
-                                .font(InteraFont.headlineLarge)
+                                .font(OnCutsFont.headlineLarge)
                                 .foregroundStyle(detailHeadlineColor)
 
                             if let distanceLabel = provider.formattedDistanceFromUser {
                                 HStack(spacing: 6) {
                                     Image(systemName: "location.circle.fill")
-                                        .font(InteraFont.body(weight: .semibold))
+                                        .font(OnCutsFont.body(weight: .semibold))
                                         .accessibilityHidden(true)
                                     Text(distanceLabel)
-                                        .font(InteraFont.subheadline(weight: .semibold))
+                                        .font(OnCutsFont.subheadline(weight: .semibold))
                                 }
                                 .foregroundStyle(detailSubtleColor)
                                 .accessibilityElement(children: .combine)
@@ -1561,7 +1561,7 @@ struct ServiceProviderDetailSheet: View {
                                         .fill(Color.success)
                                         .frame(width: 8, height: 8)
                                     Text("Available Now")
-                                        .font(InteraFont.labelSmall)
+                                        .font(OnCutsFont.labelSmall)
                                 }
                                 .foregroundStyle(Color.success)
                                 .padding(.horizontal, 16)
@@ -1594,29 +1594,29 @@ struct ServiceProviderDetailSheet: View {
                     if let instagramURL = provider.instagramProfileURL {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Social")
-                                .font(InteraFont.headlineSmall)
+                                .font(OnCutsFont.headlineSmall)
                                 .foregroundStyle(detailHeadlineColor)
                             
                             Link(destination: instagramURL) {
                                 HStack(spacing: 12) {
                                     Image(systemName: "camera.fill")
-                                        .font(InteraFont.body)
+                                        .font(OnCutsFont.body)
                                         .foregroundStyle(detailEmphasisColor)
                                         .accessibilityHidden(true)
                                     
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text("Instagram")
-                                            .font(InteraFont.caption)
+                                            .font(OnCutsFont.caption)
                                             .foregroundStyle(detailCaptionColor)
                                         Text(provider.instagramDisplayHandle)
-                                            .font(InteraFont.bodyMedium)
+                                            .font(OnCutsFont.bodyMedium)
                                             .foregroundStyle(detailHeadlineColor)
                                     }
                                     
                                     Spacer(minLength: 8)
                                     
                                     Image(systemName: "arrow.up.right.circle.fill")
-                                        .font(InteraFont.title3)
+                                        .font(OnCutsFont.title3)
                                         .symbolRenderingMode(.hierarchical)
                                         .foregroundStyle(detailBodyColor)
                                         .accessibilityHidden(true)
@@ -1651,7 +1651,7 @@ struct ServiceProviderDetailSheet: View {
                     if let availability = provider.availability, !availability.isEmpty {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Availability")
-                                .font(InteraFont.headlineSmall)
+                                .font(OnCutsFont.headlineSmall)
                                 .foregroundStyle(detailHeadlineColor)
                             
                             // First row: Days 0-3 (Mon-Thu)
@@ -1660,7 +1660,7 @@ struct ServiceProviderDetailSheet: View {
                                 HStack(spacing: 8) {
                                     ForEach(availability.prefix(4)) { day in
                                         Text(day.dayOfWeek)
-                                            .font(InteraFont.caption)
+                                            .font(OnCutsFont.caption)
                                             .fontWeight(.medium)
                                             .foregroundStyle(detailEmphasisColor)
                                             .frame(maxWidth: .infinity)
@@ -1674,7 +1674,7 @@ struct ServiceProviderDetailSheet: View {
                                         ForEach(availability.prefix(4)) { day in
                                             if slotIndex < day.timeSlots.count {
                                                 Text(day.timeSlots[slotIndex])
-                                                    .font(InteraFont.caption2)
+                                                    .font(OnCutsFont.caption2)
                                                     .foregroundStyle(detailBodyColor)
                                                     .frame(maxWidth: .infinity)
                                                     .multilineTextAlignment(.center)
@@ -1694,7 +1694,7 @@ struct ServiceProviderDetailSheet: View {
                                     HStack(spacing: 8) {
                                         ForEach(availability.suffix(from: 4)) { day in
                                             Text(day.dayOfWeek)
-                                                .font(InteraFont.caption)
+                                                .font(OnCutsFont.caption)
                                                 .fontWeight(.medium)
                                                 .foregroundStyle(detailEmphasisColor)
                                                 .frame(maxWidth: .infinity)
@@ -1715,7 +1715,7 @@ struct ServiceProviderDetailSheet: View {
                                             ForEach(availability.suffix(from: 4)) { day in
                                                 if slotIndex < day.timeSlots.count {
                                                     Text(day.timeSlots[slotIndex])
-                                                        .font(InteraFont.caption2)
+                                                        .font(OnCutsFont.caption2)
                                                         .foregroundStyle(detailBodyColor)
                                                         .frame(maxWidth: .infinity)
                                                         .multilineTextAlignment(.center)
@@ -1743,13 +1743,13 @@ struct ServiceProviderDetailSheet: View {
                     if let locations = provider.locations, !locations.isEmpty {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Locations")
-                                .font(InteraFont.headlineSmall)
+                                .font(OnCutsFont.headlineSmall)
                                 .foregroundStyle(detailHeadlineColor)
                             
                             VStack(alignment: .leading, spacing: 12) {
                                 ForEach(locations, id: \.self) { location in
                                     Text(location)
-                                        .font(InteraFont.bodyMedium)
+                                        .font(OnCutsFont.bodyMedium)
                                         .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary : Color.white.opacity(0.9))
                                 }
                             }
@@ -1823,7 +1823,7 @@ struct ServiceProviderDetailSheet: View {
                     }
                 )
                 .tint(Color.oliveGreen)
-                .interaBookingFlowSheetPresentation()
+                .onCutsBookingFlowSheetPresentation()
             }
             .alert("Active Booking Exists", isPresented: $showBookingLimitAlert) {
                 Button("View My Booking", role: .cancel) {
@@ -1845,7 +1845,7 @@ struct ServiceProviderDetailSheet: View {
             onDismiss()
         } label: {
             Image(systemName: "xmark")
-                .font(InteraFont.system(size: 16, weight: .semibold))
+                .font(OnCutsFont.system(size: 16, weight: .semibold))
                 .foregroundStyle(useVibrantLiquidGlassStyling ? Color.primary : Color.white.opacity(0.92))
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
@@ -1916,7 +1916,7 @@ private struct ProviderDetailAboutServicesSection: View {
     private var servicesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Services")
-                .font(InteraFont.headlineSmall)
+                .font(OnCutsFont.headlineSmall)
                 .foregroundStyle(detailHeadlineColor)
 
             VStack(spacing: 12) {
@@ -1935,10 +1935,10 @@ private struct ProviderDetailAboutServicesSection: View {
 
     private func serviceRow(_ service: ServiceProvider.Service) -> some View {
         let isPrimaryHaircut = isPrimaryHaircutService(service)
-        let nameFont = isPrimaryHaircut ? InteraFont.headlineSmall : InteraFont.bodySmall
+        let nameFont = isPrimaryHaircut ? OnCutsFont.headlineSmall : OnCutsFont.bodySmall
         let priceFont = isPrimaryHaircut
-            ? InteraFont.headlineSmall(weight: .medium)
-            : InteraFont.bodySmall(weight: .medium)
+            ? OnCutsFont.headlineSmall(weight: .medium)
+            : OnCutsFont.bodySmall(weight: .medium)
 
         return HStack(spacing: 4) {
             Text(service.name)
@@ -1946,7 +1946,7 @@ private struct ProviderDetailAboutServicesSection: View {
                 .foregroundStyle(detailEmphasisColor)
 
             Text("•")
-                .font(isPrimaryHaircut ? InteraFont.headlineSmall : InteraFont.bodySmall)
+                .font(isPrimaryHaircut ? OnCutsFont.headlineSmall : OnCutsFont.bodySmall)
                 .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary.opacity(0.6) : Color.white.opacity(0.5))
                 .padding(.leading, 4)
 
@@ -1960,11 +1960,11 @@ private struct ProviderDetailAboutServicesSection: View {
     private func aboutSection(_ bioText: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("About")
-                .font(InteraFont.headlineSmall)
+                .font(OnCutsFont.headlineSmall)
                 .foregroundStyle(detailHeadlineColor)
 
             Text(bioText)
-                .font(InteraFont.bodyMedium)
+                .font(OnCutsFont.bodyMedium)
                 .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary : Color.white.opacity(0.85))
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1988,10 +1988,10 @@ private struct ProviderDetailRatingSummaryRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "star.fill")
-                .font(InteraFont.title3(weight: .semibold))
+                .font(OnCutsFont.title3(weight: .semibold))
                 .foregroundStyle(Color.yellow)
             Text(String(format: "%.1f", averageRating))
-                .font(InteraFont.title3(weight: .semibold))
+                .font(OnCutsFont.title3(weight: .semibold))
                 .foregroundStyle(detailHeadlineColor)
             Spacer(minLength: 0)
         }
@@ -2020,31 +2020,31 @@ private struct ProviderDetailReviewsPreviewSection: View {
         VStack(alignment: .leading, spacing: 12) {
             if isLoadingReviews && reviews.isEmpty {
                 Text("Reviews")
-                    .font(InteraFont.headlineSmall)
+                    .font(OnCutsFont.headlineSmall)
                     .foregroundStyle(detailHeadlineColor)
                 HStack(spacing: 10) {
                     ProgressView()
                     Text("Loading reviews…")
-                        .font(InteraFont.bodyMedium)
+                        .font(OnCutsFont.bodyMedium)
                         .foregroundStyle(detailSubtleColor)
                 }
             } else if reviews.isEmpty {
                 Text("Reviews")
-                    .font(InteraFont.headlineSmall)
+                    .font(OnCutsFont.headlineSmall)
                     .foregroundStyle(detailHeadlineColor)
                 Text("No reviews yet")
-                    .font(InteraFont.bodyMedium)
+                    .font(OnCutsFont.bodyMedium)
                     .foregroundStyle(detailSubtleColor)
             } else {
                 Button(action: onShowAll) {
                     VStack(alignment: .leading, spacing: 14) {
                         HStack {
                             Text("Reviews")
-                                .font(InteraFont.headlineSmall)
+                                .font(OnCutsFont.headlineSmall)
                                 .foregroundStyle(detailHeadlineColor)
                             Spacer(minLength: 8)
                             Image(systemName: "chevron.right")
-                                .font(InteraFont.subheadline(weight: .semibold))
+                                .font(OnCutsFont.subheadline(weight: .semibold))
                                 .foregroundStyle(detailSubtleColor)
                         }
 
@@ -2064,7 +2064,7 @@ private struct ProviderDetailReviewsPreviewSection: View {
 
                         if reviews.count > 2 {
                             Text("See all reviews")
-                                .font(InteraFont.subheadline(weight: .semibold))
+                                .font(OnCutsFont.subheadline(weight: .semibold))
                                 .foregroundStyle(detailEmphasisColor)
                         }
                     }
@@ -2093,7 +2093,7 @@ private struct ProviderReviewRowContent: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Text(review.authorDisplayName)
-                    .font(InteraFont.bodyMedium(weight: .semibold))
+                    .font(OnCutsFont.bodyMedium(weight: .semibold))
                     .foregroundStyle(detailEmphasisColor)
                 Spacer(minLength: 8)
                 if let stars = review.rating {
@@ -2102,12 +2102,12 @@ private struct ProviderReviewRowContent: View {
             }
             HStack(spacing: 6) {
                 Text(review.relativeDate)
-                    .font(InteraFont.caption)
+                    .font(OnCutsFont.caption)
                     .foregroundStyle(detailCaptionColor)
             }
             if let text = review.comment, !text.isEmpty {
                 Text(text)
-                    .font(InteraFont.bodySmall)
+                    .font(OnCutsFont.bodySmall)
                     .foregroundStyle(detailBodyColor)
                     .lineLimit(multilineComment ? nil : 3)
                     .multilineTextAlignment(.leading)
@@ -2123,7 +2123,7 @@ private struct ProviderReviewStarsRow: View {
         HStack(spacing: 2) {
             ForEach(0 ..< 5, id: \.self) { i in
                 Image(systemName: i < rating ? "star.fill" : "star")
-                    .font(InteraFont.caption(weight: .semibold))
+                    .font(OnCutsFont.caption(weight: .semibold))
                     .foregroundStyle(i < rating ? Color.yellow : Color.gray.opacity(0.45))
             }
         }
@@ -2227,12 +2227,12 @@ private struct StatItem: View {
     var body: some View {
         VStack(spacing: 4) {
             Text(value)
-                .font(InteraFont.bodyMedium)
+                .font(OnCutsFont.bodyMedium)
                 .fontWeight(.semibold)
                 .foregroundStyle(useVibrantLiquidGlassStyling ? Color.primary : Color.white)
             
             Text(label)
-                .font(InteraFont.labelSmall)
+                .font(OnCutsFont.labelSmall)
                 .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary : Color.white.opacity(0.7))
         }
         .frame(maxWidth: .infinity)
@@ -2512,7 +2512,7 @@ struct UnifiedProviderHomeScreen: View {
         TabView(selection: $hubPageIndex) {
             unifiedHubHomePage
                 .tag(0)
-                .interaHubPageInteractionLock(pageIndex: 0, coordinator: hubPagingCoordinator)
+                .onCutsHubPageInteractionLock(pageIndex: 0, coordinator: hubPagingCoordinator)
 
             NavigationStack {
                 ConversationListView(
@@ -2529,12 +2529,12 @@ struct UnifiedProviderHomeScreen: View {
                     onShowLogin: { showOAuthSignInSheet = true }
                 )
                 #if os(iOS)
-                .interaNavigationShellBackgroundClear()
+                .onCutsNavigationShellBackgroundClear()
                 #endif
             }
             .id(messagesHubNavigationStackEpoch)
             .tag(1)
-            .interaHubPageInteractionLock(pageIndex: 1, coordinator: hubPagingCoordinator)
+            .onCutsHubPageInteractionLock(pageIndex: 1, coordinator: hubPagingCoordinator)
 
             ConsumerBookingsHubView(
                 sessionManager: sessionManager,
@@ -2543,10 +2543,10 @@ struct UnifiedProviderHomeScreen: View {
                 onNavigationDepthChange: { bookingsTabNavigationDepth = $0 }
             )
             #if os(iOS)
-            .interaNavigationShellBackgroundClear()
+            .onCutsNavigationShellBackgroundClear()
             #endif
             .tag(2)
-            .interaHubPageInteractionLock(pageIndex: 2, coordinator: hubPagingCoordinator)
+            .onCutsHubPageInteractionLock(pageIndex: 2, coordinator: hubPagingCoordinator)
 
             NavigationStack {
                 UserProfileView(
@@ -2556,11 +2556,11 @@ struct UnifiedProviderHomeScreen: View {
                     hubBottomBarSuppressionWhileFocused: $isProfileHubNameFieldFocused
                 )
                 #if os(iOS)
-                .interaNavigationShellBackgroundClear()
+                .onCutsNavigationShellBackgroundClear()
                 #endif
             }
             .tag(3)
-            .interaHubPageInteractionLock(pageIndex: 3, coordinator: hubPagingCoordinator)
+            .onCutsHubPageInteractionLock(pageIndex: 3, coordinator: hubPagingCoordinator)
         }
         #if os(iOS)
         .tabViewStyle(.page(indexDisplayMode: .never))
@@ -2703,13 +2703,13 @@ struct UnifiedProviderHomeScreen: View {
             return
         }
         if resyncLastSample {
-            InteraHubBarCollapseController.resyncLastOffsetY(
+            OnCutsHubBarCollapseController.resyncLastOffsetY(
                 lastOffsetY: &hubBarLastScrollOffsetY,
                 offsetY: offsetY
             )
             return
         }
-        InteraHubBarCollapseController.update(
+        OnCutsHubBarCollapseController.update(
             progress: &hubBarCollapseProgress,
             lastOffsetY: &hubBarLastScrollOffsetY,
             offsetY: offsetY
@@ -2799,9 +2799,9 @@ struct UnifiedProviderHomeScreen: View {
     @ViewBuilder
     private var unifiedProviderHubShell: some View {
         ZStack {
-            InteraHubTabShellBackground()
+            OnCutsHubTabShellBackground()
                 .ignoresSafeArea()
-            InteraHubPagerRenderGate(
+            OnCutsHubPagerRenderGate(
                 hubPageIndex: hubPageIndex,
                 messagesHubNavigationStackEpoch: messagesHubNavigationStackEpoch
             ) {
@@ -2816,7 +2816,7 @@ struct UnifiedProviderHomeScreen: View {
             }
             #if os(iOS)
             .overlay {
-                InteraHubScrollBridgeRenderGate(
+                OnCutsHubScrollBridgeRenderGate(
                     hubPageIndex: hubPageIndex,
                     isPagingInteractionEnabled: hubTabPagingInteractionEnabled,
                     syncPagingScrollToSelection: hubTabSyncPagingScrollToSelection,
@@ -2826,8 +2826,8 @@ struct UnifiedProviderHomeScreen: View {
                 }
             }
             #endif
-            .environment(\.interaHubBarOverlayBottomInset, hubBarOverlayBottomInset)
-            .environment(\.interaHubBarScrollOffsetHandler, InteraHubBarScrollOffsetHandler(
+            .environment(\.onCutsHubBarOverlayBottomInset, hubBarOverlayBottomInset)
+            .environment(\.onCutsHubBarScrollOffsetHandler, OnCutsHubBarScrollOffsetHandler(
                 onOffsetChange: { pageIndex, offsetY in
                     handleHubPageVerticalScrollOffset(pageIndex: pageIndex, offsetY: offsetY)
                 },
@@ -2836,7 +2836,7 @@ struct UnifiedProviderHomeScreen: View {
                 }
             ))
             #if os(iOS)
-            .environment(\.interaHubPagingCoordinator, hubPagingCoordinator)
+            .environment(\.onCutsHubPagingCoordinator, hubPagingCoordinator)
             #endif
             .animation(Self.hubBarUtilitySuppressionSpring, value: hubBarUtilitySuppressionProgress)
             #if os(iOS)
@@ -2971,8 +2971,8 @@ struct UnifiedProviderHomeScreen: View {
                             showMaxDistanceSheet = true
                         } label: {
                             Image(systemName: "location.circle")
-                                .font(InteraFont.body(weight: .semibold))
-                                .foregroundStyleInteraShellIcon()
+                                .font(OnCutsFont.body(weight: .semibold))
+                                .foregroundStyleOnCutsShellIcon()
                         }
                         .accessibilityLabel("Maximum search distance")
                     }
@@ -3034,7 +3034,7 @@ struct UnifiedProviderHomeScreen: View {
             counterpartyUserId: handoff.counterpartyMessagingUserId
         )
         #if os(iOS)
-        .interaNavigationShellBackgroundClear()
+        .onCutsNavigationShellBackgroundClear()
         #endif
         .onDisappear {
             clearHomeShellHubSuppressionFlags()
@@ -3057,7 +3057,7 @@ struct UnifiedProviderHomeScreen: View {
                 )
                 .id(presentationID)
                 #if os(iOS)
-                .interaNavigationShellBackgroundClear()
+                .onCutsNavigationShellBackgroundClear()
                 #endif
             } else {
                 ContentUnavailableView(
@@ -3075,7 +3075,7 @@ struct UnifiedProviderHomeScreen: View {
     private var unifiedProviderHomeNavigationStackInner: some View {
         unifiedProviderHubShell
             #if os(iOS)
-            .interaNavigationShellBackgroundClear()
+            .onCutsNavigationShellBackgroundClear()
             .sheet(isPresented: $showMaxDistanceSheet) {
                 ConsumerBrowseDistanceSheet {
                     Task { await loadProviders() }
@@ -3276,7 +3276,7 @@ struct UnifiedProviderHomeScreen: View {
                 openUnifiedChatForBarberProfileId(id)
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaOpenMessagingConversation)) { output in
+        .onReceive(NotificationCenter.default.publisher(for: .onCutsOpenMessagingConversation)) { output in
             Task { @MainActor in
                 await handleOpenMessagingConversationFromNotification(userInfo: output.userInfo)
             }
@@ -3294,7 +3294,7 @@ struct UnifiedProviderHomeScreen: View {
                 )
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaOpenBookingDetail)) { output in
+        .onReceive(NotificationCenter.default.publisher(for: .onCutsOpenBookingDetail)) { output in
             guard let raw = output.userInfo?["bookingId"] else { return }
             let bid: String? = {
                 if let s = raw as? String { return s.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -3308,7 +3308,7 @@ struct UnifiedProviderHomeScreen: View {
                 navigateHubPage(2, animated: true)
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaNavigateToBookingsAfterBookingRequest)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .onCutsNavigateToBookingsAfterBookingRequest)) { _ in
             Task { @MainActor in
                 navigateHubPage(0, animated: true)
                 await loadUnifiedConsumerBookingsForHome()
@@ -3317,8 +3317,8 @@ struct UnifiedProviderHomeScreen: View {
         .onReceive(NotificationCenter.default.publisher(for: .consumerBookingsListShouldRefresh)) { _ in
             Task { await loadUnifiedConsumerBookingsForHome() }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaNavigateToConsumerHomeAfterPayment)) { notification in
-            let snapHub = (notification.userInfo?[InteraBookingsUserInfoKeys.snapHubNoAnimation] as? Bool) == true
+        .onReceive(NotificationCenter.default.publisher(for: .onCutsNavigateToConsumerHomeAfterPayment)) { notification in
+            let snapHub = (notification.userInfo?[OnCutsBookingsUserInfoKeys.snapHubNoAnimation] as? Bool) == true
             Task { @MainActor in
                 chatViewModel.pendingOpenBookingDetailId = nil
                 chatViewModel.homeStackMessagingHandoff = nil
@@ -3342,7 +3342,7 @@ struct UnifiedProviderHomeScreen: View {
     private func refreshUnifiedHomeSurfaceForPullToRefresh() async {
         showsUnifiedBrowsePullRefreshWheel = true
         defer { showsUnifiedBrowsePullRefreshWheel = false }
-        await InteraPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
+        await OnCutsPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
             await refreshUnifiedHomeSurface()
         }
     }
@@ -3369,7 +3369,7 @@ struct UnifiedProviderHomeScreen: View {
     @MainActor
     private func handleOpenMessagingConversationFromNotification(userInfo: [AnyHashable: Any]?) async {
         guard sessionManager.isAuthenticated else { return }
-        guard let cid = InteraPushNavigationPayload.conversationId(from: userInfo) else { return }
+        guard let cid = OnCutsPushNavigationPayload.conversationId(from: userInfo) else { return }
 
         chatViewModel.pendingPushConversationId = cid
 
@@ -3659,14 +3659,14 @@ struct UnifiedProviderHomeScreen: View {
                     .padding(.horizontal, .space4)
                     .padding(.top, headerInset)
                     .padding(.bottom, .space6)
-                    .interaHubBarScrollContentBottomInset()
+                    .onCutsHubBarScrollContentBottomInset()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 #if os(iOS)
                 .scrollBounceBehavior(.always, axes: .vertical)
                 #endif
                 .scrollDisabled(isProviderDetailOverlayBlockingBrowse)
-                .interaHubBarScrollOffsetReporting(pageIndex: 0)
+                .onCutsHubBarScrollOffsetReporting(pageIndex: 0)
                 .refreshable {
                     await refreshUnifiedHomeSurfaceForPullToRefresh()
                 }
@@ -3715,10 +3715,10 @@ struct UnifiedProviderHomeScreen: View {
             VStack(spacing: .space4) {
                 Spacer()
                 Image(systemName: trimmed.isEmpty ? "person.2" : "magnifyingglass")
-                    .font(InteraFont.system(size: 60))
+                    .font(OnCutsFont.system(size: 60))
                     .foregroundStyle(Color.lavaShellCreamTertiary)
                 Text(trimmed.isEmpty ? "No providers available" : "No matching providers")
-                    .font(InteraFont.headlineMedium)
+                    .font(OnCutsFont.headlineMedium)
                     .foregroundStyle(Color.lavaShellCream)
                 Text(trimmed.isEmpty ? "Check back later" : "Try a different search or category.")
                     .onCutsStyle(.bodyMedium)
@@ -3872,7 +3872,7 @@ struct CategoryChip: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(InteraFont.bodySmall)
+                .font(OnCutsFont.bodySmall)
             .fontWeight(isSelected ? .semibold : .medium)
             .foregroundStyle(
                 isEnabled
@@ -3897,7 +3897,7 @@ struct CategoryChip: View {
 private struct HomeNoBarbersInRadiusEmptyLabel: View {
     var body: some View {
         Text("No service providers in your selectable radius")
-            .font(InteraFont.headlineMedium)
+            .font(OnCutsFont.headlineMedium)
             .foregroundStyle(Color.lavaShellCream)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity, alignment: .center)

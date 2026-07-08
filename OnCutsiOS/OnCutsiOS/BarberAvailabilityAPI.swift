@@ -1,6 +1,6 @@
 //
 //  BarberAvailabilityAPI.swift
-//  Intera
+//  OnCuts
 //
 //  GET /api/v1/barbers/:id/availability?date=YYYY-MM-DD
 //

@@ -1,6 +1,6 @@
 //
 //  OnCutsAdapter.swift
-//  Intera
+//  OnCuts
 //
 //  Adapter to convert OnCuts-specific models to unified ServiceProvider model
 //

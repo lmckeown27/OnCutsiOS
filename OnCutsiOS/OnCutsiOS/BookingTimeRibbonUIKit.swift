@@ -1,6 +1,6 @@
 //
 //  BookingTimeRibbonUIKit.swift
-//  Intera
+//  OnCuts
 //
 //  Horizontal time-slot ribbon with UIScrollView center detection for selection haptics.
 //

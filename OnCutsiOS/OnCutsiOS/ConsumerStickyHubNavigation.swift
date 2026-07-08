@@ -1,6 +1,6 @@
 //
 //  ConsumerStickyHubNavigation.swift
-//  Intera
+//  OnCuts
 //
 //  Hub rail: cream bubble tracks `TabView` scroll, animates on tab taps, and can be dragged horizontally
 //  with haptics; icons flip to deep charcoal when the bubble centers on that segment.
@@ -74,7 +74,7 @@ enum HubBubbleLayout {
 
 extension Color {
     /// Mercury bubble fill on the hub rail (cream in dark mode, black in light mode).
-    static var interaNavigationHubCream: Color {
+    static var onCutsNavigationHubCream: Color {
         #if canImport(UIKit)
         Color(uiColor: UIColor { traits in
             traits.userInterfaceStyle == .dark
@@ -86,7 +86,7 @@ extension Color {
         #endif
     }
     /// Icon on the bubble when that segment is active (charcoal on cream in dark, white on black in light).
-    static var interaHubDeepCharcoal: Color {
+    static var onCutsHubDeepCharcoal: Color {
         #if canImport(UIKit)
         Color(uiColor: UIColor { traits in
             traits.userInterfaceStyle == .dark
@@ -94,11 +94,11 @@ extension Color {
                 : .white
         })
         #else
-        Color.interaShellBackground
+        Color.onCutsShellBackground
         #endif
     }
     /// Inactive hub icons (cream in dark mode, muted black in light mode).
-    static var interaNavigationHubIconInactive: Color {
+    static var onCutsNavigationHubIconInactive: Color {
         #if canImport(UIKit)
         Color(uiColor: UIColor { traits in
             traits.userInterfaceStyle == .dark
@@ -112,51 +112,51 @@ extension Color {
 }
 
 /// Tracks vertical scroll from hub tab content to collapse the floating navigation rail.
-struct InteraHubBarScrollOffsetHandler {
+struct OnCutsHubBarScrollOffsetHandler {
     /// `pageIndex` matches hub `TabView` tags: 0 Home, 1 Messages, 2 Bookings, 3 Profile.
     var onOffsetChange: ((Int, CGFloat) -> Void)? = nil
-    /// UIKit resync after hub tab switches — only realigns the delta baseline (see ``InteraHubBarCollapseController/resyncLastOffsetY``).
+    /// UIKit resync after hub tab switches — only realigns the delta baseline (see ``OnCutsHubBarCollapseController/resyncLastOffsetY``).
     var onResyncLastSample: ((Int, CGFloat) -> Void)? = nil
 }
 
-private struct InteraHubBarScrollOffsetHandlerKey: EnvironmentKey {
-    static let defaultValue = InteraHubBarScrollOffsetHandler()
+private struct OnCutsHubBarScrollOffsetHandlerKey: EnvironmentKey {
+    static let defaultValue = OnCutsHubBarScrollOffsetHandler()
 }
 
 extension EnvironmentValues {
-    var interaHubBarScrollOffsetHandler: InteraHubBarScrollOffsetHandler {
-        get { self[InteraHubBarScrollOffsetHandlerKey.self] }
-        set { self[InteraHubBarScrollOffsetHandlerKey.self] = newValue }
+    var onCutsHubBarScrollOffsetHandler: OnCutsHubBarScrollOffsetHandler {
+        get { self[OnCutsHubBarScrollOffsetHandlerKey.self] }
+        set { self[OnCutsHubBarScrollOffsetHandlerKey.self] = newValue }
     }
 }
 
-private struct InteraHubBarOverlayBottomInsetKey: EnvironmentKey {
+private struct OnCutsHubBarOverlayBottomInsetKey: EnvironmentKey {
     static let defaultValue: CGFloat = 0
 }
 
 extension EnvironmentValues {
     /// Bottom padding for scroll content so rows clear the floating hub selector.
-    var interaHubBarOverlayBottomInset: CGFloat {
-        get { self[InteraHubBarOverlayBottomInsetKey.self] }
-        set { self[InteraHubBarOverlayBottomInsetKey.self] = newValue }
+    var onCutsHubBarOverlayBottomInset: CGFloat {
+        get { self[OnCutsHubBarOverlayBottomInsetKey.self] }
+        set { self[OnCutsHubBarOverlayBottomInsetKey.self] = newValue }
     }
 }
 
 extension View {
     /// Reports vertical scroll offset to the hub bar collapse logic (iOS 18+).
-    func interaHubBarScrollOffsetReporting(pageIndex: Int) -> some View {
-        modifier(InteraHubBarScrollOffsetReporter(pageIndex: pageIndex))
+    func onCutsHubBarScrollOffsetReporting(pageIndex: Int) -> some View {
+        modifier(OnCutsHubBarScrollOffsetReporter(pageIndex: pageIndex))
     }
 
-    /// Reads ``EnvironmentValues/interaHubBarOverlayBottomInset`` when wired from the hub shell.
-    func interaHubBarScrollContentBottomInset() -> some View {
-        modifier(InteraHubBarScrollContentBottomInsetModifier())
+    /// Reads ``EnvironmentValues/onCutsHubBarOverlayBottomInset`` when wired from the hub shell.
+    func onCutsHubBarScrollContentBottomInset() -> some View {
+        modifier(OnCutsHubBarScrollContentBottomInsetModifier())
     }
 }
 
-private struct InteraHubBarScrollOffsetReporter: ViewModifier {
+private struct OnCutsHubBarScrollOffsetReporter: ViewModifier {
     let pageIndex: Int
-    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
+    @Environment(\.onCutsHubBarScrollOffsetHandler) private var hubBarScrollHandler
 
     func body(content: Content) -> some View {
         if #available(iOS 18.0, macOS 15.0, *) {
@@ -171,8 +171,8 @@ private struct InteraHubBarScrollOffsetReporter: ViewModifier {
     }
 }
 
-private struct InteraHubBarScrollContentBottomInsetModifier: ViewModifier {
-    @Environment(\.interaHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
+private struct OnCutsHubBarScrollContentBottomInsetModifier: ViewModifier {
+    @Environment(\.onCutsHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
 
     func body(content: Content) -> some View {
         content.padding(.bottom, hubBarOverlayBottomInset)
@@ -181,7 +181,7 @@ private struct InteraHubBarScrollContentBottomInsetModifier: ViewModifier {
 
 // MARK: - Collapse controller
 
-enum InteraHubBarCollapseController {
+enum OnCutsHubBarCollapseController {
     @MainActor
     static func update(
         progress: inout CGFloat,
@@ -214,7 +214,7 @@ enum InteraHubBarCollapseController {
 // MARK: - Tab notification node (8pt dot, cream vs charcoal + pulse)
 
 /// Small circular indicator for unread / pending hub items; pairs with `ConsumerStickyHubBar` Mercury bubble or glass toolbar icons.
-struct InteraTabNotificationNode: View {
+struct OnCutsTabNotificationNode: View {
     /// When `true`, the hub segment is under the Mercury bubble (active tab) — node uses deep charcoal; otherwise solid cream.
     let isTabActive: Bool
 
@@ -222,13 +222,13 @@ struct InteraTabNotificationNode: View {
 
     var body: some View {
         Circle()
-            .fill(isTabActive ? Color.interaHubDeepCharcoal : Color.interaNavigationHubIconInactive)
+            .fill(isTabActive ? Color.onCutsHubDeepCharcoal : Color.onCutsNavigationHubIconInactive)
             .frame(width: 8, height: 8)
-            .modifier(InteraNotificationNodePulseModifier(reduceMotion: accessibilityReduceMotion))
+            .modifier(OnCutsNotificationNodePulseModifier(reduceMotion: accessibilityReduceMotion))
     }
 }
 
-private struct InteraNotificationNodePulseModifier: ViewModifier {
+private struct OnCutsNotificationNodePulseModifier: ViewModifier {
     let reduceMotion: Bool
     @State private var pulseBright = false
 
@@ -456,7 +456,7 @@ struct ConsumerStickyHubBar: View {
                     progress: CGFloat(hubPageIndex)
                 )
                 RoundedRectangle(cornerRadius: macBubble.cornerRadius, style: .continuous)
-                    .fill(Color.interaNavigationHubCream)
+                    .fill(Color.onCutsNavigationHubCream)
                     .frame(width: macBubble.frame.width, height: macBubble.frame.height)
                     .offset(x: macBubble.frame.minX, y: macBubble.frame.minY)
                     .allowsHitTesting(false)
@@ -583,7 +583,7 @@ struct ConsumerStickyHubBar: View {
         }
         .overlay {
             Capsule(style: .continuous)
-                .stroke(Color.interaShellGlassStroke, lineWidth: 1)
+                .stroke(Color.onCutsShellGlassStroke, lineWidth: 1)
         }
     }
 
@@ -622,15 +622,15 @@ struct ConsumerStickyHubBar: View {
             handleTabTap(index: index)
         } label: {
             Image(systemName: systemName)
-                .font(InteraFont.system(size: 22, weight: .semibold))
+                .font(OnCutsFont.system(size: 22, weight: .semibold))
                 .foregroundStyle(
                     tabActive
-                        ? Color.interaHubDeepCharcoal
-                        : Color.interaNavigationHubIconInactive
+                        ? Color.onCutsHubDeepCharcoal
+                        : Color.onCutsNavigationHubIconInactive
                 )
                 .overlay(alignment: .topTrailing) {
                     if showNotificationNode {
-                        InteraTabNotificationNode(isTabActive: tabActive)
+                        OnCutsTabNotificationNode(isTabActive: tabActive)
                             .offset(x: 5, y: -5)
                     }
                 }

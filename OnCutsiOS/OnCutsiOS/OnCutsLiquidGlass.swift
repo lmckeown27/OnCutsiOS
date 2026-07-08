@@ -1,8 +1,8 @@
 //
-//  InteraLiquidGlass.swift
-//  Intera
+//  OnCutsLiquidGlass.swift
+//  OnCuts
 //
-//  Shared “Intera Liquid Glass”: animated mesh backdrop + frosted surfaces.
+//  Shared “OnCuts Liquid Glass”: animated mesh backdrop + frosted surfaces.
 //
 
 import SwiftUI
@@ -12,7 +12,7 @@ import UIKit
 
 // MARK: - Haptics
 
-enum InteraLiquidGlassHaptics {
+enum OnCutsLiquidGlassHaptics {
     #if os(iOS)
     private static let selectionGen = UISelectionFeedbackGenerator()
     static func selectionChanged() {
@@ -31,50 +31,50 @@ enum InteraLiquidGlassHaptics {
 
 // MARK: - Typography (Inter Variable)
 
-enum InteraLiquidGlassTypography {
+enum OnCutsLiquidGlassTypography {
     static func title(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        InteraFont.font(size: size, weight: weight)
+        OnCutsFont.font(size: size, weight: weight)
     }
 
     static var navigationTitle: Font { title(17, weight: .semibold) }
 
-    static var body: Font { InteraFont.body }
+    static var body: Font { OnCutsFont.body }
 }
 
 // MARK: - Mesh backdrop (Midnight → Deep Indigo)
 
-private enum InteraMeshPalette {
+private enum OnCutsMeshPalette {
     static let midnight = Color(red: 0.04, green: 0.05, blue: 0.12)
     static let deep = Color(red: 0.07, green: 0.09, blue: 0.22)
     static let indigo = Color(red: 0.12, green: 0.14, blue: 0.38)
 }
 
-private enum InteraCreateAccountMeshPalette {
+private enum OnCutsCreateAccountMeshPalette {
     static let abyss = Color(red: 0.02, green: 0.08, blue: 0.14)
     static let teal = Color(red: 0.05, green: 0.35, blue: 0.38)
     static let blue = Color(red: 0.08, green: 0.22, blue: 0.48)
 }
 
 /// Sign-in vs create-account ambient mesh (animated on iOS 18+).
-enum InteraAuthFlowMeshVariant: Equatable {
+enum OnCutsAuthFlowMeshVariant: Equatable {
     case signIn
     case createAccount
 }
 
-struct InteraLiquidMeshBackground: View {
+struct OnCutsLiquidMeshBackground: View {
     var body: some View {
-        InteraAuthFlowMeshBackground(variant: .signIn)
+        OnCutsAuthFlowMeshBackground(variant: .signIn)
     }
 }
 
-struct InteraAuthFlowMeshBackground: View {
-    var variant: InteraAuthFlowMeshVariant
+struct OnCutsAuthFlowMeshBackground: View {
+    var variant: OnCutsAuthFlowMeshVariant
 
     var body: some View {
         Group {
             if #available(iOS 18.0, macOS 15.0, *) {
                 TimelineView(.animation(minimumInterval: 1.0 / 20.0, paused: false)) { ctx in
-                    InteraMeshGradientAnimatedPhase(date: ctx.date, variant: variant)
+                    OnCutsMeshGradientAnimatedPhase(date: ctx.date, variant: variant)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else {
@@ -82,9 +82,9 @@ struct InteraAuthFlowMeshBackground: View {
                 case .signIn:
                     LinearGradient(
                         colors: [
-                            InteraMeshPalette.midnight,
-                            InteraMeshPalette.indigo,
-                            InteraMeshPalette.deep,
+                            OnCutsMeshPalette.midnight,
+                            OnCutsMeshPalette.indigo,
+                            OnCutsMeshPalette.deep,
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -92,9 +92,9 @@ struct InteraAuthFlowMeshBackground: View {
                 case .createAccount:
                     LinearGradient(
                         colors: [
-                            InteraCreateAccountMeshPalette.abyss,
-                            InteraCreateAccountMeshPalette.blue,
-                            InteraCreateAccountMeshPalette.teal,
+                            OnCutsCreateAccountMeshPalette.abyss,
+                            OnCutsCreateAccountMeshPalette.blue,
+                            OnCutsCreateAccountMeshPalette.teal,
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -109,20 +109,20 @@ struct InteraAuthFlowMeshBackground: View {
 }
 
 @available(iOS 18.0, macOS 15.0, *)
-private struct InteraMeshGradientAnimatedPhase: View {
+private struct OnCutsMeshGradientAnimatedPhase: View {
     let date: Date
-    var variant: InteraAuthFlowMeshVariant
+    var variant: OnCutsAuthFlowMeshVariant
 
     var body: some View {
         let t = Float(date.timeIntervalSinceReferenceDate)
-        let mesh = InteraMeshGradientBuilder.mesh(at: t, variant: variant)
+        let mesh = OnCutsMeshGradientBuilder.mesh(at: t, variant: variant)
         MeshGradient(width: 3, height: 3, points: mesh.locations, colors: mesh.colors)
     }
 }
 
 @available(iOS 18.0, macOS 15.0, *)
-private enum InteraMeshGradientBuilder {
-    static func mesh(at t: Float, variant: InteraAuthFlowMeshVariant) -> (locations: [SIMD2<Float>], colors: [Color]) {
+private enum OnCutsMeshGradientBuilder {
+    static func mesh(at t: Float, variant: OnCutsAuthFlowMeshVariant) -> (locations: [SIMD2<Float>], colors: [Color]) {
         func w(_ x: Float, _ y: Float) -> Float {
             0.02 * sin(t * 0.7 + x * 4) + 0.015 * cos(t * 0.5 + y * 3)
         }
@@ -141,27 +141,27 @@ private enum InteraMeshGradientBuilder {
         switch variant {
         case .signIn:
             cols = [
-                InteraMeshPalette.midnight,
-                InteraMeshPalette.deep,
-                InteraMeshPalette.indigo,
-                InteraMeshPalette.deep,
-                InteraMeshPalette.midnight,
-                InteraMeshPalette.deep,
-                InteraMeshPalette.indigo,
-                InteraMeshPalette.deep,
-                InteraMeshPalette.midnight,
+                OnCutsMeshPalette.midnight,
+                OnCutsMeshPalette.deep,
+                OnCutsMeshPalette.indigo,
+                OnCutsMeshPalette.deep,
+                OnCutsMeshPalette.midnight,
+                OnCutsMeshPalette.deep,
+                OnCutsMeshPalette.indigo,
+                OnCutsMeshPalette.deep,
+                OnCutsMeshPalette.midnight,
             ]
         case .createAccount:
             cols = [
-                InteraCreateAccountMeshPalette.abyss,
-                InteraCreateAccountMeshPalette.teal,
-                InteraCreateAccountMeshPalette.blue,
-                InteraCreateAccountMeshPalette.teal,
-                InteraCreateAccountMeshPalette.abyss,
-                InteraCreateAccountMeshPalette.blue,
-                InteraCreateAccountMeshPalette.teal,
-                InteraCreateAccountMeshPalette.blue,
-                InteraCreateAccountMeshPalette.abyss,
+                OnCutsCreateAccountMeshPalette.abyss,
+                OnCutsCreateAccountMeshPalette.teal,
+                OnCutsCreateAccountMeshPalette.blue,
+                OnCutsCreateAccountMeshPalette.teal,
+                OnCutsCreateAccountMeshPalette.abyss,
+                OnCutsCreateAccountMeshPalette.blue,
+                OnCutsCreateAccountMeshPalette.teal,
+                OnCutsCreateAccountMeshPalette.blue,
+                OnCutsCreateAccountMeshPalette.abyss,
             ]
         }
         return (locs, cols)
@@ -170,7 +170,7 @@ private enum InteraMeshGradientBuilder {
 
 // MARK: - Glass surface (20pt radius, 1px white @ 20%)
 
-struct InteraGlassSurface: ViewModifier {
+struct OnCutsGlassSurface: ViewModifier {
     var cornerRadius: CGFloat = 20
 
     func body(content: Content) -> some View {
@@ -187,7 +187,7 @@ struct InteraGlassSurface: ViewModifier {
 }
 
 extension View {
-    func interaGlassSurface(cornerRadius: CGFloat = 20) -> some View {
-        modifier(InteraGlassSurface(cornerRadius: cornerRadius))
+    func onCutsGlassSurface(cornerRadius: CGFloat = 20) -> some View {
+        modifier(OnCutsGlassSurface(cornerRadius: cornerRadius))
     }
 }

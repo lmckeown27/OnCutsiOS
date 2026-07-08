@@ -1,6 +1,6 @@
 //
 //  AppConfiguration.swift
-//  Intera
+//  OnCuts
 //
 //  Environment-specific API base URL, Stripe publishable key, and typed endpoint URLs.
 //
@@ -96,7 +96,7 @@ enum AppConfiguration: Sendable {
 
     // MARK: - OnCuts live data safety
 
-    /// When `true`, Intera shows the OnCuts **Live Data Mode** banner and routes the consumer **Book** action to a Stripe test-mode explanation instead of a real booking/checkout flow.
+    /// When `true`, OnCuts shows the **Live Data Mode** banner and routes the consumer **Book** action to a Stripe test-mode explanation instead of a real booking/checkout flow.
     /// Turn on only while debugging against production data.
     static let onCutsProductionLiveDataMode = false
 

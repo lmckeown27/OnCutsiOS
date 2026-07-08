@@ -1,6 +1,6 @@
 //
 //  BarberReviewsAPI.swift
-//  Intera
+//  OnCuts
 //
 //  Loads reviews for a barber. Production serves them on `GET /barbers/:id` (`data.reviews`);
 //  dedicated list routes are used as fallbacks when present.

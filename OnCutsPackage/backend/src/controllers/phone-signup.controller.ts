@@ -1,5 +1,5 @@
 /**
- * Phone-first signup: SMS before password (Intera + web).
+ * Phone-first signup: SMS before password (OnCutsiOS + web).
  */
 import { Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';

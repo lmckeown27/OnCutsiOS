@@ -1,6 +1,6 @@
 //
 //  SessionRefreshAPI.swift
-//  Intera
+//  OnCuts
 //
 //  POST /api/v1/auth/refresh-token — exchanges a refresh JWT for a new access token.
 //

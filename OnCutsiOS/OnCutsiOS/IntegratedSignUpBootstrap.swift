@@ -1,6 +1,6 @@
 //
 //  IntegratedSignUpBootstrap.swift
-//  Intera
+//  OnCuts
 //
 //  Wires default package-provided sign-up flows. Call additional `register` hooks when new SPMs ship.
 //

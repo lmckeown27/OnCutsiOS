@@ -1,6 +1,6 @@
 //
 //  HubPageViewControllerSurfaceTint.swift
-//  Intera
+//  OnCuts
 //
 //  SwiftUI’s paged `TabView` uses `UIPageViewController`. Clearing every scroll view inside it (global
 //  appearance) lets the root lava lamp show through during transitions (“entire page very bright”).
@@ -12,8 +12,8 @@
 import SwiftUI
 import UIKit
 
-/// Matches `Color.interaShellBackground` so hub swipe gutters do not flash the wrong tone between tabs.
-private let interaHubPageSwipeChromeUIColor = UIColor { traits in
+/// Matches `Color.onCutsShellBackground` so hub swipe gutters do not flash the wrong tone between tabs.
+private let onCutsHubPageSwipeChromeUIColor = UIColor { traits in
     traits.userInterfaceStyle == .dark ? .black : .white
 }
 
@@ -41,7 +41,7 @@ struct HubPageViewControllerSurfaceTint: UIViewRepresentable {
 
         func applySurfaceTintIfNeeded(anchoredTo uiView: UIView) {
             guard !didApply else { return }
-            let color = interaHubPageSwipeChromeUIColor
+            let color = onCutsHubPageSwipeChromeUIColor
 
             func tryApply() {
                 guard let window = uiView.window ?? uiView.superview?.window else {
@@ -52,7 +52,7 @@ struct HubPageViewControllerSurfaceTint: UIViewRepresentable {
                     return
                 }
                 guard let root = window.rootViewController else { return }
-                guard let pvc = root.intera_firstPageViewControllerDeep() else { return }
+                guard let pvc = root.onCuts_firstPageViewControllerDeep() else { return }
                 pvc.view.backgroundColor = color
                 for sub in pvc.view.subviews {
                     if let scroll = sub as? UIScrollView {
@@ -74,28 +74,28 @@ struct HubPageViewControllerSurfaceTint: UIViewRepresentable {
 
 private extension UIViewController {
     /// Depth-first search for a `UIPageViewController` under the window root (SwiftUI may nest deeply).
-    func intera_firstPageViewControllerDeep() -> UIPageViewController? {
+    func onCuts_firstPageViewControllerDeep() -> UIPageViewController? {
         if let p = self as? UIPageViewController { return p }
         for child in children {
-            if let found = child.intera_firstPageViewControllerDeep() { return found }
+            if let found = child.onCuts_firstPageViewControllerDeep() { return found }
         }
         if let nav = self as? UINavigationController {
             for vc in nav.viewControllers {
-                if let found = vc.intera_firstPageViewControllerDeep() { return found }
+                if let found = vc.onCuts_firstPageViewControllerDeep() { return found }
             }
         }
         if let tab = self as? UITabBarController {
             for vc in tab.viewControllers ?? [] {
-                if let found = vc.intera_firstPageViewControllerDeep() { return found }
+                if let found = vc.onCuts_firstPageViewControllerDeep() { return found }
             }
         }
         if let split = self as? UISplitViewController {
             for vc in split.viewControllers {
-                if let found = vc.intera_firstPageViewControllerDeep() { return found }
+                if let found = vc.onCuts_firstPageViewControllerDeep() { return found }
             }
         }
         if let presented = presentedViewController {
-            return presented.intera_firstPageViewControllerDeep()
+            return presented.onCuts_firstPageViewControllerDeep()
         }
         return nil
     }

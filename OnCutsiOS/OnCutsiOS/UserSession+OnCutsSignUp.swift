@@ -1,6 +1,6 @@
 //
 //  UserSession+OnCutsSignUp.swift
-//  Intera
+//  OnCuts
 //
 //  Maps `OnCutsModule` email verification session into the shell `UserSession`.
 //

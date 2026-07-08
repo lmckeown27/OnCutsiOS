@@ -1,6 +1,6 @@
 //
 //  PushNotificationAPI.swift
-//  Intera
+//  OnCuts
 //
 //  Registers the APNs device token with OnCuts (`POST /api/v1/notifications/register-device`).
 //
@@ -9,7 +9,7 @@ import Foundation
 import OSLog
 
 enum PushNotificationAPI {
-    private static let log = Logger(subsystem: "com.intera", category: "PushNotificationAPI")
+    private static let log = Logger(subsystem: "com.oncuts", category: "PushNotificationAPI")
     private static func throwIfHTTPError(_ response: URLResponse, data: Data) throws {
         guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)

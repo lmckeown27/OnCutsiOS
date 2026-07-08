@@ -1,6 +1,6 @@
 //
 //  ConsumerStripeClientConfigAPI.swift
-//  Intera
+//  OnCuts
 //
 //  Fetches the Stripe publishable key (`/api/v1/stripe/client-config`, with a bookings-simple alias) so the
 //  app matches the server’s Stripe mode when `STRIPE_PUBLISHABLE_KEY` is set (xcconfig can still lag).

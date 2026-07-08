@@ -1,6 +1,6 @@
 //
-//  InteraFont.swift
-//  Intera
+//  OnCutsFont.swift
+//  OnCuts
 //
 //  App-wide Inter Variable typography (`Fonts/InterVariable.ttf`).
 //  Apply weight via the OpenType `wght` axis — not SwiftUI `.weight()` on a custom font
@@ -12,7 +12,7 @@ import SwiftUI
 import UIKit
 #endif
 
-enum InteraFont {
+enum OnCutsFont {
     /// PostScript name for the Inter Variable font file bundled under `Fonts/`.
     private static let variableFontName = "InterVariable"
     /// OpenType axis tag for `wght` (Inter Variable).
@@ -190,14 +190,14 @@ enum InteraFont {
 
 extension View {
     /// Applies Inter Variable as the default font for descendant `Text` and UIKit-backed controls.
-    func interaPlatformTypography() -> some View {
+    func onCutsPlatformTypography() -> some View {
         self
-            .environment(\.font, InteraFont.body)
-            .onAppear { InteraFont.installGlobalAppearanceIfNeeded() }
+            .environment(\.font, OnCutsFont.body)
+            .onAppear { OnCutsFont.installGlobalAppearanceIfNeeded() }
     }
 
-    /// Legacy name — use ``interaPlatformTypography()``.
-    func interaClarendonTypography() -> some View {
-        interaPlatformTypography()
+    /// Legacy name — use ``onCutsPlatformTypography()``.
+    func onCutsClarendonTypography() -> some View {
+        onCutsPlatformTypography()
     }
 }

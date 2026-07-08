@@ -1,6 +1,6 @@
 //
 //  LiquidGlassCompat.swift
-//  Intera
+//  OnCuts
 //
 //  Wraps Apple’s Liquid Glass APIs (iOS 26+) with material / solid fallbacks so the
 //  project keeps a single deployment target below 26 where needed.

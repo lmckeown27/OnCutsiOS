@@ -1,6 +1,6 @@
 //
 //  ChatViewModel.swift
-//  Intera
+//  OnCuts
 //
 //  Shared inbox previews + one Socket.IO connection for `new-message` (list + open thread).
 //
@@ -358,7 +358,7 @@ final class ChatViewModel: ObservableObject {
                     otherUser: result.otherUser
                 )
             } catch {
-                if InteraRefreshCancellation.isBenignCancellation(error) { return }
+                if OnCutsRefreshCancellation.isBenignCancellation(error) { return }
             }
         }
     }
@@ -375,7 +375,7 @@ final class ChatViewModel: ObservableObject {
         let key = bookingRow.id.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else {
             throw NSError(
-                domain: "InteraMessaging",
+                domain: "OnCutsMessaging",
                 code: 1,
                 userInfo: [NSLocalizedDescriptionKey: "Missing booking id."]
             )
@@ -389,7 +389,7 @@ final class ChatViewModel: ObservableObject {
         let task = Task<(String, String), Error> {
             guard !barber.isEmpty else {
                 throw NSError(
-                    domain: "InteraMessaging",
+                    domain: "OnCutsMessaging",
                     code: 2,
                     userInfo: [NSLocalizedDescriptionKey: "Missing provider for this booking."]
                 )
@@ -399,7 +399,7 @@ final class ChatViewModel: ObservableObject {
                 bearerToken: token
             ), !otherUserId.isEmpty else {
                 throw NSError(
-                    domain: "InteraMessaging",
+                    domain: "OnCutsMessaging",
                     code: 3,
                     userInfo: [NSLocalizedDescriptionKey: "Could not resolve this provider’s account. Try again later."]
                 )
@@ -648,11 +648,11 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    /// Promotes the thread in the inbox model, then posts ``interaOpenMessagingConversation`` **without** ``pendingPushConversationId`` so the hub behaves like tapping the Messages tab: inbox list only, no auto-push to the conversation (same as the tab selector).
+    /// Promotes the thread in the inbox model, then posts ``onCutsOpenMessagingConversation`` **without** ``pendingPushConversationId`` so the hub behaves like tapping the Messages tab: inbox list only, no auto-push to the conversation (same as the tab selector).
     func requestOpenThreadInMessagesTab(handoff: BookingMessagingThreadHandoff) {
         promoteOrInsertConversationFromHandoff(handoff)
         NotificationCenter.default.post(
-            name: .interaOpenMessagingConversation,
+            name: .onCutsOpenMessagingConversation,
             object: nil
         )
     }
@@ -916,9 +916,9 @@ final class ChatViewModel: ObservableObject {
     /// `NavigationStack` updates commit before `fullScreenCover` teardown — avoids SwiftUI showing empty / warning chrome.
     func completePostPaymentReviewNavigatingHome() async {
         NotificationCenter.default.post(
-            name: .interaNavigateToConsumerHomeAfterPayment,
+            name: .onCutsNavigateToConsumerHomeAfterPayment,
             object: nil,
-            userInfo: [InteraBookingsUserInfoKeys.snapHubNoAnimation: true]
+            userInfo: [OnCutsBookingsUserInfoKeys.snapHubNoAnimation: true]
         )
         await Task.yield()
         await Task.yield()
@@ -1233,7 +1233,7 @@ final class ChatViewModel: ObservableObject {
             ensureRealtimeConnected(bearerToken: sessionManager.currentSession?.token, userId: sessionManager.currentSession?.userId)
             await refreshUnreadMessageCount(sessionManager: sessionManager)
         } catch {
-            if InteraRefreshCancellation.isBenignCancellation(error) { return }
+            if OnCutsRefreshCancellation.isBenignCancellation(error) { return }
             if MessagingAPIService.isUnauthorizedHTTPError(error) {
                 await sessionManager.recoverSessionAfterUnauthorized()
                 if rows.isEmpty {
@@ -1260,7 +1260,7 @@ final class ChatViewModel: ObservableObject {
         do {
             try await fetchAndApplyInboxRows(sessionManager: sessionManager, disableImplicitAnimations: false)
         } catch {
-            if InteraRefreshCancellation.isBenignCancellation(error) { return }
+            if OnCutsRefreshCancellation.isBenignCancellation(error) { return }
             if MessagingAPIService.isUnauthorizedHTTPError(error) {
                 await sessionManager.recoverSessionAfterUnauthorized()
                 listLoadError = "Your session is no longer valid. Please sign in again."

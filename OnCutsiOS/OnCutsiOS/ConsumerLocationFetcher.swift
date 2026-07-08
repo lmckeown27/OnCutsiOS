@@ -1,6 +1,6 @@
 //
 //  ConsumerLocationFetcher.swift
-//  Intera
+//  OnCuts
 //
 //  One-shot device coordinate for `GET /barbers?lat=&lng=` (iOS). Best-effort; returns nil if denied or unavailable.
 //

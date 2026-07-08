@@ -1,6 +1,6 @@
 //
 //  HTTPJSONBodyValidation.swift
-//  Intera
+//  OnCuts
 //
 //  Rejects HTML / plain-text bodies (e.g. nginx maintenance pages with HTTP 200) before JSONDecoder runs.
 //

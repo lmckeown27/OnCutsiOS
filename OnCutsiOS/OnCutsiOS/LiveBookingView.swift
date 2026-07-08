@@ -1,6 +1,6 @@
 //
 //  LiveBookingView.swift
-//  Intera
+//  OnCuts
 //
 //  Lava lamp booking intake: OnCuts services + availability, glass cards,
 //  sticky footer CTA, review navigation via `BookingMetadata`.
@@ -14,17 +14,17 @@ import UIKit
 
 extension Notification.Name {
     /// Posted after a booking request succeeds so hosts can open Bookings when detail was **pushed** (no overlay callback).
-    static let interaNavigateToBookingsAfterBookingRequest = Notification.Name("interaNavigateToBookingsAfterBookingRequest")
+    static let onCutsNavigateToBookingsAfterBookingRequest = Notification.Name("onCutsNavigateToBookingsAfterBookingRequest")
     /// Posted after a booking is updated (`PUT /bookings-simple/:id`) so lists refresh without switching tabs.
     static let consumerBookingsListShouldRefresh = Notification.Name("consumerBookingsListShouldRefresh")
 }
 
 /// `userInfo` keys for booking navigation notifications.
-enum InteraBookingsUserInfoKeys {
-    /// Set to `true` on `interaNavigateToBookingsAfterBookingRequest` to scroll the bookings timeline to the **Upcoming** section (top of the list).
-    static let focusUpcomingSection = "interaBookingsFocusUpcomingSection"
-    /// Set to `true` on `interaNavigateToConsumerHomeAfterPayment` when leaving the post-payment review sheet — hub switches without animation so it does not fight `fullScreenCover` dismissal (avoids empty / warning navigation chrome).
-    static let snapHubNoAnimation = "interaSnapHubNoAnimationAfterPaymentFlow"
+enum OnCutsBookingsUserInfoKeys {
+    /// Set to `true` on `onCutsNavigateToBookingsAfterBookingRequest` to scroll the bookings timeline to the **Upcoming** section (top of the list).
+    static let focusUpcomingSection = "onCutsBookingsFocusUpcomingSection"
+    /// Set to `true` on `onCutsNavigateToConsumerHomeAfterPayment` when leaving the post-payment review sheet — hub switches without animation so it does not fight `fullScreenCover` dismissal (avoids empty / warning navigation chrome).
+    static let snapHubNoAnimation = "onCutsSnapHubNoAnimationAfterPaymentFlow"
 }
 
 // MARK: - Material shell (inputs)
@@ -144,7 +144,7 @@ struct LiveBookingView: View {
     private var bookingExitOrbButton: some View {
         Button(role: .cancel, action: onDismiss) {
             Image(systemName: "xmark")
-                .font(InteraFont.system(size: 16, weight: .bold))
+                .font(OnCutsFont.system(size: 16, weight: .bold))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .symbolRenderingMode(.monochrome)
                 .frame(width: 48, height: 48)
@@ -172,7 +172,7 @@ struct LiveBookingView: View {
     var body: some View {
         NavigationStack(path: $navPath) {
             ZStack(alignment: .topLeading) {
-                InteraLavaLampBackground()
+                OnCutsLavaLampBackground()
 
                 ScrollViewReader { scrollProxy in
                     ScrollView {
@@ -299,7 +299,7 @@ struct LiveBookingView: View {
             .clipShape(RoundedRectangle(cornerRadius: BookingSelectorTheme.cornerRadius, style: .continuous))
 
             Text(provider.businessName)
-                .font(InteraFont.headlineSmall)
+                .font(OnCutsFont.headlineSmall)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
@@ -307,9 +307,9 @@ struct LiveBookingView: View {
             if let igURL = provider.instagramProfileURL {
                 Link(destination: igURL) {
                     Label("Instagram", systemImage: "camera.fill")
-                        .font(InteraFont.subheadline(weight: .medium))
+                        .font(OnCutsFont.subheadline(weight: .medium))
                         .labelStyle(.iconOnly)
-                        .foregroundStyleInteraShellIcon()
+                        .foregroundStyleOnCutsShellIcon()
                         .frame(width: 36, height: 36)
                         .background {
                             Circle().fill(.ultraThinMaterial)
@@ -323,7 +323,7 @@ struct LiveBookingView: View {
 
     private var heroPlaceholder: some View {
         Text(provider.businessName.prefix(2).uppercased())
-            .font(InteraFont.headline)
+            .font(OnCutsFont.headline)
             .foregroundStyleOliveGreen()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.brand.opacity(0.2))
@@ -352,7 +352,7 @@ struct LiveBookingView: View {
 
             if serviceChips.isEmpty {
                 Text("No services listed yet.")
-                    .font(InteraFont.bodySmall)
+                    .font(OnCutsFont.bodySmall)
                     .foregroundStyle(.secondary)
             } else {
                 VStack(spacing: 8) {
@@ -363,7 +363,7 @@ struct LiveBookingView: View {
             }
             if let serviceError, !serviceError.isEmpty {
                 Text(serviceError)
-                    .font(InteraFont.caption)
+                    .font(OnCutsFont.caption)
                     .foregroundStyle(Color.red.opacity(0.9))
             }
         }
@@ -415,7 +415,7 @@ struct LiveBookingView: View {
 
             if let timeError, !timeError.isEmpty {
                 Text(timeError)
-                    .font(InteraFont.caption)
+                    .font(OnCutsFont.caption)
                     .foregroundStyle(Color.red.opacity(0.9))
             }
         }
@@ -425,7 +425,7 @@ struct LiveBookingView: View {
         Group {
             if !calendarSelectionCommitted {
                 Text("Pick a day on the calendar to see available times.")
-                    .font(InteraFont.subheadline(weight: .medium))
+                    .font(OnCutsFont.subheadline(weight: .medium))
                     .foregroundStyle(BookingSelectorTheme.cream.opacity(0.42))
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -537,7 +537,7 @@ struct LiveBookingView: View {
                 }
                 return
             } catch {
-                if InteraRefreshCancellation.isBenignCancellation(error) { return }
+                if OnCutsRefreshCancellation.isBenignCancellation(error) { return }
                 await loadSlotsViaShellAPI(day: day)
                 return
             }
@@ -556,7 +556,7 @@ struct LiveBookingView: View {
             ribbonSlots = dedupeRibbonSlotsKeepingOrder(mapped).availableOnly
             slotsLoadError = nil
         } catch {
-            if InteraRefreshCancellation.isBenignCancellation(error) { return }
+            if OnCutsRefreshCancellation.isBenignCancellation(error) { return }
             ribbonSlots = []
             slotsLoadError = "Couldn’t load times. Try another date."
         }
@@ -708,9 +708,9 @@ struct LiveBookingView: View {
                     onDismiss()
                 }
                 NotificationCenter.default.post(
-                    name: .interaNavigateToBookingsAfterBookingRequest,
+                    name: .onCutsNavigateToBookingsAfterBookingRequest,
                     object: nil,
-                    userInfo: [InteraBookingsUserInfoKeys.focusUpcomingSection: true]
+                    userInfo: [OnCutsBookingsUserInfoKeys.focusUpcomingSection: true]
                 )
             } catch {
                 if AppointmentCreateAPI.isUnauthorizedError(error) {

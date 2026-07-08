@@ -1,6 +1,6 @@
 //
 //  OnCutsCard.swift
-//  Intera
+//  OnCuts
 //
 //  Reusable card component for OnCuts design system
 //
@@ -56,8 +56,8 @@ struct OnCutsCard<Content: View>: View {
         OnCutsCard(backgroundColor: .oliveTint) {
             HStack {
                 Image(systemName: "info.circle.fill")
-                    .foregroundStyleInteraShellIcon()
-                    .font(InteraFont.title2)
+                    .foregroundStyleOnCutsShellIcon()
+                    .font(OnCutsFont.title2)
                 
                 VStack(alignment: .leading) {
                     Text("Information")

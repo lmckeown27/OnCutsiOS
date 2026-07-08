@@ -1,6 +1,6 @@
 //
 //  OnCutsReviewModels.swift
-//  Intera
+//  OnCuts
 //
 //  Decodes OnCuts `Review` payloads (barber list embed + GET /barbers/:id/reviews).
 //

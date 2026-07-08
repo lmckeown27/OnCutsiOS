@@ -1,6 +1,6 @@
 //
-//  InteraRefreshCancellation.swift
-//  Intera
+//  OnCutsRefreshCancellation.swift
+//  OnCuts
 //
 //  Pull-to-refresh and navigation can cancel in-flight URLSession work. Those errors must not
 //  surface as user-visible failures.
@@ -8,7 +8,7 @@
 
 import Foundation
 
-enum InteraRefreshCancellation {
+enum OnCutsRefreshCancellation {
     /// True for Swift concurrency cancellation or `NSURLErrorCancelled` (-999).
     static func isBenignCancellation(_ error: Error) -> Bool {
         if error is CancellationError { return true }

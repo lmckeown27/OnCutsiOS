@@ -1,6 +1,6 @@
 //
 //  UpcomingBookingAppBadge.swift
-//  Intera
+//  OnCuts
 //
 //  Syncs the home-screen app icon badge with active upcoming/today consumer bookings.
 //

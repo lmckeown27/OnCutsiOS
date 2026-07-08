@@ -1,6 +1,6 @@
 //
 //  UserProfileView.swift
-//  Intera
+//  OnCuts
 //
 //  Role-aware profile: glass header, tabbed content (student vs barber), S3 portfolio grid,
 //  settings glass bottom sheet, matched-geometry tab highlight for barber tabs.
@@ -225,7 +225,7 @@ private struct BarberTabSwitcher: View {
                                 .matchedGeometryEffect(id: "barberTabPill", in: namespace)
                         }
                         Text(tab.title)
-                            .font(InteraFont.subheadline(weight: .semibold))
+                            .font(OnCutsFont.subheadline(weight: .semibold))
                             .foregroundStyle(selection == tab ? Color.primary : Color.secondary)
                             .padding(.vertical, 10)
                             .frame(maxWidth: .infinity)
@@ -264,13 +264,13 @@ private struct UserProfileGlassHeaderCard: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .center, spacing: 8) {
                         Text(session.displayName)
-                            .font(InteraFont.headlineSmall)
+                            .font(OnCutsFont.headlineSmall)
                             .foregroundStyle(.primary)
                             .lineLimit(2)
 
                         if showVerified {
                             Label("Verified", systemImage: "checkmark.seal.fill")
-                                .font(InteraFont.caption(weight: .bold))
+                                .font(OnCutsFont.caption(weight: .bold))
                                 .foregroundStyleOliveGreen()
                                 .labelStyle(.titleAndIcon)
                                 .padding(.horizontal, 8)
@@ -283,7 +283,7 @@ private struct UserProfileGlassHeaderCard: View {
                     }
 
                     Text(session.role.displayName)
-                        .font(InteraFont.caption(weight: .semibold))
+                        .font(OnCutsFont.caption(weight: .semibold))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .background(Color.oliveGreen.opacity(0.12))
@@ -296,10 +296,10 @@ private struct UserProfileGlassHeaderCard: View {
              // Consumer self-bio preview (disabled — not required at this time).
              VStack(alignment: .leading, spacing: 6) {
                  Text("Bio")
-                     .font(InteraFont.caption(weight: .semibold))
+                     .font(OnCutsFont.caption(weight: .semibold))
                      .foregroundStyle(.secondary)
                  Text(bioText.isEmpty ? "Add a short bio in settings." : bioText)
-                     .font(InteraFont.bodyMedium)
+                     .font(OnCutsFont.bodyMedium)
                      .foregroundStyle(bioText.isEmpty ? Color.secondary : Color.primary)
                      .fixedSize(horizontal: false, vertical: true)
              }
@@ -348,7 +348,7 @@ private struct UserProfileAppointmentList: View {
     var body: some View {
         if appointments.isEmpty {
             Text(emptyMessage)
-                .font(InteraFont.subheadline)
+                .font(OnCutsFont.subheadline)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 24)
@@ -358,10 +358,10 @@ private struct UserProfileAppointmentList: View {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .firstTextBaseline) {
                             Text(item.serviceName)
-                                .font(InteraFont.headlineSmall)
+                                .font(OnCutsFont.headlineSmall)
                             if let note = item.statusNote, !note.isEmpty {
                                 Text(note)
-                                    .font(InteraFont.caption2(weight: .semibold))
+                                    .font(OnCutsFont.caption2(weight: .semibold))
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3)
@@ -369,10 +369,10 @@ private struct UserProfileAppointmentList: View {
                             }
                         }
                         Text(item.providerName)
-                            .font(InteraFont.subheadline)
+                            .font(OnCutsFont.subheadline)
                             .foregroundStyle(.secondary)
                         Text(Self.df.string(from: item.scheduledAt))
-                            .font(InteraFont.caption)
+                            .font(OnCutsFont.caption)
                             .foregroundStyleOliveGreen()
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -402,7 +402,7 @@ private struct UserProfilePortfolioGrid: View {
     var body: some View {
         if urls.isEmpty {
             Text("No portfolio images on your profile yet. They appear here when `portfolioImages` is set on your barber record.")
-                .font(InteraFont.subheadline)
+                .font(OnCutsFont.subheadline)
                 .foregroundStyle(.secondary)
                 .padding(.vertical, 20)
         } else {
@@ -455,7 +455,7 @@ private struct UserProfileServicesList: View {
     var body: some View {
         if rows.isEmpty {
             Text("No services listed yet. Add them in your barber dashboard or backend.")
-                .font(InteraFont.subheadline)
+                .font(OnCutsFont.subheadline)
                 .foregroundStyle(.secondary)
                 .padding(.vertical, 20)
         } else {
@@ -464,14 +464,14 @@ private struct UserProfileServicesList: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(row.name)
-                            .font(InteraFont.headlineSmall)
+                            .font(OnCutsFont.headlineSmall)
                         Text("\(row.durationMinutes) min")
-                            .font(InteraFont.caption)
+                            .font(OnCutsFont.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
                     Text("$\(row.priceUsd)")
-                        .font(InteraFont.bodyLarge(weight: .semibold))
+                        .font(OnCutsFont.bodyLarge(weight: .semibold))
                         .foregroundStyleOliveGreen()
                 }
                 .padding(16)
@@ -495,7 +495,7 @@ private struct UserProfileReviewsList: View {
     var body: some View {
         if reviews.isEmpty {
             Text("No reviews yet.")
-                .font(InteraFont.subheadline)
+                .font(OnCutsFont.subheadline)
                 .foregroundStyle(.secondary)
                 .padding(.vertical, 20)
         } else {
@@ -504,19 +504,19 @@ private struct UserProfileReviewsList: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text(r.authorName)
-                            .font(InteraFont.subheadline(weight: .semibold))
+                            .font(OnCutsFont.subheadline(weight: .semibold))
                         Spacer()
                         HStack(spacing: 2) {
                             ForEach(0..<5, id: \.self) { i in
                                 Image(systemName: i < r.rating ? "star.fill" : "star")
-                                    .font(InteraFont.caption2)
+                                    .font(OnCutsFont.caption2)
                                     .foregroundStyle(i < r.rating ? Color.oliveGreen : Color.secondary.opacity(0.4))
-                                    .interaOliveGreenTextOutline(when: i < r.rating)
+                                    .onCutsOliveGreenTextOutline(when: i < r.rating)
                             }
                         }
                     }
                     Text(r.body)
-                        .font(InteraFont.bodyMedium)
+                        .font(OnCutsFont.bodyMedium)
                         .foregroundStyle(.primary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -567,7 +567,7 @@ private struct ProfileAccountScrollReportingModifier: ViewModifier {
     let reportsProfileUtilityPillCollapse: Bool
     let hubPageIndex: Int
     let onProfileScrollOffset: (CGFloat) -> Void
-    @Environment(\.interaHubBarScrollOffsetHandler) private var hubBarScrollHandler
+    @Environment(\.onCutsHubBarScrollOffsetHandler) private var hubBarScrollHandler
 
     func body(content: Content) -> some View {
         if #available(iOS 18.0, macOS 15.0, *) {
@@ -604,7 +604,7 @@ private struct UserProfileGlassSectionHeader: View {
 
     var body: some View {
         Text(title)
-            .font(InteraFont.system(.subheadline, design: .serif))
+            .font(OnCutsFont.system(.subheadline, design: .serif))
             .fontWeight(.semibold)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -654,7 +654,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
     @State private var lastPersistedFirst: String = ""
     @State private var lastPersistedLast: String = ""
     @State private var profileNameAutosaveTask: Task<Void, Never>?
-    @Environment(\.interaHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
+    @Environment(\.onCutsHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @State private var profileScrollContentOffsetY: CGFloat = 0
     @State private var profileUtilityPillCollapseOffset: CGFloat = 0
@@ -664,7 +664,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
     @State private var deletePassword = ""
     @State private var deletePasswordVisible = false
     @State private var deleteAccountError: String?
-    /// From `GET /auth/me`: `true` means the user has not set an Intera password (e.g. Sign in with Apple only) — use device confirmation instead of password when deleting.
+    /// From `GET /auth/me`: `true` means the user has not set an OnCuts password (e.g. Sign in with Apple only) — use device confirmation instead of password when deleting.
     @State private var needsPlatformPasswordForDeletion: Bool = false
     @State private var showSignOutConfirm = false
     @State private var showApplePayReviewerInfo = false
@@ -761,7 +761,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                     VStack(alignment: .leading, spacing: 18) {
                         if let formError, !formError.isEmpty {
                             Text(formError)
-                                .font(InteraFont.caption)
+                                .font(OnCutsFont.caption)
                                 .foregroundStyle(.red)
                         }
                         tabContent
@@ -865,16 +865,16 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Pay with Apple Pay")
-                            .font(InteraFont.title3(weight: .bold))
+                            .font(OnCutsFont.title3(weight: .bold))
                         Text("Typical flow after your provider completes the service:")
-                            .font(InteraFont.subheadline)
+                            .font(OnCutsFont.subheadline)
                             .foregroundStyle(.secondary)
                             .padding(.bottom, 8)
 
                         ForEach(Array(Self.applePayInstructionSteps.enumerated()), id: \.offset) { index, line in
                             HStack(alignment: .firstTextBaseline, spacing: 12) {
                                 Text("\(index + 1)")
-                                    .font(InteraFont.caption(weight: .bold))
+                                    .font(OnCutsFont.caption(weight: .bold))
                                     .foregroundStyle(Color.white)
                                     .frame(width: 26, height: 26)
                                     .background {
@@ -882,7 +882,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                                     }
                                     .accessibilityHidden(true)
                                 Text(line)
-                                    .font(InteraFont.body)
+                                    .font(OnCutsFont.body)
                                     .foregroundStyle(.primary)
                                     .fixedSize(horizontal: false, vertical: true)
                                 Spacer(minLength: 0)
@@ -942,19 +942,19 @@ private struct UserProfileSettingsDrawerOverlay: View {
             VStack(alignment: .leading, spacing: 20) {
                 if needsPlatformPasswordForDeletion {
                     Text("This permanently removes your account. Because you use Sign in with Apple without a \(AppBranding.displayName) password, the next step asks for Face ID, Touch ID, or your device passcode to confirm.")
-                        .font(InteraFont.subheadline)
+                        .font(OnCutsFont.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
                     Text("This permanently removes your account. Enter your password to confirm.")
-                        .font(InteraFont.subheadline)
+                        .font(OnCutsFont.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
                 if let deleteAccountError, !deleteAccountError.isEmpty {
                     Text(deleteAccountError)
-                        .font(InteraFont.caption)
+                        .font(OnCutsFont.caption)
                         .foregroundStyle(.red)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -962,7 +962,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 if !needsPlatformPasswordForDeletion {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Password")
-                            .font(InteraFont.caption(weight: .semibold))
+                            .font(OnCutsFont.caption(weight: .semibold))
                             .foregroundStyle(.secondary)
 
                         HStack(spacing: 10) {
@@ -985,7 +985,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                                 deletePasswordVisible.toggle()
                             } label: {
                                 Image(systemName: deletePasswordVisible ? "eye.slash.fill" : "eye.fill")
-                                    .font(InteraFont.body(weight: .medium))
+                                    .font(OnCutsFont.body(weight: .medium))
                                     .foregroundStyle(.secondary)
                                     .frame(minWidth: 28, minHeight: 28)
                                     .contentShape(Rectangle())
@@ -1010,7 +1010,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                     Task { await performDeleteAccount() }
                 } label: {
                     Text("Delete account")
-                        .font(InteraFont.body(weight: .semibold))
+                        .font(OnCutsFont.body(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
@@ -1106,7 +1106,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
             }
         } label: {
             Text(item.title)
-                .font(InteraFont.system(size: 14, weight: isSelected ? .semibold : .medium, design: .default))
+                .font(OnCutsFont.system(size: 14, weight: isSelected ? .semibold : .medium, design: .default))
                 .foregroundStyle(profileUtilityPillSegmentForeground(item, isSelected: isSelected))
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
@@ -1153,7 +1153,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 UserProfileGlassTile {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("First Name")
-                            .font(InteraFont.caption(weight: .semibold))
+                            .font(OnCutsFont.caption(weight: .semibold))
                             .foregroundStyle(.secondary)
                             .onTapGesture { dismissProfileNameKeyboard() }
                         TextField("First name", text: $firstName)
@@ -1166,7 +1166,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 UserProfileGlassTile {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Last Name")
-                            .font(InteraFont.caption(weight: .semibold))
+                            .font(OnCutsFont.caption(weight: .semibold))
                             .foregroundStyle(.secondary)
                             .onTapGesture { dismissProfileNameKeyboard() }
                         TextField("Last name", text: $lastName)
@@ -1193,25 +1193,25 @@ private struct UserProfileSettingsDrawerOverlay: View {
             UserProfileGlassTile {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("First Name")
-                        .font(InteraFont.caption(weight: .semibold))
+                        .font(OnCutsFont.caption(weight: .semibold))
                         .foregroundStyle(.secondary)
                     Text(signInWithAppleReadOnlyFirstLine)
-                        .font(InteraFont.body)
+                        .font(OnCutsFont.body)
                         .foregroundStyle(.primary)
                 }
             }
             UserProfileGlassTile {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Last Name")
-                        .font(InteraFont.caption(weight: .semibold))
+                        .font(OnCutsFont.caption(weight: .semibold))
                         .foregroundStyle(.secondary)
                     Text(signInWithAppleReadOnlyLastLine)
-                        .font(InteraFont.body)
+                        .font(OnCutsFont.body)
                         .foregroundStyle(.primary)
                 }
             }
             Text("Your name comes from Sign in with Apple. To change it, update your Apple ID in Settings.")
-                .font(InteraFont.caption)
+                .font(OnCutsFont.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -1252,7 +1252,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                     showSignOutConfirm = true
                 } label: {
                     Text("Sign Out")
-                        .font(InteraFont.body(weight: .semibold))
+                        .font(OnCutsFont.body(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                 }
@@ -1260,14 +1260,14 @@ private struct UserProfileSettingsDrawerOverlay: View {
             }
 
             Text("Deleting your account removes your profile and associated data from \(AppBranding.displayName) where supported by the server.")
-                .font(InteraFont.caption)
+                .font(OnCutsFont.caption)
                 .foregroundStyle(.secondary)
             Button(role: .destructive) {
                 deleteAccountError = nil
                 showDeleteConfirm = true
             } label: {
                 Text("Delete Account")
-                    .font(InteraFont.body(weight: .semibold))
+                    .font(OnCutsFont.body(weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
             }
@@ -1282,7 +1282,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
     ) -> some View {
         HStack(spacing: 12) {
             Text(title)
-                .font(InteraFont.body)
+                .font(OnCutsFont.body)
                 .foregroundStyle(emphasizeSignOut ? Color.red : Color.primary)
             Spacer(minLength: 8)
         }
@@ -1638,7 +1638,7 @@ private enum DeleteAccountDeviceOwnerGate {
                     continuation.resume(throwing: error)
                 } else {
                     continuation.resume(
-                        throwing: NSError(domain: "Intera", code: -1, userInfo: [NSLocalizedDescriptionKey: "Authentication failed."])
+                        throwing: NSError(domain: "OnCuts", code: -1, userInfo: [NSLocalizedDescriptionKey: "Authentication failed."])
                     )
                 }
             }

@@ -1,6 +1,6 @@
 //
 //  ProviderListAPIModels.swift
-//  Intera
+//  OnCuts
 //
 //  Lenient decoding for `/providers/list` so missing bio or avatar never crashes the app.
 //

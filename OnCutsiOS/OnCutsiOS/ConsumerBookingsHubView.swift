@@ -1,6 +1,6 @@
 //
 //  ConsumerBookingsHubView.swift
-//  Intera
+//  OnCuts
 //
 //  Consumer bookings from `GET /api/v1/bookings-simple` — unified timeline continuum
 //  (Upcoming / Today / Past) instead of segmented tabs.
@@ -23,7 +23,7 @@ struct ConsumerBookingsHubView: View {
     @State private var error: String?
     /// Incremented after each successful fetch so `UnifiedTimelineView` can re-scroll to the anchor.
     @State private var timelineScrollEpoch = 0
-    /// After a new booking request, scroll to the **Upcoming** header (see `InteraBookingsUserInfoKeys.focusUpcomingSection`).
+    /// After a new booking request, scroll to the **Upcoming** header (see `OnCutsBookingsUserInfoKeys.focusUpcomingSection`).
     @State private var scrollAnchorOverride: String?
     /// `GET /bookings-simple` can briefly omit a booking that we already have from `GET …/:id` (notification deep link). Keep a copy so `hubRow` still resolves while detail is on-stack.
     @State private var supplementalDetailRowsByNormalizedId: [String: ConsumerBookingSimpleRow] = [:]
@@ -53,7 +53,7 @@ struct ConsumerBookingsHubView: View {
             Color.clear
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             #else
-            InteraLiquidMeshBackground()
+            OnCutsLiquidMeshBackground()
             #endif
             Group {
                 if !sessionManager.isAuthenticated {
@@ -71,10 +71,10 @@ struct ConsumerBookingsHubView: View {
                             Spacer(minLength: 120)
                         }
                         .frame(maxWidth: .infinity)
-                        .interaHubBarScrollContentBottomInset()
+                        .onCutsHubBarScrollContentBottomInset()
                     }
                     .scrollBounceBehavior(.always, axes: .vertical)
-                    .interaHubBarScrollOffsetReporting(pageIndex: 2)
+                    .onCutsHubBarScrollOffsetReporting(pageIndex: 2)
                     .refreshable { await reloadBookingsListForPullToRefresh() }
                 } else if !hasAnyBooking {
                     ScrollView {
@@ -85,10 +85,10 @@ struct ConsumerBookingsHubView: View {
                         )
                         .frame(maxWidth: .infinity)
                         .padding(.top, 40)
-                        .interaHubBarScrollContentBottomInset()
+                        .onCutsHubBarScrollContentBottomInset()
                     }
                     .scrollBounceBehavior(.always, axes: .vertical)
-                    .interaHubBarScrollOffsetReporting(pageIndex: 2)
+                    .onCutsHubBarScrollOffsetReporting(pageIndex: 2)
                     .refreshable { await reloadBookingsListForPullToRefresh() }
                 } else {
                     UnifiedTimelineView(
@@ -124,7 +124,7 @@ struct ConsumerBookingsHubView: View {
             onShowLogin: onShowLogin
         )
         #if os(iOS)
-        .interaNavigationShellBackgroundClear()
+        .onCutsNavigationShellBackgroundClear()
         #endif
     }
 
@@ -198,8 +198,8 @@ struct ConsumerBookingsHubView: View {
         .task {
             await reloadBookingsList()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaNavigateToBookingsAfterBookingRequest)) { notification in
-            if (notification.userInfo?[InteraBookingsUserInfoKeys.focusUpcomingSection] as? Bool) == true {
+        .onReceive(NotificationCenter.default.publisher(for: .onCutsNavigateToBookingsAfterBookingRequest)) { notification in
+            if (notification.userInfo?[OnCutsBookingsUserInfoKeys.focusUpcomingSection] as? Bool) == true {
                 scrollAnchorOverride = ConsumerBookingsTimelineProjection.upcomingHeaderID
             }
             scheduleReloadBookingsList()
@@ -207,7 +207,7 @@ struct ConsumerBookingsHubView: View {
         .onReceive(NotificationCenter.default.publisher(for: .consumerBookingsListShouldRefresh)) { _ in
             scheduleReloadBookingsList()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaNavigateToConsumerHomeAfterPayment)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .onCutsNavigateToConsumerHomeAfterPayment)) { _ in
             detailNavigationPath = NavigationPath()
             reportBookingsNavigationDepth()
         }
@@ -269,7 +269,7 @@ struct ConsumerBookingsHubView: View {
         } catch {
             if ConsumerBookingsSimpleAPI.isUnauthorizedHTTPError(error) {
                 await sessionManager.recoverSessionAfterUnauthorized()
-            } else if !InteraRefreshCancellation.isBenignCancellation(error) {
+            } else if !OnCutsRefreshCancellation.isBenignCancellation(error) {
                 self.error = error.localizedDescription
             }
         }
@@ -307,7 +307,7 @@ struct ConsumerBookingsHubView: View {
         } catch {
             if ConsumerBookingsSimpleAPI.isUnauthorizedHTTPError(error) {
                 await sessionManager.recoverSessionAfterUnauthorized()
-            } else if !InteraRefreshCancellation.isBenignCancellation(error) {
+            } else if !OnCutsRefreshCancellation.isBenignCancellation(error) {
                 self.error = error.localizedDescription
             }
         }
@@ -320,7 +320,7 @@ struct ConsumerBookingsHubView: View {
     /// network call reliably runs while still awaiting completion for the refresh control.
     @MainActor
     private func reloadBookingsListForPullToRefresh() async {
-        await InteraPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
+        await OnCutsPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
             await reloadBookingsList()
         }
     }

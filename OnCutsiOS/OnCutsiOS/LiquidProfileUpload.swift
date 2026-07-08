@@ -1,6 +1,6 @@
 //
 //  LiquidProfileUpload.swift
-//  Intera
+//  OnCuts
 //
 //  Profile avatar with upload progress ring, success bounce, and error retry.
 //
@@ -80,7 +80,7 @@ struct LiquidProfileUpload: View {
                     showChangePhotoOptions = true
                 } label: {
                     Text("Try Again")
-                        .font(InteraFont.subheadline(weight: .semibold))
+                        .font(OnCutsFont.subheadline(weight: .semibold))
                         .padding(.horizontal, 18)
                         .padding(.vertical, 10)
                         .background {
@@ -101,7 +101,7 @@ struct LiquidProfileUpload: View {
                 showChangePhotoOptions = true
             } label: {
                 Text(isUploading ? "Uploading…" : "Change Profile Picture")
-                    .font(InteraFont.subheadline(weight: .semibold))
+                    .font(OnCutsFont.subheadline(weight: .semibold))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background {
@@ -229,7 +229,7 @@ struct LiquidProfileUpload: View {
     }
 
     private var placeholder: some View {
-        InteraDefaultProfileAvatarGlyph(slotDiameter: avatarSize)
+        OnCutsDefaultProfileAvatarGlyph(slotDiameter: avatarSize)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

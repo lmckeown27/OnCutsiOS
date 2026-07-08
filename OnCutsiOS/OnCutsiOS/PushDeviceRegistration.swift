@@ -1,6 +1,6 @@
 //
 //  PushDeviceRegistration.swift
-//  Intera
+//  OnCuts
 //
 //  Persists the APNs token and syncs it with the backend when a JWT is available.
 //
@@ -13,7 +13,7 @@ import UIKit
 #endif
 
 enum PushDeviceRegistration {
-    private static let log = Logger(subsystem: "com.intera", category: "PushRegistration")
+    private static let log = Logger(subsystem: "com.oncuts", category: "PushRegistration")
     private static let apnsHexDefaultsKey = "com.intera.push.apnsHexToken"
 
     /// Suppresses duplicate `POST /register-device` when `didRegisterForRemoteNotifications` and

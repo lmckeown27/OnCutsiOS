@@ -1,6 +1,6 @@
 //
 //  AppleNativeSignInPresenter.swift
-//  Intera
+//  OnCuts
 //
 //  Presents Sign in with Apple via `ASAuthorizationController` only (system Face ID / passcode UI).
 //  Name and email must come only from Authentication Services + server — no post-authorization manual fields.

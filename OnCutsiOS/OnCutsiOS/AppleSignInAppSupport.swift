@@ -1,6 +1,6 @@
 //
 //  AppleSignInAppSupport.swift
-//  Intera
+//  OnCuts
 //
 //  Sign in with Apple → `POST /api/v1/auth/apple` → OnCuts JWT session (Guideline 4.8).
 //

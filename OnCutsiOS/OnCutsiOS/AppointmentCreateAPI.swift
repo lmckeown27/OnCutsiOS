@@ -1,6 +1,6 @@
 //
 //  AppointmentCreateAPI.swift
-//  Intera
+//  OnCuts
 //
 //  Consumer booking submission: POST `AppConfiguration.urlBookingsSimpleCreate` (`POST /api/v1/bookings-simple`).
 //

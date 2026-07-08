@@ -1,6 +1,6 @@
 //
 //  AccountRegistrationAPI.swift
-//  Intera
+//  OnCuts
 //
 //  POST /api/v1/auth/register (see AppConfiguration.urlAuthRegister) with onboarding metadata.
 //

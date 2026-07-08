@@ -107,7 +107,7 @@ router.post(
 );
 
 /**
- * Phone-first signup (SMS before password) — Intera / web.
+ * Phone-first signup (SMS before password) — OnCutsiOS / web.
  */
 router.post(
   '/signup/send-phone-code',
@@ -169,14 +169,14 @@ router.get(
 
 /**
  * @route   POST /api/auth/google
- * @desc    Exchange Google ID token for CampusCuts JWTs (Intera / mobile)
+ * @desc    Exchange Google ID token for CampusCuts JWTs (OnCutsiOS / mobile)
  * @access  Public
  */
 router.post('/google', googleIdTokenLogin);
 
 /**
  * @route   POST /api/auth/apple
- * @desc    Exchange Apple Sign in with Apple `identityToken` for CampusCuts JWTs (Intera / mobile)
+ * @desc    Exchange Apple Sign in with Apple `identityToken` for CampusCuts JWTs (OnCutsiOS / mobile)
  * @access  Public
  */
 router.post('/apple', appleIdTokenLogin);

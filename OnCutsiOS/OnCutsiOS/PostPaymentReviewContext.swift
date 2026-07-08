@@ -1,6 +1,6 @@
 //
 //  PostPaymentReviewContext.swift
-//  Intera
+//  OnCuts
 //
 //  Shown after card/cash payment so the consumer can rate the provider (0 = skip, 1–5 submitted to API).
 //

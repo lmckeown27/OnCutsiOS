@@ -1,6 +1,6 @@
 //
 //  MessagingRealtime.swift
-//  Intera
+//  OnCuts
 //
 //  Socket.IO listener for `new-message` (OnCuts real-time chat).
 //  Must join `join-personal` + `join-conversation` like the web client, or `io.to("user-…")` emits are never received.
@@ -440,7 +440,7 @@ enum MessagingDTOMapper {
         let threaded = Self.threadDisplayText(rawText, hasMediaAttachment: hasMedia)
         let text: String = {
             if isMine { return threaded }
-            return InteraMessagingContentFilter.displayTextForIncomingCommunity(threaded)
+            return OnCutsMessagingContentFilter.displayTextForIncomingCommunity(threaded)
         }()
         let url = dto.mediaUrl.flatMap { URL(string: $0) }
         let created = parseDate(dto.createdAt) ?? Date()

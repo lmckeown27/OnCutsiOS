@@ -1,6 +1,6 @@
 //
 //  UnifiedTimelineView.swift
-//  Intera
+//  OnCuts
 //
 //  Single data-driven scroll: Upcoming / Today / Past with pinned section headers,
 //  initial scroll-to-today (or next best section), and jump-to-today FAB.
@@ -30,7 +30,7 @@ struct UnifiedTimelineView: View {
     /// True after the user scrolls the timeline down; layout-only reflows (disclosure expand) stay near y≈0 and must not drive chrome.
     @State private var hasTimelineUserScrolled = false
     @State private var timelineHeaderMinYs: [String: CGFloat] = [:]
-    @Environment(\.interaHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
+    @Environment(\.onCutsHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -73,7 +73,7 @@ struct UnifiedTimelineView: View {
                 timelineLazyStack
             }
             .scrollBounceBehavior(.always, axes: .vertical)
-            .interaHubBarScrollOffsetReporting(pageIndex: 2)
+            .onCutsHubBarScrollOffsetReporting(pageIndex: 2)
             .refreshable {
                 await onPullToRefresh()
             }
@@ -82,7 +82,7 @@ struct UnifiedTimelineView: View {
                 timelineLazyStack
             }
             .scrollBounceBehavior(.always, axes: .vertical)
-            .interaHubBarScrollOffsetReporting(pageIndex: 2)
+            .onCutsHubBarScrollOffsetReporting(pageIndex: 2)
         }
     }
 
@@ -156,7 +156,7 @@ struct UnifiedTimelineView: View {
         Section {
             if items.isEmpty {
                 Text(emptyBlurb(for: .past))
-                    .font(InteraFont.caption)
+                    .font(OnCutsFont.caption)
                     .foregroundStyle(Color.lavaShellCreamTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 6)
@@ -205,7 +205,7 @@ struct UnifiedTimelineView: View {
         Section {
             if rows.isEmpty {
                 Text(emptyBlurb(for: position))
-                    .font(InteraFont.caption)
+                    .font(OnCutsFont.caption)
                     .foregroundStyle(Color.lavaShellCreamTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 6)
@@ -261,14 +261,14 @@ struct UnifiedTimelineView: View {
     private func jumpToTodayButton(proxy: ScrollViewProxy) -> some View {
         Button {
             #if os(iOS)
-            InteraLiquidGlassHaptics.selectionChanged()
+            OnCutsLiquidGlassHaptics.selectionChanged()
             #endif
             withAnimation(LiquidGlassMotion.fluidSpring) {
                 proxy.scrollTo(ConsumerBookingsTimelineProjection.todayHeaderID, anchor: .top)
             }
         } label: {
             Image(systemName: "sun.max.fill")
-                .font(InteraFont.title2(weight: .semibold))
+                .font(OnCutsFont.title2(weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(width: 56, height: 56)
                 .background {

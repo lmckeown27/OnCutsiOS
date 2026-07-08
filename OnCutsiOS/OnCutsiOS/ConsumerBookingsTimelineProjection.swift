@@ -1,6 +1,6 @@
 //
 //  ConsumerBookingsTimelineProjection.swift
-//  Intera
+//  OnCuts
 //
 //  Data preparation for the unified bookings timeline: chronological sections,
 //  scroll anchors, and visual timeline position (past / today / upcoming).

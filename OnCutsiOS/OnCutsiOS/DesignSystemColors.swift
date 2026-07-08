@@ -1,6 +1,6 @@
 //
 //  DesignSystem+Colors.swift
-//  Intera
+//  OnCuts
 //
 //  Simplified 3-color system: White, Black, Olive Green
 //
@@ -15,7 +15,7 @@ extension Color {
     // MARK: - Adaptive shell (light: white / black text, dark: black / white text)
 
     #if canImport(UIKit)
-    private static func interaDynamic(_ light: UIColor, _ dark: UIColor) -> Color {
+    private static func onCutsDynamic(_ light: UIColor, _ dark: UIColor) -> Color {
         Color(uiColor: UIColor { traits in
             traits.userInterfaceStyle == .dark ? dark : light
         })
@@ -23,43 +23,43 @@ extension Color {
     #endif
 
     /// Page and window backdrop.
-    static var interaShellBackground: Color {
+    static var onCutsShellBackground: Color {
         #if canImport(UIKit)
-        interaDynamic(.white, .black)
+        onCutsDynamic(.white, .black)
         #else
         Color.white
         #endif
     }
 
     /// Primary copy and icons on the shell.
-    static var interaShellForeground: Color {
+    static var onCutsShellForeground: Color {
         #if canImport(UIKit)
-        interaDynamic(.black, .white)
+        onCutsDynamic(.black, .white)
         #else
         Color.primary
         #endif
     }
 
-    static var interaShellForegroundSecondary: Color {
+    static var onCutsShellForegroundSecondary: Color {
         #if canImport(UIKit)
-        interaDynamic(UIColor.black.withAlphaComponent(0.65), UIColor.white.withAlphaComponent(0.82))
+        onCutsDynamic(UIColor.black.withAlphaComponent(0.65), UIColor.white.withAlphaComponent(0.82))
         #else
         Color.secondary
         #endif
     }
 
-    static var interaShellForegroundTertiary: Color {
+    static var onCutsShellForegroundTertiary: Color {
         #if canImport(UIKit)
-        interaDynamic(UIColor.black.withAlphaComponent(0.45), UIColor.white.withAlphaComponent(0.64))
+        onCutsDynamic(UIColor.black.withAlphaComponent(0.45), UIColor.white.withAlphaComponent(0.64))
         #else
         Color.secondary.opacity(0.8)
         #endif
     }
 
     /// Frosted-surface rim on shell chrome.
-    static var interaShellGlassStroke: Color {
+    static var onCutsShellGlassStroke: Color {
         #if canImport(UIKit)
-        interaDynamic(UIColor.black.withAlphaComponent(0.12), UIColor.white.withAlphaComponent(0.22))
+        onCutsDynamic(UIColor.black.withAlphaComponent(0.12), UIColor.white.withAlphaComponent(0.22))
         #else
         Color.secondary.opacity(0.25)
         #endif
@@ -72,7 +72,7 @@ extension Color {
     /// Filled primary CTA (Card, Submit) — light: white on white shell; dark: near-white on black shell.
     static var paymentFilledButtonFill: Color {
         #if canImport(UIKit)
-        interaDynamic(.white, UIColor(white: 0.94, alpha: 1))
+        onCutsDynamic(.white, UIColor(white: 0.94, alpha: 1))
         #else
         Color.white
         #endif
@@ -81,19 +81,19 @@ extension Color {
     /// Label on ``paymentFilledButtonFill``.
     static var paymentFilledButtonLabel: Color {
         #if canImport(UIKit)
-        interaDynamic(paymentCharcoalUIColor, UIColor(red: 0.14, green: 0.14, blue: 0.16, alpha: 1))
+        onCutsDynamic(paymentCharcoalUIColor, UIColor(red: 0.14, green: 0.14, blue: 0.16, alpha: 1))
         #else
         Color.primary
         #endif
     }
 
     /// Outline CTA stroke and label (Cash).
-    static var paymentOutlineButtonLabel: Color { interaShellForeground }
+    static var paymentOutlineButtonLabel: Color { onCutsShellForeground }
 
     /// Frosted card wash over ``Material`` on the payment / post-payment screens.
     static var paymentGlassWash: Color {
         #if canImport(UIKit)
-        interaDynamic(UIColor.black.withAlphaComponent(0.04), UIColor.white.withAlphaComponent(0.14))
+        onCutsDynamic(UIColor.black.withAlphaComponent(0.04), UIColor.white.withAlphaComponent(0.14))
         #else
         Color.primary.opacity(0.06)
         #endif
@@ -102,15 +102,15 @@ extension Color {
     /// Text field surface on payment review.
     static var paymentFieldBackground: Color {
         #if canImport(UIKit)
-        interaDynamic(.white, UIColor(white: 0.16, alpha: 1))
+        onCutsDynamic(.white, UIColor(white: 0.16, alpha: 1))
         #else
         Color(.secondarySystemBackground)
         #endif
     }
 
-    static var paymentFieldForeground: Color { interaShellForeground }
+    static var paymentFieldForeground: Color { onCutsShellForeground }
 
-    static var paymentFieldPlaceholder: Color { interaShellForegroundTertiary }
+    static var paymentFieldPlaceholder: Color { onCutsShellForegroundTertiary }
 
     #if canImport(UIKit)
     /// Resolved text color for ``UITextView`` / ``TextEditor`` (SwiftUI `foregroundStyle` alone is often ignored).
@@ -134,7 +134,7 @@ extension Color {
 
     static var paymentTipUnselectedStroke: Color {
         #if canImport(UIKit)
-        interaDynamic(UIColor.black.withAlphaComponent(0.22), UIColor.white.withAlphaComponent(0.38))
+        onCutsDynamic(UIColor.black.withAlphaComponent(0.22), UIColor.white.withAlphaComponent(0.38))
         #else
         Color.secondary.opacity(0.4)
         #endif
@@ -152,7 +152,7 @@ extension Color {
     /// For **text**, prefer ``View/foregroundStyleOliveGreen(opacity:)`` so glyphs get an adaptive outline.
     static var oliveGreen: Color {
         #if canImport(UIKit)
-        interaDynamic(Self.oliveGreenLightUIColor, Self.oliveGreenDarkUIColor)
+        onCutsDynamic(Self.oliveGreenLightUIColor, Self.oliveGreenDarkUIColor)
         #else
         Color(hex: "849E92")
         #endif
@@ -177,9 +177,9 @@ extension Color {
     /// Dark text on light backgrounds  
     static let textDark = Color.black
     /// Subtle text (appearance-aware).
-    static var textSecondary: Color { interaShellForegroundSecondary }
+    static var textSecondary: Color { onCutsShellForegroundSecondary }
     /// Placeholder text (appearance-aware).
-    static var textTertiary: Color { interaShellForegroundTertiary }
+    static var textTertiary: Color { onCutsShellForegroundTertiary }
     /// Disabled text
     static let textDisabled = Color.black.opacity(0.3)
     
@@ -189,7 +189,7 @@ extension Color {
     static let borderMedium = Color.black.opacity(0.2)
     
     /// Page background (follows system appearance).
-    static var backgroundPrimary: Color { interaShellBackground }
+    static var backgroundPrimary: Color { onCutsShellBackground }
     /// Subtle background tint
     static let backgroundSecondary = Color(hex: "FAFAFA")
     
@@ -214,10 +214,10 @@ extension Color {
 
     // MARK: - Shell foreground aliases (formerly lava/cream; now appearance-aware)
 
-    static var lavaShellCream: Color { interaShellForeground }
-    static var lavaShellCreamSecondary: Color { interaShellForegroundSecondary }
-    static var lavaShellCreamTertiary: Color { interaShellForegroundTertiary }
-    static var lavaShellGlassStroke: Color { interaShellGlassStroke }
+    static var lavaShellCream: Color { onCutsShellForeground }
+    static var lavaShellCreamSecondary: Color { onCutsShellForegroundSecondary }
+    static var lavaShellCreamTertiary: Color { onCutsShellForegroundTertiary }
+    static var lavaShellGlassStroke: Color { onCutsShellGlassStroke }
     
     static let neutral50 = backgroundSecondary
     static let neutral100 = backgroundSecondary
@@ -274,15 +274,15 @@ extension Color {
 extension View {
     /// Reserves a hook for app-wide shell styling; follows the user’s light/dark setting (no forced scheme).
     @ViewBuilder
-    func interaConsumerShellAppearance() -> some View {
-        interaPlatformTypography()
+    func onCutsConsumerShellAppearance() -> some View {
+        onCutsPlatformTypography()
     }
 
     #if os(iOS)
     /// Keeps ``TextEditor`` typed text visible in dark mode (UIKit text color + caret).
-    func interaAdaptiveTextEditorForeground(_ uiColor: UIColor = Color.paymentFieldForegroundUIColor) -> some View {
+    func onCutsAdaptiveTextEditorForeground(_ uiColor: UIColor = Color.paymentFieldForegroundUIColor) -> some View {
         foregroundStyle(Color(uiColor: uiColor))
-            .background(InteraTextEditorForegroundSync(uiColor: uiColor))
+            .background(OnCutsTextEditorForegroundSync(uiColor: uiColor))
     }
     #endif
 }
@@ -290,7 +290,7 @@ extension View {
 #if os(iOS)
 
 /// Walks the view hierarchy from a ``TextEditor`` sibling to set ``UITextView`` colors.
-private struct InteraTextEditorForegroundSync: UIViewRepresentable {
+private struct OnCutsTextEditorForegroundSync: UIViewRepresentable {
     var uiColor: UIColor
 
     func makeUIView(context: Context) -> UIView {
@@ -335,7 +335,7 @@ private struct InteraTextEditorForegroundSync: UIViewRepresentable {
 #endif
 
 /// Legacy no-op scrim — kept so existing `ZStack` layouts compile without an extra dim layer.
-struct InteraLavaViewportScrimLayer: View {
+struct OnCutsLavaViewportScrimLayer: View {
     var body: some View {
         Color.clear
             .frame(maxWidth: .infinity, maxHeight: .infinity)

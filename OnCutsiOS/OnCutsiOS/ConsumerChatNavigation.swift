@@ -1,6 +1,6 @@
 //
 //  ConsumerChatNavigation.swift
-//  Intera
+//  OnCuts
 //
 //  ConversationListView (global inbox) + booking-thread handoffs via `ChatViewModel` / `MessagingConversationView`.
 //
@@ -24,7 +24,7 @@ struct ConversationListView: View {
     var onShowLogin: (() -> Void)? = nil
 
     @EnvironmentObject private var chatViewModel: ChatViewModel
-    @Environment(\.interaHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
+    @Environment(\.onCutsHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
 
     @State private var consumerBookings: [ConsumerBookingSimpleRow] = []
     /// Cancels superseded push-open work when `pendingPushConversationId` changes or the hub stack is reset.
@@ -50,7 +50,7 @@ struct ConversationListView: View {
         Color.clear
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         #else
-        InteraLiquidMeshBackground()
+        OnCutsLiquidMeshBackground()
         #endif
     }
 
@@ -82,7 +82,7 @@ struct ConversationListView: View {
             #if os(iOS)
             .scrollBounceBehavior(.always, axes: .vertical)
             #endif
-            .interaHubBarScrollOffsetReporting(pageIndex: 1)
+            .onCutsHubBarScrollOffsetReporting(pageIndex: 1)
             .refreshable { await reloadInboxForPullToRefresh() }
         } else {
             inboxConversationRowsScroll
@@ -121,7 +121,7 @@ struct ConversationListView: View {
         .scrollContentBackground(.hidden)
         .scrollBounceBehavior(.always, axes: .vertical)
         #endif
-        .interaHubBarScrollOffsetReporting(pageIndex: 1)
+        .onCutsHubBarScrollOffsetReporting(pageIndex: 1)
         .refreshable { await reloadInboxForPullToRefresh() }
     }
 
@@ -347,14 +347,14 @@ struct ConversationListView: View {
                 consumerUserId: sessionManager.currentSession?.userId
             )
         } catch {
-            if InteraRefreshCancellation.isBenignCancellation(error) { return }
+            if OnCutsRefreshCancellation.isBenignCancellation(error) { return }
             consumerBookings = []
         }
     }
 
     @MainActor
     private func reloadInboxForPullToRefresh() async {
-        await InteraPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
+        await OnCutsPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
             await chatViewModel.reloadInboxSilently(sessionManager: sessionManager)
             if chatViewModel.rows.isEmpty {
                 await loadConsumerBookingsForEmptyContext()

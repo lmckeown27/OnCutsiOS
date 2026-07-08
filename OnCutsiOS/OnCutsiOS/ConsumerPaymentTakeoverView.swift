@@ -1,6 +1,6 @@
 //
 //  ConsumerPaymentTakeoverView.swift
-//  Intera
+//  OnCuts
 //
 //  Full-screen payment when the provider marks the booking complete (COMPLETED).
 //  Stripe PaymentSheet + `bookings-simple` create/confirm endpoints (same pipeline as the web app).
@@ -18,12 +18,12 @@ import UIKit
 private let paymentServiceTitleKerning: CGFloat = 2.2 * 1.15
 
 /// Service price on the payment summary card.
-private let paymentServicePriceFont = InteraFont.system(size: 48, weight: .bold, design: .default)
+private let paymentServicePriceFont = OnCutsFont.system(size: 48, weight: .bold, design: .default)
 
 /// Tip section typography (title + preset pills).
-private let paymentTipSectionTitleFont = InteraFont.system(size: 17, weight: .semibold, design: .default)
-private let paymentTipPillFont = InteraFont.system(size: 17, weight: .semibold, design: .default)
-private let paymentTipPillFontSelected = InteraFont.system(size: 17, weight: .bold, design: .default)
+private let paymentTipSectionTitleFont = OnCutsFont.system(size: 17, weight: .semibold, design: .default)
+private let paymentTipPillFont = OnCutsFont.system(size: 17, weight: .semibold, design: .default)
+private let paymentTipPillFontSelected = OnCutsFont.system(size: 17, weight: .bold, design: .default)
 
 private enum PaymentTipButtonMetrics {
     static let pillHorizontalPadding: CGFloat = 20
@@ -34,8 +34,8 @@ private enum PaymentTipButtonMetrics {
 }
 
 /// Primary online payment CTAs (Apple Pay + Card).
-private let paymentPrimaryActionLabelFont = InteraFont.system(size: 19, weight: .bold, design: .default)
-private let paymentCashActionLabelFont = InteraFont.system(size: 16, weight: .semibold, design: .default)
+private let paymentPrimaryActionLabelFont = OnCutsFont.system(size: 19, weight: .bold, design: .default)
+private let paymentCashActionLabelFont = OnCutsFont.system(size: 16, weight: .semibold, design: .default)
 
 private enum PaymentMethodButtonMetrics {
     static let primaryHeight: CGFloat = 58
@@ -150,7 +150,7 @@ struct ConsumerPaymentTakeoverView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                InteraLavaLampBackground()
+                OnCutsLavaLampBackground()
 
                 ScrollView {
                     VStack(spacing: 0) {
@@ -173,14 +173,14 @@ struct ConsumerPaymentTakeoverView: View {
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
-            .toolbarBackground(Color.interaShellBackground, for: .navigationBar)
+            .toolbarBackground(Color.onCutsShellBackground, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Pay later") {
                         chatViewModel.dismissPaymentTakeoverForLater()
                     }
-                    .font(InteraFont.body(weight: .semibold))
+                    .font(OnCutsFont.body(weight: .semibold))
                     .foregroundStyle(Color.lavaShellCream)
                 }
             }
@@ -219,7 +219,7 @@ struct ConsumerPaymentTakeoverView: View {
             ProgressView()
                 .tint(Color.lavaShellCream)
             Text("Loading checkout…")
-                .font(InteraFont.subheadline)
+                .font(OnCutsFont.subheadline)
                 .foregroundStyle(Color.lavaShellCreamSecondary)
         }
         .frame(maxWidth: .infinity)
@@ -230,7 +230,7 @@ struct ConsumerPaymentTakeoverView: View {
         VStack(spacing: 24) {
             paymentGlassCard {
                 Text(message)
-                    .font(InteraFont.subheadline)
+                    .font(OnCutsFont.subheadline)
                     .foregroundStyle(Color.lavaShellCreamSecondary)
                     .multilineTextAlignment(.center)
             }
@@ -273,11 +273,11 @@ struct ConsumerPaymentTakeoverView: View {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: Self.paymentAvatarCorner, style: .continuous)
-                                .stroke(Color.interaShellGlassStroke, lineWidth: 1)
+                                .stroke(Color.onCutsShellGlassStroke, lineWidth: 1)
                         )
 
                         Text(displayBarberName)
-                            .font(InteraFont.system(size: 17, weight: .semibold, design: .default))
+                            .font(OnCutsFont.system(size: 17, weight: .semibold, design: .default))
                             .foregroundStyle(Color.lavaShellCream)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
@@ -285,7 +285,7 @@ struct ConsumerPaymentTakeoverView: View {
                             .frame(maxWidth: 260)
 
                         Text(payload.displayServiceName)
-                            .font(InteraFont.system(size: 14, weight: .medium, design: .default))
+                            .font(OnCutsFont.system(size: 14, weight: .medium, design: .default))
                             .foregroundStyle(Color.lavaShellCreamSecondary)
                             .kerning(paymentServiceTitleKerning)
                             .multilineTextAlignment(.center)
@@ -311,7 +311,7 @@ struct ConsumerPaymentTakeoverView: View {
 
                     VStack(spacing: 20) {
                         Text(isApplePayConfigured ? "Pay online with Apple Pay or your card." : "Pay online with your card.")
-                            .font(InteraFont.subheadline)
+                            .font(OnCutsFont.subheadline)
                             .foregroundStyle(Color.lavaShellCreamTertiary)
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
@@ -332,7 +332,7 @@ struct ConsumerPaymentTakeoverView: View {
 
                         if let bannerError {
                             Text(bannerError)
-                                .font(InteraFont.caption)
+                                .font(OnCutsFont.caption)
                                 .foregroundStyle(Color.red.opacity(0.92))
                                 .multilineTextAlignment(.center)
                         }
@@ -344,7 +344,7 @@ struct ConsumerPaymentTakeoverView: View {
 
     private var paymentMethodOrDivider: some View {
         Text("or")
-            .font(InteraFont.subheadline(weight: .semibold))
+            .font(OnCutsFont.subheadline(weight: .semibold))
             .foregroundStyle(Color.lavaShellCreamTertiary)
             .frame(maxWidth: .infinity)
             .accessibilityLabel("or")
@@ -356,7 +356,7 @@ struct ConsumerPaymentTakeoverView: View {
                 + Text("Cash").fontWeight(.semibold)
                 + Text(" option below.")
         )
-        .font(InteraFont.footnote)
+        .font(OnCutsFont.footnote)
         .foregroundStyle(Color.lavaShellCreamTertiary)
         .multilineTextAlignment(.center)
         .fixedSize(horizontal: false, vertical: true)
@@ -395,7 +395,7 @@ struct ConsumerPaymentTakeoverView: View {
                         .tint(Color.paymentFilledButtonLabel)
                 } else {
                     Image(systemName: "creditcard.fill")
-                        .font(InteraFont.title3(weight: .semibold))
+                        .font(OnCutsFont.title3(weight: .semibold))
                         .foregroundStyle(Color.paymentFilledButtonLabel)
                 }
                 Text(isPaying ? "Opening…" : "Input Card Details")
@@ -426,7 +426,7 @@ struct ConsumerPaymentTakeoverView: View {
                             .tint(Color.paymentOutlineButtonLabel)
                     } else {
                         Image(systemName: "banknote")
-                            .font(InteraFont.subheadline(weight: .semibold))
+                            .font(OnCutsFont.subheadline(weight: .semibold))
                     }
                     Text(isConfirmingCash ? "Completing…" : "Cash")
                         .font(paymentCashActionLabelFont)
@@ -512,7 +512,7 @@ struct ConsumerPaymentTakeoverView: View {
             }
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.interaShellGlassStroke, lineWidth: 1)
+                    .stroke(Color.onCutsShellGlassStroke, lineWidth: 1)
             )
     }
 
@@ -601,7 +601,7 @@ struct ConsumerPaymentTakeoverView: View {
                         : validatedPublishableKeyForCheckout,
                     paymentSheetIncludesApplePay: false
                 )
-                guard let presenter = UIApplication.shared.interaPresentationRootViewController else {
+                guard let presenter = UIApplication.shared.onCutsPresentationRootViewController else {
                     isPaying = false
                     bannerError = "Couldn’t open the payment sheet. Close this screen and try again."
                     return
@@ -632,7 +632,7 @@ struct ConsumerPaymentTakeoverView: View {
                         : validatedPublishableKeyForCheckout,
                     paymentSheetIncludesApplePay: false
                 )
-                let window = UIApplication.shared.interaKeyWindow
+                let window = UIApplication.shared.onCutsKeyWindow
                 let started = checkout.presentStandaloneApplePay(
                     from: window,
                     paymentConfig: config,
@@ -672,7 +672,7 @@ struct ConsumerPaymentTakeoverView: View {
             )
             await Task.yield()
             // Home + cleared stacks under the modals so dismiss/review never reveals Bookings/detail (stale paid state).
-            NotificationCenter.default.post(name: .interaNavigateToConsumerHomeAfterPayment, object: nil)
+            NotificationCenter.default.post(name: .onCutsNavigateToConsumerHomeAfterPayment, object: nil)
             await Task.yield()
             // Snapshot before `clearPaymentTakeover()` — dismissing the cover can tear down this view and reset `@State`,
             // so `enrichedBarberAvatarURL` would be lost and review would only get `payload.barberAvatarURL` (often nil).
@@ -703,7 +703,7 @@ struct ConsumerPaymentTakeoverView: View {
             isConfirmingCash = false
             // Dismiss the fullScreenCover on the next run loop tick so SwiftUI isn’t updating the presented view and toggling `activePaymentRequest` in the same frame (avoids black flash / broken dismissal).
             await Task.yield()
-            NotificationCenter.default.post(name: .interaNavigateToConsumerHomeAfterPayment, object: nil)
+            NotificationCenter.default.post(name: .onCutsNavigateToConsumerHomeAfterPayment, object: nil)
             await Task.yield()
             let barberAvatarForReview = enrichedBarberAvatarURL ?? payload.barberAvatarURL
             chatViewModel.clearPaymentTakeover()
@@ -724,7 +724,7 @@ struct ConsumerPaymentTakeoverView: View {
 }
 
 private extension UIApplication {
-    var interaKeyWindow: UIWindow? {
+    var onCutsKeyWindow: UIWindow? {
         let scenes = connectedScenes.compactMap { $0 as? UIWindowScene }
         let foreground = scenes.filter { $0.activationState == .foregroundActive }
         for scene in foreground + scenes {
@@ -736,15 +736,15 @@ private extension UIApplication {
     }
 
     /// Topmost `UIViewController` suitable for presenting PaymentSheet (SwiftUI `fullScreenCover` may not be the key window’s root).
-    var interaPresentationRootViewController: UIViewController? {
-        if let root = interaKeyWindow?.rootViewController {
-            return root.interaTopPresented
+    var onCutsPresentationRootViewController: UIViewController? {
+        if let root = onCutsKeyWindow?.rootViewController {
+            return root.onCutsTopPresented
         }
         let scenes = connectedScenes.compactMap { $0 as? UIWindowScene }
         for scene in scenes where scene.activationState == .foregroundActive {
             for window in scene.windows.reversed() {
                 if let root = window.rootViewController {
-                    return root.interaTopPresented
+                    return root.onCutsTopPresented
                 }
             }
         }
@@ -753,7 +753,7 @@ private extension UIApplication {
 }
 
 private extension UIViewController {
-    var interaTopPresented: UIViewController {
+    var onCutsTopPresented: UIViewController {
         var top = self
         while let p = top.presentedViewController { top = p }
         return top

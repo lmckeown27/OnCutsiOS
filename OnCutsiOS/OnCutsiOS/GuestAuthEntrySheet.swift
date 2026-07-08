@@ -1,6 +1,6 @@
 //
 //  GuestAuthEntrySheet.swift
-//  Intera
+//  OnCuts
 //
 //  First step when a guest taps Profile: Sign In vs Sign Up.
 //

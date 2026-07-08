@@ -1,6 +1,6 @@
 //
 //  HubGuestAuthPrompt.swift
-//  Intera
+//  OnCuts
 //
 //  Floating sign-in chrome for signed-out hub users — replaces `ConsumerStickyHubBar`
 //  over the home provider list (same overlay position and glass treatment).
@@ -69,7 +69,7 @@ struct GuestHubSignInBar: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: Self.panelCorner, style: .continuous)
-                .stroke(Color.interaShellGlassStroke, lineWidth: 1)
+                .stroke(Color.onCutsShellGlassStroke, lineWidth: 1)
         }
     }
 }

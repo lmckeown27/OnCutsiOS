@@ -1,6 +1,6 @@
 //
 //  SearchBar.swift
-//  Intera
+//  OnCuts
 //
 //  Reusable search bar component
 //
@@ -22,10 +22,10 @@ struct SearchBar: View {
         let row = HStack(spacing: .space3) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(iconColor)
-                .font(InteraFont.body)
+                .font(OnCutsFont.body)
             
             TextField(placeholder, text: $text)
-                .font(InteraFont.bodyMedium)
+                .font(OnCutsFont.bodyMedium)
                 .foregroundStyle(textColor)
                 .focused($isSearchFieldFocused)
                 .autocorrectionDisabled()

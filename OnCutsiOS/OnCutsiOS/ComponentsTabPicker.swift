@@ -1,6 +1,6 @@
 //
 //  TabPicker.swift
-//  Intera
+//  OnCuts
 //
 //  Custom tab picker with underline indicator and badges
 //
@@ -36,7 +36,7 @@ struct TabPicker<T: Hashable>: View {
                     
                     if let badgeCount = badgeFor?(tab), badgeCount > 0 {
                         Text("\(badgeCount)")
-                            .font(InteraFont.captionSmall)
+                            .font(OnCutsFont.captionSmall)
                             .fontWeight(.bold)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -45,10 +45,10 @@ struct TabPicker<T: Hashable>: View {
                             .clipShape(Capsule())
                     }
                 }
-                .font(InteraFont.labelMedium)
+                .font(OnCutsFont.labelMedium)
                 .fontWeight(selectedTab == tab ? .semibold : .regular)
                 .foregroundStyle(selectedTab == tab ? Color.brand : Color.neutral500)
-                .interaOliveGreenTextOutline(when: selectedTab == tab)
+                .onCutsOliveGreenTextOutline(when: selectedTab == tab)
                 
                 Rectangle()
                     .fill(selectedTab == tab ? Color.brand : Color.clear)

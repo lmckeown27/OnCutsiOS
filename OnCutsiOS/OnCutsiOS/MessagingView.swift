@@ -1,6 +1,6 @@
 //
 //  MessagingView.swift
-//  Intera
+//  OnCuts
 //
 //  Inbox + booking-centric conversation: REST history, read receipts, Socket.IO `new-message`,
 //  barber-first pending state, image upload, glass context header, thread delete / barber profile.
@@ -18,9 +18,9 @@ import UIKit
 #endif
 
 #if DEBUG
-/// Xcode / Console.app: filter by subsystem **InteraMessagingThread** or category **analytics**.
+/// Xcode / Console.app: filter by subsystem **OnCutsMessagingThread** or category **analytics**.
 private enum MessagingThreadAnalytics {
-    static let log = Logger(subsystem: "InteraMessagingThread", category: "analytics")
+    static let log = Logger(subsystem: "OnCutsMessagingThread", category: "analytics")
 
     static func logRESTLoad(
         conversationId: String,
@@ -83,7 +83,7 @@ struct MessagingView: View {
 
     var body: some View {
         ZStack {
-            InteraLavaLampBackground()
+            OnCutsLavaLampBackground()
 
             Group {
                 if !sessionManager.isAuthenticated {
@@ -180,7 +180,7 @@ struct MessagingView: View {
             let rows = try await MessagingAPIService.fetchConversations(bearerToken: sessionManager.currentSession?.token)
             conversations = rows.filter { !MessagingCommunitySafety.shouldHideConversation(otherUserId: $0.otherUser?.id) }
         } catch {
-            if !InteraRefreshCancellation.isBenignCancellation(error) {
+            if !OnCutsRefreshCancellation.isBenignCancellation(error) {
                 self.error = error.localizedDescription
             }
         }
@@ -202,14 +202,14 @@ struct MessagingInboxRowLabel: View {
     var unreadCount: Int? = nil
 
     /// Matches `TimelineSectionHeader` “Today” (`size: 28`, bold, default design) + bookings brand color.
-    private static let senderNameFont = InteraFont.system(size: 28, weight: .bold, design: .default)
+    private static let senderNameFont = OnCutsFont.system(size: 28, weight: .bold, design: .default)
     /// Larger than thread header tile so the row reads **provider-first**; width leaves room for a capped preview chip.
     private static let inboxRowAvatarSize: CGFloat = 128
     private static let inboxRowAvatarCornerRadius: CGFloat = 18
     private static let inboxRowAvatarInitialFont: CGFloat = 44
 
     /// Occupation · service under the preview (same face as prior trailing line).
-    private static let occupationServiceFont = InteraFont.system(size: 14, weight: .medium, design: .default)
+    private static let occupationServiceFont = OnCutsFont.system(size: 14, weight: .medium, design: .default)
     private static let occupationServiceKerning: CGFloat = 2.2
     /// Caps preview bubble width so the column sits further **right** of the enlarged avatar.
     private static let messagePreviewMaxWidth: CGFloat = 300
@@ -279,7 +279,7 @@ struct MessagingInboxRowLabel: View {
 
                     if let line = booking?.inboxBookingContextSubtitle, !line.isEmpty {
                         Text(line)
-                            .font(InteraFont.subheadline(weight: .medium))
+                            .font(OnCutsFont.subheadline(weight: .medium))
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                             .opacity(rowTerminalDim ? 0.72 : 1)
@@ -287,11 +287,11 @@ struct MessagingInboxRowLabel: View {
                     if let loc = booking?.inboxLocationDisplayLine, !loc.isEmpty {
                         HStack(alignment: .top, spacing: 6) {
                             Image(systemName: "mappin.and.ellipse")
-                                .font(InteraFont.caption(weight: .semibold))
-                                .foregroundStyleInteraShellIconSecondary()
+                                .font(OnCutsFont.caption(weight: .semibold))
+                                .foregroundStyleOnCutsShellIconSecondary()
                                 .frame(width: 14, alignment: .leading)
                             Text(loc)
-                                .font(InteraFont.caption)
+                                .font(OnCutsFont.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -303,7 +303,7 @@ struct MessagingInboxRowLabel: View {
 
                     HStack(alignment: .top, spacing: 8) {
                         Text(messageBoxDisplayText)
-                            .font(InteraFont.headlineSmall)
+                            .font(OnCutsFont.headlineSmall)
                             .foregroundStyle(messageBoxForeground)
                             .lineSpacing(Self.previewLineSpacing)
                             .lineLimit(3)
@@ -625,7 +625,7 @@ final class MessagingConversationViewModel: ObservableObject {
                 }
             }
         } catch {
-            if !InteraRefreshCancellation.isBenignCancellation(error) {
+            if !OnCutsRefreshCancellation.isBenignCancellation(error) {
                 loadError = error.localizedDescription
             }
         }
@@ -790,7 +790,7 @@ final class MessagingConversationViewModel: ObservableObject {
             }
             publishHubInboxPreviewFromThread()
         } catch {
-            if InteraRefreshCancellation.isBenignCancellation(error) { return }
+            if OnCutsRefreshCancellation.isBenignCancellation(error) { return }
         }
     }
 
@@ -807,7 +807,7 @@ final class MessagingConversationViewModel: ObservableObject {
 
     #if canImport(UIKit)
     func stageComposerPhoto(data: Data, uiImage: UIImage) {
-        let prepared = InteraChatImagePreparation.dataForChatUpload(image: uiImage, originalData: data)
+        let prepared = OnCutsChatImagePreparation.dataForChatUpload(image: uiImage, originalData: data)
         composerDraftImage = MessagingComposerDraftImage(
             uploadData: prepared.data,
             mimeType: prepared.mimeType,
@@ -826,7 +826,7 @@ final class MessagingConversationViewModel: ObservableObject {
 
         #if canImport(UIKit)
         if let draft = composerDraftImage {
-            if !caption.isEmpty, InteraMessagingContentFilter.textViolatesCommunityRules(caption) {
+            if !caption.isEmpty, OnCutsMessagingContentFilter.textViolatesCommunityRules(caption) {
                 loadError = "This message can’t be sent because it may violate our community guidelines."
                 return
             }
@@ -846,7 +846,7 @@ final class MessagingConversationViewModel: ObservableObject {
         #endif
 
         guard !caption.isEmpty else { return }
-        if InteraMessagingContentFilter.textViolatesCommunityRules(caption) {
+        if OnCutsMessagingContentFilter.textViolatesCommunityRules(caption) {
             loadError = "This message can’t be sent because it may violate our community guidelines."
             return
         }
@@ -866,7 +866,7 @@ final class MessagingConversationViewModel: ObservableObject {
                 }
             }
         } catch {
-            if !InteraRefreshCancellation.isBenignCancellation(error) {
+            if !OnCutsRefreshCancellation.isBenignCancellation(error) {
                 loadError = error.localizedDescription
             }
             draftText = caption
@@ -921,7 +921,7 @@ final class MessagingConversationViewModel: ObservableObject {
         } catch {
             messages.removeAll { $0.clientUUID == client }
             pendingImageThumbs[client] = nil
-            if !InteraRefreshCancellation.isBenignCancellation(error) {
+            if !OnCutsRefreshCancellation.isBenignCancellation(error) {
                 loadError = error.localizedDescription
             }
             composerDraftImage = MessagingComposerDraftImage(
@@ -943,7 +943,7 @@ final class MessagingConversationViewModel: ObservableObject {
             try await MessagingAPIService.deleteConversation(conversationId: conversationId, bearerToken: sessionManager.currentSession?.token)
             onSuccess()
         } catch {
-            if !InteraRefreshCancellation.isBenignCancellation(error) {
+            if !OnCutsRefreshCancellation.isBenignCancellation(error) {
                 loadError = error.localizedDescription
             }
         }
@@ -954,7 +954,7 @@ final class MessagingConversationViewModel: ObservableObject {
         guard !trimmedReason.isEmpty else { return }
         let reported = counterpartyMessagingUserId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !reported.isEmpty else {
-            throw NSError(domain: "InteraMessaging", code: 10, userInfo: [NSLocalizedDescriptionKey: "Could not determine who to report. Try again after the thread finishes loading."])
+            throw NSError(domain: "OnCutsMessaging", code: 10, userInfo: [NSLocalizedDescriptionKey: "Could not determine who to report. Try again after the thread finishes loading."])
         }
         try await MessagingAPIService.reportConversationContent(
             conversationId: conversationId,
@@ -969,7 +969,7 @@ final class MessagingConversationViewModel: ObservableObject {
     func blockCounterpartyAndNotify() async throws {
         let blocked = counterpartyMessagingUserId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !blocked.isEmpty else {
-            throw NSError(domain: "InteraMessaging", code: 11, userInfo: [NSLocalizedDescriptionKey: "Could not determine who to block. Try again after the thread finishes loading."])
+            throw NSError(domain: "OnCutsMessaging", code: 11, userInfo: [NSLocalizedDescriptionKey: "Could not determine who to block. Try again after the thread finishes loading."])
         }
         try await MessagingAPIService.blockMessagingUser(blockedUserId: blocked, bearerToken: sessionManager.currentSession?.token)
         MessagingCommunitySafety.addLocallyBlockedUserId(blocked)
@@ -995,7 +995,7 @@ final class MessagingConversationViewModel: ObservableObject {
             do {
                 try await MessagingAPIService.deleteConversation(conversationId: conversationId, bearerToken: sessionManager.currentSession?.token)
             } catch {
-                if InteraRefreshCancellation.isBenignCancellation(error) { /* no-op */ }
+                if OnCutsRefreshCancellation.isBenignCancellation(error) { /* no-op */ }
                 else {
                     let ns = error as NSError
                     let alreadyGone = ns.domain == "MessagingAPI" && ns.code == 404
@@ -1006,7 +1006,7 @@ final class MessagingConversationViewModel: ObservableObject {
             }
             onSuccess()
         } catch {
-            if !InteraRefreshCancellation.isBenignCancellation(error) {
+            if !OnCutsRefreshCancellation.isBenignCancellation(error) {
                 loadError = error.localizedDescription
             }
         }
@@ -1423,7 +1423,7 @@ struct MessagingConversationView: View {
         messagingConversationBaseLayers
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             #if os(iOS)
-            .interaNavigationShellBackgroundClear()
+            .onCutsNavigationShellBackgroundClear()
             #endif
             .onChange(of: showBookingDetails) { _, open in
                 if !open {
@@ -1435,7 +1435,7 @@ struct MessagingConversationView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar(.hidden, for: .navigationBar)
-            .interaEnableNavigationSwipeBack()
+            .onCutsEnableNavigationSwipeBack()
             .background {
                 ConversationSwipeBackPanEnabler(
                     dragOffset: $conversationPopDragOffset,
@@ -1481,7 +1481,7 @@ struct MessagingConversationView: View {
                 )
                 .id(presentation.id)
                 #if os(iOS)
-                .interaNavigationShellBackgroundClear()
+                .onCutsNavigationShellBackgroundClear()
                 #endif
             }
     }
@@ -1514,7 +1514,7 @@ struct MessagingConversationView: View {
             instagramStickyHeader
             if let moderationBanner, !moderationBanner.isEmpty {
                 Text(moderationBanner)
-                    .font(InteraFont.caption(weight: .semibold))
+                    .font(OnCutsFont.caption(weight: .semibold))
                     .foregroundStyle(Color.lavaShellCream)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -1654,9 +1654,9 @@ struct MessagingConversationView: View {
     }
 
     /// Provider name in the compact sticky bar (same row as back chevron + avatar).
-    private static let stickyHeaderNameFont = InteraFont.system(size: 17, weight: .bold, design: .default)
+    private static let stickyHeaderNameFont = OnCutsFont.system(size: 17, weight: .bold, design: .default)
     /// Status + service lines beside the avatar.
-    private static let stickyHeaderMetaFont = InteraFont.system(size: 12, weight: .medium, design: .default)
+    private static let stickyHeaderMetaFont = OnCutsFont.system(size: 12, weight: .medium, design: .default)
     private static let stickyHeaderMetaKerning: CGFloat = 1.2
     private static let stickyHeaderAvatarSize: CGFloat = 44
     private static let stickyHeaderAvatarCornerRadius: CGFloat = 10
@@ -1805,8 +1805,8 @@ struct MessagingConversationView: View {
             leaveConversation()
         } label: {
             Image(systemName: "chevron.left")
-                .font(InteraFont.system(size: 17, weight: .semibold))
-                .foregroundStyleInteraShellIcon()
+                .font(OnCutsFont.system(size: 17, weight: .semibold))
+                .foregroundStyleOnCutsShellIcon()
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
@@ -1852,7 +1852,7 @@ struct MessagingConversationView: View {
             }
         } label: {
             Image(systemName: "ellipsis.circle")
-                .font(InteraFont.system(size: 24, weight: .medium))
+                .font(OnCutsFont.system(size: 24, weight: .medium))
                 .foregroundStyle(Color.lavaShellCream)
                 .frame(minWidth: 44, minHeight: 44)
                 .contentShape(Rectangle())
@@ -1985,7 +1985,7 @@ struct MessagingConversationView: View {
             Image(systemName: "hourglass")
                 .foregroundStyle(Color.lavaShellCream.opacity(0.9))
             Text(waitingForProviderChromeHeadline)
-                .font(InteraFont.subheadline(weight: .semibold))
+                .font(OnCutsFont.subheadline(weight: .semibold))
                 .foregroundStyle(Color.lavaShellCream)
             Spacer()
         }
@@ -2015,8 +2015,8 @@ struct MessagingConversationView: View {
         HStack(alignment: .bottom, spacing: 10) {
             PhotosPicker(selection: $pickerItem, matching: .images) {
                 Image(systemName: "photo.on.rectangle.angled")
-                    .font(InteraFont.title3)
-                    .foregroundStyleInteraShellIcon()
+                    .font(OnCutsFont.title3)
+                    .foregroundStyleOnCutsShellIcon()
                     .frame(width: 36, height: 36)
             }
             .disabled(vm.isSendingComposer)
@@ -2045,8 +2045,8 @@ struct MessagingConversationView: View {
                 #endif
             } label: {
                 Image(systemName: "plus")
-                    .font(InteraFont.title3(weight: .semibold))
-                    .foregroundStyleInteraShellIcon()
+                    .font(OnCutsFont.title3(weight: .semibold))
+                    .foregroundStyleOnCutsShellIcon()
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
@@ -2075,8 +2075,8 @@ struct MessagingConversationView: View {
                         .frame(width: 32, height: 32)
                 } else {
                     Image(systemName: "arrow.up.circle.fill")
-                        .font(InteraFont.system(size: 32))
-                        .foregroundStyleInteraShellIcon()
+                        .font(OnCutsFont.system(size: 32))
+                        .foregroundStyleOnCutsShellIcon()
                 }
             }
             .disabled(!vm.canSendComposer || vm.isSendingComposer)
@@ -2099,10 +2099,10 @@ struct MessagingConversationView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Photo attached")
-                    .font(InteraFont.caption(weight: .semibold))
+                    .font(OnCutsFont.caption(weight: .semibold))
                     .foregroundStyle(Color.lavaShellCreamSecondary)
                 Text("Add a caption or tap send")
-                    .font(InteraFont.caption2)
+                    .font(OnCutsFont.caption2)
                     .foregroundStyle(Color.lavaShellCreamTertiary)
             }
 
@@ -2112,7 +2112,7 @@ struct MessagingConversationView: View {
                 vm.clearComposerDraftImage()
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(InteraFont.title3)
+                    .font(OnCutsFont.title3)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(Color.lavaShellCream.opacity(0.85))
                     .frame(width: 44, height: 44)
@@ -2168,10 +2168,10 @@ struct MessagingConversationView: View {
                             case .failure:
                                 VStack(spacing: 8) {
                                     Image(systemName: "photo.badge.exclamationmark")
-                                        .font(InteraFont.title2)
+                                        .font(OnCutsFont.title2)
                                         .foregroundStyle(Color.lavaShellCream.opacity(0.85))
                                     Text("Couldn’t load this image.")
-                                        .font(InteraFont.caption(weight: .semibold))
+                                        .font(OnCutsFont.caption(weight: .semibold))
                                         .foregroundStyle(Color.lavaShellCream.opacity(0.9))
                                         .multilineTextAlignment(.center)
                                 }
@@ -2191,7 +2191,7 @@ struct MessagingConversationView: View {
                 if !msg.text.isEmpty {
                     messagingLiquidTextBubble(isOutgoing: outgoing) {
                         Text(msg.text)
-                            .font(InteraFont.bodyMedium)
+                            .font(OnCutsFont.bodyMedium)
                             .foregroundStyle(outgoing ? MessagingOutgoingBubbleStyle.labelColor : Color.lavaShellCream)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
@@ -2202,7 +2202,7 @@ struct MessagingConversationView: View {
                           msg.serverMessageIdForReport != nil {
                     messagingLiquidTextBubble(isOutgoing: false) {
                         Text("This message couldn’t be shown.")
-                            .font(InteraFont.caption(weight: .semibold))
+                            .font(OnCutsFont.caption(weight: .semibold))
                             .foregroundStyle(Color.lavaShellCream.opacity(0.88))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
@@ -2273,14 +2273,14 @@ struct MessagingUGCTermsGateView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Before you message")
-                        .font(InteraFont.title3(weight: .bold))
+                        .font(OnCutsFont.title3(weight: .bold))
                     Text("Messages & community safety")
-                        .font(InteraFont.subheadline(weight: .semibold))
+                        .font(OnCutsFont.subheadline(weight: .semibold))
                         .foregroundStyle(.secondary)
                     Text(
                         "\(AppBranding.displayName) lets you message providers about bookings. By continuing, you agree to our Terms of Service and acknowledge that messages are user-generated content: some text may be filtered automatically, you can report objectionable messages or conversations, and you can block abusive users (we are notified when you block). Our team reviews serious reports as soon as possible and aims to act within 24 hours, including removing content or restricting accounts when appropriate."
                     )
-                    .font(InteraFont.subheadline)
+                    .font(OnCutsFont.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -2292,7 +2292,7 @@ struct MessagingUGCTermsGateView: View {
                             Label("Privacy Policy", systemImage: "hand.raised")
                         }
                     }
-                    .font(InteraFont.subheadline(weight: .semibold))
+                    .font(OnCutsFont.subheadline(weight: .semibold))
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
@@ -2307,7 +2307,7 @@ struct MessagingUGCTermsGateView: View {
                     Button("I agree") {
                         onAccept()
                     }
-                    .font(InteraFont.body(weight: .semibold))
+                    .font(OnCutsFont.body(weight: .semibold))
                 }
             }
         }
@@ -2363,7 +2363,7 @@ private struct MessagingThreadBookingDetailsView: View {
                                 .tint(Color.lavaShellCreamSecondary)
                         }
                         Text("Edit Booking")
-                            .font(InteraFont.subheadline(weight: .semibold))
+                            .font(OnCutsFont.subheadline(weight: .semibold))
                             .lineLimit(1)
                     }
                     .foregroundStyle(Color.lavaShellCreamSecondary)
@@ -2389,7 +2389,7 @@ private struct MessagingThreadBookingDetailsView: View {
                     onClose()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(InteraFont.system(size: 24))
+                        .font(OnCutsFont.system(size: 24))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(Color.lavaShellCream.opacity(0.85))
                 }
@@ -2423,7 +2423,7 @@ private struct MessagingThreadBookingDetailsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background {
             ZStack {
-                InteraLavaLampBackground()
+                OnCutsLavaLampBackground()
                 Color.black.opacity(0.18)
             }
             .clipShape(Self.panelShape)
@@ -2441,7 +2441,7 @@ private struct MessagingThreadBookingDetailsView: View {
             Text(title)
                 .bookingDetailFieldTitleStyle()
             Text(value)
-                .font(InteraFont.system(size: 17, weight: .regular, design: .serif))
+                .font(OnCutsFont.system(size: 17, weight: .regular, design: .serif))
                 .foregroundStyle(Color.lavaShellCream)
                 .fixedSize(horizontal: false, vertical: true)
         }

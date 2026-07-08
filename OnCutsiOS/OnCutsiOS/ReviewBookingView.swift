@@ -1,6 +1,6 @@
 //
 //  ReviewBookingView.swift
-//  Intera
+//  OnCuts
 //
 //  Liquid Glass review step: gradient backdrop, hero card, details, price, submit (auth + completion handled by parent).
 //
@@ -13,7 +13,7 @@ struct ReviewBookingView: View {
 
     var body: some View {
         ZStack {
-            InteraShellBackground()
+            OnCutsShellBackground()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
@@ -25,7 +25,7 @@ struct ReviewBookingView: View {
             .reviewBookingHideScrollBackground()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.interaShellBackground)
+        .background(Color.onCutsShellBackground)
         .navigationTitle("Review")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -47,13 +47,13 @@ struct ReviewBookingView: View {
 
             VStack(spacing: 8) {
                 Text("$\(booking.finalServicePriceUsd)")
-                    .font(InteraLiquidGlassTypography.title(34, weight: .bold))
+                    .font(OnCutsLiquidGlassTypography.title(34, weight: .bold))
                     .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, alignment: .center)
 
                 if !booking.location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text(booking.location)
-                        .font(InteraFont.body)
+                        .font(OnCutsFont.body)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -74,7 +74,7 @@ struct ReviewBookingView: View {
             .padding(.top, 4)
         }
         .padding(20)
-        .interaGlassSurface(cornerRadius: 20)
+        .onCutsGlassSurface(cornerRadius: 20)
     }
 
     private var heroRow: some View {
@@ -98,7 +98,7 @@ struct ReviewBookingView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(booking.barberDisplayName)
-                    .font(InteraLiquidGlassTypography.title(18, weight: .semibold))
+                    .font(OnCutsLiquidGlassTypography.title(18, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
 
@@ -106,10 +106,10 @@ struct ReviewBookingView: View {
                     Link(destination: igURL) {
                         HStack(spacing: 6) {
                             Image(systemName: "camera.fill")
-                                .font(InteraFont.caption(weight: .semibold))
-                                .foregroundStyleInteraShellIconSecondary()
+                                .font(OnCutsFont.caption(weight: .semibold))
+                                .foregroundStyleOnCutsShellIconSecondary()
                             Text("Instagram")
-                                .font(InteraFont.subheadline(weight: .medium))
+                                .font(OnCutsFont.subheadline(weight: .medium))
                                 .foregroundStyleOliveGreen()
                         }
                     }
@@ -118,12 +118,12 @@ struct ReviewBookingView: View {
             Spacer(minLength: 0)
         }
         .padding(14)
-        .interaGlassSurface(cornerRadius: 20)
+        .onCutsGlassSurface(cornerRadius: 20)
     }
 
     private var heroPlaceholder: some View {
         Text(booking.barberDisplayName.prefix(2).uppercased())
-            .font(InteraFont.headline)
+            .font(OnCutsFont.headline)
             .foregroundStyleOliveGreen()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.brand.opacity(0.15))
@@ -132,10 +132,10 @@ struct ReviewBookingView: View {
     private func reviewInfoRow(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(InteraLiquidGlassTypography.title(12, weight: .semibold))
+                .font(OnCutsLiquidGlassTypography.title(12, weight: .semibold))
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(InteraFont.body)
+                .font(OnCutsFont.body)
                 .foregroundStyle(.primary)
         }
     }

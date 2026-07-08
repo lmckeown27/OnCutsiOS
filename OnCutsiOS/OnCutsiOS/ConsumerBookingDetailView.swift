@@ -1,6 +1,6 @@
 //
 //  ConsumerBookingDetailView.swift
-//  Intera
+//  OnCuts
 //
 //  Full detail for a row from `GET /api/v1/bookings-simple?role=consumer`.
 //
@@ -22,7 +22,7 @@ struct ConsumerBookingDetailView: View {
     var bookingDetailPresentationID: UUID? = nil
     /// When true, rebook is blocked with the same messaging as provider detail (pending/upcoming request).
     var hasActiveConsumerBooking: Bool = false
-    /// When `true`, skips the default `InteraLavaLampBackground` so a parent (e.g. home reminder morph) owns the lava layer.
+    /// When `true`, skips the default `OnCutsLavaLampBackground` so a parent (e.g. home reminder morph) owns the lava layer.
     var usesExternalLavaBackdrop: Bool = false
     var onShowLogin: () -> Void = {}
 
@@ -312,7 +312,7 @@ struct ConsumerBookingDetailView: View {
                 if usesExternalLavaBackdrop {
                     Color.clear
                 } else {
-                    InteraLavaLampBackground()
+                    OnCutsLavaLampBackground()
                         .ignoresSafeArea()
                 }
             }
@@ -346,7 +346,7 @@ struct ConsumerBookingDetailView: View {
                     preselectServiceName: bookingRow.displayServiceName
                 )
                 .tint(Color.oliveGreen)
-                .interaBookingFlowSheetPresentation()
+                .onCutsBookingFlowSheetPresentation()
             }
         }
         .alert("Active Booking Exists", isPresented: $showActiveBookingAlert) {
@@ -444,7 +444,7 @@ struct ConsumerBookingDetailView: View {
             onShowLogin: onShowLogin
         )
         #if os(iOS)
-        .interaNavigationShellBackgroundClear()
+        .onCutsNavigationShellBackgroundClear()
         #endif
     }
 
@@ -487,7 +487,7 @@ struct ConsumerBookingDetailView: View {
     private var bookingDetailPayForServiceBlock: some View {
         VStack(spacing: 12) {
             Text(payForServiceSubtitle)
-                .font(InteraFont.subheadline)
+                .font(OnCutsFont.subheadline)
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.88))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 8)
@@ -540,7 +540,7 @@ struct ConsumerBookingDetailView: View {
 
     @MainActor
     private func refreshBookingDetailFromServer() async {
-        await InteraPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
+        await OnCutsPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
             await performBookingDetailRefresh()
         }
     }
@@ -582,8 +582,8 @@ struct ConsumerBookingDetailView: View {
             && !showsPayForServiceCTA
     }
 
-    private static let heroServiceDisplayFont = InteraFont.subheadline(weight: .semibold)
-    private static let editBottomBarButtonFont = InteraFont.footnote(weight: .semibold)
+    private static let heroServiceDisplayFont = OnCutsFont.subheadline(weight: .semibold)
+    private static let editBottomBarButtonFont = OnCutsFont.footnote(weight: .semibold)
     private static let bookingDetailCircularActionButtonSize: CGFloat = 44
 
     private var messageProviderCircularButton: some View {
@@ -733,7 +733,7 @@ struct ConsumerBookingDetailView: View {
             RoundedRectangle(cornerRadius: BookingSelectorTheme.cornerRadius, style: .continuous)
                 .fill(BookingSelectorTheme.cream.opacity(0.12))
             Text(bookingRow.barberDisplayName.prefix(1).uppercased())
-                .font(InteraFont.system(size: 44, weight: .bold, design: .rounded))
+                .font(OnCutsFont.system(size: 44, weight: .bold, design: .rounded))
                 .foregroundStyle(BookingSelectorTheme.cream)
         }
     }
@@ -786,11 +786,11 @@ struct ConsumerBookingDetailView: View {
     private var pendingRescheduleBanner: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Schedule change pending approval")
-                .font(InteraFont.subheadline(weight: .semibold))
+                .font(OnCutsFont.subheadline(weight: .semibold))
                 .foregroundStyle(BookingSelectorTheme.cream)
 
             Text("Your \(bookingRow.providerKindTag) must approve before your booking updates.")
-                .font(InteraFont.caption)
+                .font(OnCutsFont.caption)
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.65))
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -824,7 +824,7 @@ struct ConsumerBookingDetailView: View {
                 .bookingDetailFieldTitleStyle()
                 .multilineTextAlignment(.center)
             Text(value)
-                .font(InteraFont.body(weight: .semibold))
+                .font(OnCutsFont.body(weight: .semibold))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -915,7 +915,7 @@ struct ConsumerBookingDetailView: View {
 
         return VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(InteraFont.caption(weight: .semibold))
+                .font(OnCutsFont.caption(weight: .semibold))
                 .foregroundStyleOliveGreen()
 
             scheduleSnapshotField(label: "Date", value: dateLine, emphasized: isRequested)
@@ -945,7 +945,7 @@ struct ConsumerBookingDetailView: View {
             Text(label)
                 .bookingDetailFieldTitleStyle()
             Text(value)
-                .font(InteraFont.body(weight: emphasized ? .semibold : .medium))
+                .font(OnCutsFont.body(weight: emphasized ? .semibold : .medium))
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(emphasized ? 1 : 0.82))
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -1007,8 +1007,8 @@ struct ConsumerBookingDetailView: View {
                             .lineLimit(2)
                             .minimumScaleFactor(0.82)
                         Image(systemName: "chevron.up.chevron.down")
-                            .font(InteraFont.system(size: 11, weight: .bold))
-                            .foregroundStyle(Color.interaShellForegroundSecondary)
+                            .font(OnCutsFont.system(size: 11, weight: .bold))
+                            .foregroundStyle(Color.onCutsShellForegroundSecondary)
                         Spacer(minLength: 0)
                     }
                     .frame(maxWidth: .infinity)
@@ -1036,7 +1036,7 @@ struct ConsumerBookingDetailView: View {
     private var requestChangeInstructions: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("You can edit your appointment date and time, and add an optional note for your \(bookingRow.providerKindTag).")
-                .font(InteraFont.caption)
+                .font(OnCutsFont.caption)
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -1045,7 +1045,7 @@ struct ConsumerBookingDetailView: View {
             }
 
             Text("When you submit, your changes are sent to your \(bookingRow.providerKindTag) as a request. They must approve before your booking updates.")
-                .font(InteraFont.caption)
+                .font(OnCutsFont.caption)
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.65))
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -1061,10 +1061,10 @@ struct ConsumerBookingDetailView: View {
     private func requestChangeInstructionLine(_ text: String) -> some View {
         HStack(alignment: .top, spacing: 6) {
             Text("•")
-                .font(InteraFont.caption(weight: .semibold))
+                .font(OnCutsFont.caption(weight: .semibold))
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
             Text(text)
-                .font(InteraFont.caption)
+                .font(OnCutsFont.caption)
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -1078,7 +1078,7 @@ struct ConsumerBookingDetailView: View {
                 .bookingDetailFieldTitleStyle()
             TextField(notesFieldPlaceholder, text: $draftNotes, axis: .vertical)
                 .lineLimit(2 ... 4)
-                .font(InteraFont.body(weight: .medium))
+                .font(OnCutsFont.body(weight: .medium))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .textFieldStyle(.plain)
                 .focused($isRequestChangeNotesFocused)
@@ -1127,12 +1127,12 @@ struct ConsumerBookingDetailView: View {
                 } label: {
                     HStack(alignment: .center, spacing: 10) {
                         Text(draftLocation)
-                            .font(InteraFont.body(weight: .medium))
+                            .font(OnCutsFont.body(weight: .medium))
                             .foregroundStyle(BookingSelectorTheme.cream)
                             .multilineTextAlignment(.leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Image(systemName: "chevron.up.chevron.down")
-                            .font(InteraFont.system(size: 11, weight: .bold))
+                            .font(OnCutsFont.system(size: 11, weight: .bold))
                             .foregroundStyle(BookingSelectorTheme.cream.opacity(0.85))
                     }
                 }
@@ -1157,7 +1157,7 @@ struct ConsumerBookingDetailView: View {
 
     private static let requestChangeEditableAccentColor = Color.oliveGreen
     #if canImport(UIKit)
-    private static let editableScheduleFieldValueUIFont = InteraFont.uiFont(size: 17, weight: .medium)
+    private static let editableScheduleFieldValueUIFont = OnCutsFont.uiFont(size: 17, weight: .medium)
     private static let editableScheduleTextFillUIColor = UIColor { traits in
         traits.userInterfaceStyle == .dark ? .white : .black
     }
@@ -1217,7 +1217,7 @@ struct ConsumerBookingDetailView: View {
                 .accessibilityLabel(value)
                 #else
                 Text(value)
-                    .font(InteraFont.body(weight: .medium))
+                    .font(OnCutsFont.body(weight: .medium))
                     .foregroundStyle(BookingSelectorTheme.cream)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -1242,7 +1242,7 @@ struct ConsumerBookingDetailView: View {
             Text("Location")
                 .bookingDetailFieldTitleStyle()
             Text(locationText)
-                .font(InteraFont.body(weight: .medium))
+                .font(OnCutsFont.body(weight: .medium))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -1261,7 +1261,7 @@ struct ConsumerBookingDetailView: View {
             Text(label)
                 .bookingDetailFieldTitleStyle()
             Text(value)
-                .font(InteraFont.body(weight: .medium))
+                .font(OnCutsFont.body(weight: .medium))
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -1284,7 +1284,7 @@ struct ConsumerBookingDetailView: View {
             Text("Booking Reference")
                 .bookingDetailFieldTitleStyle()
             Text(bookingRow.displayBookingReference)
-                .font(InteraFont.subheadline(weight: .medium).monospaced())
+                .font(OnCutsFont.subheadline(weight: .medium).monospaced())
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.82))
         }
         .multilineTextAlignment(.center)
@@ -1301,7 +1301,7 @@ struct ConsumerBookingDetailView: View {
                     Text("Notes")
                         .bookingDetailFieldTitleStyle()
                     Text(n)
-                        .font(InteraFont.body)
+                        .font(OnCutsFont.body)
                         .foregroundStyle(BookingSelectorTheme.cream)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -1651,7 +1651,7 @@ struct ConsumerBookingDetailView: View {
                     return dedupeEditRibbonSlots(mapped)
                 }
             } catch {
-                if InteraRefreshCancellation.isBenignCancellation(error) { return [] }
+                if OnCutsRefreshCancellation.isBenignCancellation(error) { return [] }
             }
         }
         do {
@@ -1665,7 +1665,7 @@ struct ConsumerBookingDetailView: View {
             }
             return dedupeEditRibbonSlots(mapped)
         } catch {
-            if InteraRefreshCancellation.isBenignCancellation(error) { return [] }
+            if OnCutsRefreshCancellation.isBenignCancellation(error) { return [] }
             return []
         }
     }
@@ -1742,7 +1742,7 @@ struct ConsumerBookingDetailView: View {
         VStack(spacing: 0) {
             if isConfirmingCancelBooking {
                 Text("Your \(bookingRow.providerKindTag) will be notified. This can’t be undone.")
-                    .font(InteraFont.caption)
+                    .font(OnCutsFont.caption)
                     .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1903,7 +1903,7 @@ struct ConsumerBookingDetailView: View {
                     Button("Done") {
                         showScheduleEditSheet = false
                     }
-                    .font(InteraFont.body(weight: .semibold))
+                    .font(OnCutsFont.body(weight: .semibold))
                     .foregroundStyle(BookingSelectorTheme.cream)
                 }
             }
@@ -1922,7 +1922,7 @@ struct ConsumerBookingDetailView: View {
 
     private func bookingDetailToolbarIcon(systemName: String, accessibilityLabel: String) -> some View {
         Image(systemName: systemName)
-            .font(InteraFont.system(size: 17, weight: .semibold))
+            .font(OnCutsFont.system(size: 17, weight: .semibold))
             .foregroundStyle(BookingSelectorTheme.cream)
             .accessibilityLabel(accessibilityLabel)
     }
@@ -1941,7 +1941,7 @@ struct ConsumerBookingDetailView: View {
                     .tint(.white)
             } else {
                 Image(systemName: systemName)
-                    .font(InteraFont.system(size: 17, weight: .semibold))
+                    .font(OnCutsFont.system(size: 17, weight: .semibold))
                     .foregroundStyle(.white)
             }
         }

@@ -1,6 +1,6 @@
 //
 //  OnCutsSessionSync.swift
-//  Intera
+//  OnCuts
 //
 
 import Foundation

@@ -1,6 +1,6 @@
 //
 //  RootView.swift
-//  Intera
+//  OnCuts
 //
 //  Created by Liam McKeown on 3/8/26.
 //
@@ -26,7 +26,7 @@ struct RootView: View {
         Group {
             #if os(iOS)
             ZStack {
-                InteraShellBackground()
+                OnCutsShellBackground()
 
                 VStack(spacing: 0) {
                     if AppConfiguration.onCutsProductionLiveDataMode {
@@ -49,13 +49,13 @@ struct RootView: View {
             }
             #endif
         }
-        .interaConsumerShellAppearance()
+        .onCutsConsumerShellAppearance()
         .task {
             await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager)
         }
-        .onReceive(NotificationCenter.default.publisher(for: .interaOpenMessagingConversation)) { output in
+        .onReceive(NotificationCenter.default.publisher(for: .onCutsOpenMessagingConversation)) { output in
             guard sessionManager.userRole == .student else { return }
-            guard let cid = InteraPushNavigationPayload.conversationId(from: output.userInfo) else { return }
+            guard let cid = OnCutsPushNavigationPayload.conversationId(from: output.userInfo) else { return }
             chatViewModel.pendingPushConversationId = cid
         }
         .onChange(of: sessionManager.isAuthenticated) { wasAuthed, isAuthed in

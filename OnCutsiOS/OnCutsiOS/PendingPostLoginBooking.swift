@@ -1,6 +1,6 @@
 //
 //  PendingPostLoginBooking.swift
-//  Intera
+//  OnCuts
 //
 //  When a guest reaches booking review and taps submit, we prompt sign-in.
 //  If `NavigationPath` resets while OAuth is up, we keep `BookingState` here until

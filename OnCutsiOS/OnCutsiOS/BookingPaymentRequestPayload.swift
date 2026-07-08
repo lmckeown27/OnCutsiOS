@@ -1,6 +1,6 @@
 //
 //  BookingPaymentRequestPayload.swift
-//  Intera
+//  OnCuts
 //
 //  Socket `booking-completed` + in-app payment takeover when the provider marks the service complete.
 //
