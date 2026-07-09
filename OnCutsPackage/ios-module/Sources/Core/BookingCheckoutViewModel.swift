@@ -44,7 +44,7 @@ public final class BookingCheckoutViewModel: ObservableObject {
         applePayMerchantId: String? = nil,
         applePayCountryCode: String? = nil,
         merchantDisplayName: String = "OnCuts",
-        stripeReturnURL: String = "campuscuts://stripe-redirect"
+        stripeReturnURL: String = "oncuts://stripe-redirect"
     ) {
         self.apiBaseURLTrimmed = trimApiBaseURL(apiBaseURLTrimmed)
         self.bookingId = bookingId

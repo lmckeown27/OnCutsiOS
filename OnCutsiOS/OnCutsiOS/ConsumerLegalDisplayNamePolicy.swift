@@ -71,7 +71,7 @@ extension ConsumerLegalDisplayNamePolicy {
     /// Reserved for optional in-app polish; must not gate Sign in with Apple (Guideline 4).
     enum LegalDisplayNameOnboardingMarker {
         private static let defaults = UserDefaults.standard
-        private static let key = "intera.consumerLegalDisplayNameConfirmedUserIds"
+        private static let key = "oncuts.consumerLegalDisplayNameConfirmedUserIds"
 
         private static var idSet: Set<String> {
             get { Set(defaults.stringArray(forKey: key) ?? []) }

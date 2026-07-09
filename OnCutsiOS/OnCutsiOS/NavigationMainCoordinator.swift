@@ -72,7 +72,7 @@ final class MainCoordinator {
     /// Handle deep link
     func handleDeepLink(_ url: URL) {
         // TODO: Implement deep link parsing
-        // Example: campuscuts://booking/123
+        // Example: oncuts://booking/123
         print("Handling deep link: \(url)")
     }
     

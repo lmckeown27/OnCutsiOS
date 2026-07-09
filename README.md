@@ -63,12 +63,12 @@ User-facing branding is **OnCuts**. Some **platform identifiers** are unchanged 
 
 | Setting | Current value |
 |---------|----------------|
-| Bundle ID | `Liam.Intera` |
-| URL scheme (Stripe return) | `campuscuts://` |
-| Apple Pay merchant | `merchant.com.liammckeown.Intera` |
-| Keychain service keys | `com.campuscuts.*` |
+| Bundle ID | `com.oncutsclient.app` |
+| URL scheme (Stripe return) | `oncuts://stripe-redirect` |
+| Apple Pay merchant | `merchant.com.oncuts` |
+| Keychain / UserDefaults keys | `com.oncuts.*` / `OnCutsSignup.*` |
 
-Renaming these requires a coordinated migration in Apple Developer, Stripe, and App Store Connect — not a code-only change.
+Backend production env must set `APPLE_CLIENT_ID=com.oncutsclient.app` and `APN_BUNDLE_ID=com.oncutsclient.app`. Replace `GoogleService-Info.plist` from Firebase after registering the new iOS app; update the Google Sign-In URL scheme in `GoogleSignInURL.plist` to match the new iOS OAuth client.
 
 ---
 

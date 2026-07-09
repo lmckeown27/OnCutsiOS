@@ -959,7 +959,7 @@ export const googleIdTokenLogin = async (req: Request, res: Response, next: Next
 
 /**
  * POST /api/v1/auth/apple — Exchange Apple `identityToken` (JWT) for CampusCuts JWTs (App Store Guideline 4.8).
- * Set `APPLE_CLIENT_ID` to the **iOS bundle identifier** (e.g. `Liam.Intera`) — same as the Sign in with Apple Services ID audience for native apps.
+ * Set `APPLE_CLIENT_ID` to the **iOS bundle identifier** (e.g. `com.oncutsclient.app`) — same as the Sign in with Apple Services ID audience for native apps.
  * Requires `apple_sub` on `users` (see `004_apple_sub_on_users.sql`) so returning users can sign in when the JWT omits `email`.
  */
 export const appleIdTokenLogin = async (req: Request, res: Response, next: NextFunction) => {
@@ -978,7 +978,7 @@ export const appleIdTokenLogin = async (req: Request, res: Response, next: NextF
 
     const appleAudience = process.env.APPLE_CLIENT_ID?.trim();
     if (!appleAudience) {
-      logger.error('Apple sign-in: set APPLE_CLIENT_ID to the iOS app bundle identifier (e.g. Liam.Intera)');
+      logger.error('Apple sign-in: set APPLE_CLIENT_ID to the iOS app bundle identifier (e.g. com.oncutsclient.app)');
       throw new ApiError(
         500,
         'Apple sign-in is not configured on the server (set APPLE_CLIENT_ID to your iOS bundle ID)'

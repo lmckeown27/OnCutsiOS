@@ -9,7 +9,7 @@
 import Foundation
 
 enum ConsumerHiddenBookingsStore {
-    private static let defaultsKey = "intera.consumerHiddenBookingIdsByUser.v1"
+    private static let defaultsKey = "oncuts.consumerHiddenBookingIdsByUser.v1"
 
     private static func loadMap() -> [String: Set<String>] {
         guard let data = UserDefaults.standard.data(forKey: defaultsKey),

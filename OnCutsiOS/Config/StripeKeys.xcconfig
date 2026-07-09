@@ -14,7 +14,7 @@
 // `merchant.…` id from Apple Developer → Identifiers → Merchant IDs, enable the Apple Pay capability
 // on the OnCutsiOS target, and register Apple Pay in Stripe Dashboard → Settings → Payment methods.
 
-STRIPE_APPLE_PAY_MERCHANT_ID = merchant.com.liammckeown.Intera
+STRIPE_APPLE_PAY_MERCHANT_ID = merchant.com.oncuts
 STRIPE_APPLE_PAY_MERCHANT_COUNTRY_CODE = US
 
 STRIPE_PUBLISHABLE_KEY = pk_live_51RxiiGLzWXLHXumdBmIFfB9YB2YweCV05WEW1feteXWkFZBTw1eLrhFETKXUXHQyIGwYZOULEsxrWRt30miKqNQR00BPYBYu0C

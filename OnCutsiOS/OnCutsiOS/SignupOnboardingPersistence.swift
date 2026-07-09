@@ -10,9 +10,9 @@ import Foundation
 import Security
 
 enum SignupOnboardingPersistence {
-    private static let stepKey = "InteraSignup.step"
-    private static let emailKey = "InteraSignup.email"
-    private static let kService = "com.intera.signup.pendingSession"
+    private static let stepKey = "OnCutsSignup.step"
+    private static let emailKey = "OnCutsSignup.email"
+    private static let kService = "com.oncuts.signup.pendingSession"
     private static let kAccount = "verified.json"
 
     static func save(step: CustomerOnboardingStep, email: String?) {

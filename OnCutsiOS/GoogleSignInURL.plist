@@ -80,7 +80,7 @@
 			<string>OnCuts Stripe</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>campuscuts</string>
+				<string>oncuts</string>
 			</array>
 		</dict>
 	</array>

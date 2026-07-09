@@ -10,7 +10,7 @@ import Security
 
 /// Persists OnCuts API tokens in the iOS Keychain (shared by the host app and this module).
 public enum OnCutsAuthTokenStore: Sendable {
-    private static let service = "com.campuscuts.module.auth"
+    private static let service = "com.oncuts.module.auth"
     private static let accessAccount = "jwt.access"
     private static let refreshAccount = "jwt.refresh"
 

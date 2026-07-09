@@ -234,7 +234,7 @@ class PushNotificationService {
     const note = new apn.Notification();
     note.expiry = Math.floor(Date.now() / 1000) + 3600; // 1 hour
     note.badge = notification.badge ?? 0;
-    note.topic = process.env.APN_BUNDLE_ID || 'com.campuscuts.ios';
+    note.topic = process.env.APN_BUNDLE_ID || 'com.oncutsclient.app';
 
     if (silentBadgeOnly) {
       // Badge-only: do not set alert/sound — avoids empty banners; icon badge still updates

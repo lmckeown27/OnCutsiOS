@@ -71,8 +71,6 @@ struct OAuthProviderSignInOptionsContent: View {
     var onCreateAccount: (() -> Void)?
     let onSignedIn: () -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
-
     @State private var showAuthOutcomeAlert = false
     @State private var authOutcomeTitle = ""
     @State private var authOutcomeMessage = ""
@@ -496,16 +494,13 @@ struct OAuthProviderSignInOptionsContent: View {
     private func createAccountLink(action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text("Create Account")
-                .font(OnCutsFont.subheadline(weight: .semibold))
-                .foregroundStyleOliveGreen()
+                .font(OnCutsFont.body(weight: .semibold))
+                .foregroundStyle(BookingSelectorTheme.cream)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
+                .padding(.vertical, 16)
                 .background {
                     Capsule(style: .continuous)
-                        .strokeBorder(
-                            OnCutsOliveGreenTextStyle.outlineColor(for: colorScheme),
-                            lineWidth: 1.5
-                        )
+                        .strokeBorder(BookingSelectorTheme.cream, lineWidth: 1)
                 }
                 .contentShape(Capsule(style: .continuous))
         }

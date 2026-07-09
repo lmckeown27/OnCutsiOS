@@ -223,7 +223,7 @@ public final class CheckoutViewModel: ObservableObject {
 
     public init(
         merchantDisplayName: String = "OnCuts",
-        stripeReturnURL: String = "campuscuts://stripe-redirect"
+        stripeReturnURL: String = "oncuts://stripe-redirect"
     ) {
         self.merchantDisplayName = merchantDisplayName
         self.stripeReturnURL = stripeReturnURL

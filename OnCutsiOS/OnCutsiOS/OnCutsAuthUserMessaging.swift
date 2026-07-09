@@ -213,7 +213,7 @@ enum OnCutsAuthUserMessaging {
             )
         }
         if lower.contains("invalid") || lower.contains("expired") || lower.contains("already exists") {
-            return signUpOutcome(for: NSError(domain: "intera.signup", code: 0, userInfo: [NSLocalizedDescriptionKey: message]))
+            return signUpOutcome(for: NSError(domain: "oncuts.signup", code: 0, userInfo: [NSLocalizedDescriptionKey: message]))
         }
         return ("Couldn’t Finish Signing Up", message)
     }

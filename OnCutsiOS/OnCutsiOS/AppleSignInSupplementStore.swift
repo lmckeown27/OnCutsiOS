@@ -17,7 +17,7 @@ private struct AppleSignInSupplement: Codable, Sendable {
 }
 
 enum AppleSignInSupplementStore {
-    private static let service = "com.intera.apple-sign-in.supplement"
+    private static let service = "com.oncuts.apple-sign-in.supplement"
     private static let account = "credential.json"
 
     /// Only Apple’s explicit `givenName` / `familyName` are sent to the API and stored in Keychain.

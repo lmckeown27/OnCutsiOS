@@ -142,7 +142,7 @@ struct ConsumerPaymentTakeoverView: View {
         _checkout = StateObject(
             wrappedValue: CheckoutViewModel(
                 merchantDisplayName: "OnCuts",
-                stripeReturnURL: "campuscuts://stripe-redirect"
+                stripeReturnURL: "oncuts://stripe-redirect"
             )
         )
     }

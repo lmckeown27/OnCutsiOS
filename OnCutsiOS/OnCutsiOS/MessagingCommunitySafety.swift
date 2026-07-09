@@ -8,8 +8,8 @@
 import Foundation
 
 enum MessagingCommunitySafety {
-    private static let termsAcceptedKey = "InteraMessagingUGCTermsAcceptedV1"
-    private static let blockedUsersKey = "InteraMessagingBlockedUserIdsV1"
+    private static let termsAcceptedKey = "OnCutsMessagingUGCTermsAcceptedV1"
+    private static let blockedUsersKey = "OnCutsMessagingBlockedUserIdsV1"
 
     static var hasAcceptedMessagingTerms: Bool {
         UserDefaults.standard.bool(forKey: termsAcceptedKey)

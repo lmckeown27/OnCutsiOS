@@ -12,7 +12,9 @@ import Foundation
 enum AppBranding {
     /// Consumer product brand — app icon label, in-app copy, OAuth system name.
     static let displayName = "OnCuts"
-    /// Internal repo / docs product label (bundle ID remains `Liam.Intera` for App Store continuity).
+    /// Internal repo / docs product label (App Store bundle ID: `com.oncutsclient.app`).
+    static let bundleIdentifier = "com.oncutsclient.app"
+    static let applePayMerchantIdentifier = "merchant.com.oncuts"
     static let productName = "OnCuts"
     /// Legal entity / company behind the product (Terms, support, provider platform references).
     static let companyName = "OnCuts"

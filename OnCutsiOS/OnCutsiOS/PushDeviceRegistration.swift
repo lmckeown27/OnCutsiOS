@@ -14,7 +14,7 @@ import UIKit
 
 enum PushDeviceRegistration {
     private static let log = Logger(subsystem: "com.oncuts", category: "PushRegistration")
-    private static let apnsHexDefaultsKey = "com.intera.push.apnsHexToken"
+    private static let apnsHexDefaultsKey = "com.oncuts.push.apnsHexToken"
 
     /// Suppresses duplicate `POST /register-device` when `didRegisterForRemoteNotifications` and
     /// `refreshRemoteRegistrationAndRetryBackend` fire close together (or SwiftUI re-evaluates often).

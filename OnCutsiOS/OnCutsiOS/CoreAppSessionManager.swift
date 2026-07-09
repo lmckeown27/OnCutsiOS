@@ -36,7 +36,7 @@ public final class AppSessionManager {
     
     // MARK: - Private Properties
     
-    private let keychainKey = "com.campuscuts.userSession"
+    private let keychainKey = "com.oncuts.userSession"
     
     // Task stored separately to avoid observation tracking
     @ObservationIgnored private var _sessionTask: Task<Void, Never>?
