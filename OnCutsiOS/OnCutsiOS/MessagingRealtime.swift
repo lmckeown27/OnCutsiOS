@@ -414,6 +414,28 @@ enum MessagingDTOMapper {
         )
     }
 
+    /// Prefer server fields when present; keep prior schedule / ids when the thread payload is sparse.
+    static func mergeBookingDTO(server: MessagingBookingDTO?, prior: MessagingBookingDTO?) -> MessagingBookingDTO? {
+        guard server != nil || prior != nil else { return nil }
+        func field(_ serverValue: String?, _ priorValue: String?) -> String? {
+            let fromServer = (serverValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !fromServer.isEmpty { return fromServer }
+            let fromPrior = (priorValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return fromPrior.isEmpty ? nil : fromPrior
+        }
+        return MessagingBookingDTO(
+            id: field(server?.id, prior?.id),
+            status: field(server?.status, prior?.status),
+            serviceName: field(server?.serviceName, prior?.serviceName),
+            scheduledTime: field(server?.scheduledTime, prior?.scheduledTime),
+            location: field(server?.location, prior?.location),
+            barberId: field(server?.barberId, prior?.barberId),
+            barberName: field(server?.barberName, prior?.barberName),
+            barberBusinessName: field(server?.barberBusinessName, prior?.barberBusinessName),
+            barberProfileImageUrl: field(server?.barberProfileImageUrl, prior?.barberProfileImageUrl)
+        )
+    }
+
     static func bookingDTO(from context: BookingChatContext) -> MessagingBookingDTO {
         MessagingBookingDTO(
             id: context.bookingId,

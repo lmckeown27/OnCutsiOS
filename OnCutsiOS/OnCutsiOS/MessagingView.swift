@@ -417,6 +417,8 @@ final class MessagingConversationViewModel: ObservableObject {
     private var didStartSocketSession = false
     /// From inbox `otherUser` / booking row when `booking` lacks provider display strings (keeps nav title off the generic role label).
     private let counterpartyFallbackDisplayName: String?
+    /// Handoff snapshot (`ConsumerBookingSimpleRow`, inbox row) — thread GET often omits `booking.scheduledTime`.
+    private let seedBookingDTO: MessagingBookingDTO?
 
     init(
         conversationId: String,
@@ -428,6 +430,7 @@ final class MessagingConversationViewModel: ObservableObject {
     ) {
         self.conversationId = conversationId
         self.sessionManager = sessionManager
+        seedBookingDTO = initialBooking
         let trimmedFb = counterpartyFallbackDisplayName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         self.counterpartyFallbackDisplayName = trimmedFb.isEmpty ? nil : trimmedFb
         let trimmedOther = seedCounterpartyMessagingUserId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -491,6 +494,46 @@ final class MessagingConversationViewModel: ObservableObject {
     var showWaitingForBarber: Bool {
         guard let ctx = bookingContext else { return false }
         return ctx.isPending && messages.isEmpty
+    }
+
+    /// Fills `scheduledTimeRaw` from `GET /bookings-simple/:id` when the messaging payload omitted it.
+    func hydrateBookingScheduleIfNeeded(bearerToken: String?) async {
+        guard let ctx = bookingContext else { return }
+        if !ctx.scheduledTimeRaw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
+        let bookingId = {
+            let fromContext = ctx.bookingId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !fromContext.isEmpty { return fromContext }
+            return seedBookingDTO?.id?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        }()
+        guard !bookingId.isEmpty else { return }
+        do {
+            let row = try await ConsumerBookingsSimpleAPI.fetchConsumerBookingById(
+                bookingId: bookingId,
+                bearerToken: bearerToken
+            )
+            applyBookingScheduleRaw(row.scheduledTime)
+        } catch {
+            if ConsumerBookingsSimpleAPI.isUnauthorizedHTTPError(error) {
+                await sessionManager.recoverSessionAfterUnauthorized()
+            }
+        }
+    }
+
+    func applyBookingScheduleRaw(_ raw: String) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard let ctx = bookingContext else { return }
+        if !ctx.scheduledTimeRaw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
+        bookingContext = BookingChatContext(
+            statusNormalized: ctx.statusNormalized,
+            serviceName: ctx.serviceName,
+            scheduledTimeRaw: trimmed,
+            location: ctx.location,
+            barberId: ctx.barberId,
+            barberName: ctx.barberName,
+            barberImageUrl: ctx.barberImageUrl,
+            bookingId: ctx.bookingId
+        )
     }
 
     func start() async {
@@ -649,8 +692,13 @@ final class MessagingConversationViewModel: ObservableObject {
             counterpartyMessagingUserId = oid
         }
         if let b = booking {
+            let fromContext = bookingContext.map { MessagingDTOMapper.bookingDTO(from: $0) }
+            let prior = MessagingDTOMapper.mergeBookingDTO(server: fromContext, prior: seedBookingDTO)
+                ?? fromContext
+                ?? seedBookingDTO
+            let merged = MessagingDTOMapper.mergeBookingDTO(server: b, prior: prior) ?? b
             bookingContext = MessagingDTOMapper.bookingContext(
-                from: b,
+                from: merged,
                 counterpartyFallbackDisplayName: mergedFallback,
                 existingBookingId: bookingContext?.bookingId
             ) ?? bookingContext
@@ -1190,6 +1238,7 @@ struct MessagingConversationView: View {
             )
         }
         await vm.start()
+        await vm.hydrateBookingScheduleIfNeeded(bearerToken: sessionManager.currentSession?.token)
         syncHubInboxPreviewFromThreadContext()
         onInitialThreadHydrationComplete?()
         if let resync = onResyncSharedHubInboxSilently {
@@ -1426,7 +1475,13 @@ struct MessagingConversationView: View {
             .onCutsNavigationShellBackgroundClear()
             #endif
             .onChange(of: showBookingDetails) { _, open in
-                if !open {
+                if open {
+                    Task {
+                        await vm.hydrateBookingScheduleIfNeeded(
+                            bearerToken: sessionManager.currentSession?.token
+                        )
+                    }
+                } else {
                     bookingDetailsPanelDragOffset = 0
                 }
             }
@@ -1686,8 +1741,20 @@ struct MessagingConversationView: View {
         threadHeaderBookingSnapshot?.inboxRowIsTerminalPastContinuum == true
     }
 
+    private var resolvedThreadScheduledTimeRaw: String {
+        func nonEmpty(_ raw: String?) -> String? {
+            let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        if let raw = nonEmpty(vm.bookingContext?.scheduledTimeRaw) { return raw }
+        if let raw = nonEmpty(initialBooking?.scheduledTime) { return raw }
+        if let raw = nonEmpty(threadHeaderBookingSnapshot?.scheduledTime) { return raw }
+        return ""
+    }
+
     private var formattedContextHeaderScheduledTime: String {
-        guard let raw = vm.bookingContext?.scheduledTimeRaw else { return "Time TBD" }
+        let raw = resolvedThreadScheduledTimeRaw
+        guard !raw.isEmpty else { return "Time TBD" }
         return BookingPacificSchedule.formattedDisplayScheduledTime(raw, fullMonthName: true)
     }
 

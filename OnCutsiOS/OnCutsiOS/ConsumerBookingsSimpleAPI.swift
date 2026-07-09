@@ -423,7 +423,7 @@ extension ConsumerBookingSimpleRow {
     /// Calendar segment for profile tabs — mirrors web **Today / Upcoming / Past** behavior and includes **PENDING** where consumers expect to see open requests.
     func scheduleSegment(
         now: Date = Date(),
-        calendar: Calendar = .current
+        calendar: Calendar = BookingPacificSchedule.pacificCalendar
     ) -> ConsumerBookingScheduleSegment {
         let s = status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -460,13 +460,7 @@ extension ConsumerBookingSimpleRow {
     }
 
     static func parseScheduledISO(_ raw: String) -> Date? {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        let iso = ISO8601DateFormatter()
-        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = iso.date(from: trimmed) { return d }
-        iso.formatOptions = [.withInternetDateTime]
-        return iso.date(from: trimmed)
+        BookingPacificSchedule.parseAPIInstant(raw)
     }
 
     var scheduledAtDate: Date? {

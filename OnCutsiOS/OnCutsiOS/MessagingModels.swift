@@ -110,6 +110,7 @@ struct MessagingBookingDTO: Decodable, Sendable, Hashable {
         case providerImageUrl = "provider_image_url"
         case avatarUrl = "avatar_url"
         case bookingId = "booking_id"
+        case requestedAt = "requested_at"
     }
 
     /// Express often returns **camelCase** (`serviceName`); web clients may use **snake_case** (`service_name`).
@@ -118,7 +119,7 @@ struct MessagingBookingDTO: Decodable, Sendable, Hashable {
         case serviceName, scheduledTime, barberId, barberName
         case barberBusinessName, barberProfileImageUrl
         case barberProfilePhotoUrl, barberAvatarUrl, providerImageUrl, avatarUrl
-        case bookingId
+        case bookingId, requestedAt
     }
 
     init(from decoder: Decoder) throws {
@@ -145,8 +146,8 @@ struct MessagingBookingDTO: Decodable, Sendable, Hashable {
 
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? (try? alt?.decodeIfPresent(String.self, forKey: .status)) ?? nil
         serviceName = try c.decodeIfPresent(String.self, forKey: .serviceName) ?? (try? alt?.decodeIfPresent(String.self, forKey: .serviceName)) ?? nil
-        scheduledTime = MessagingFlexibleJSON.trimmedString(c, .scheduledTime)
-            ?? (alt.flatMap { MessagingFlexibleJSON.trimmedString($0, .scheduledTime) })
+        scheduledTime = MessagingFlexibleJSON.trimmedString(c, .scheduledTime, .requestedAt)
+            ?? (alt.flatMap { MessagingFlexibleJSON.trimmedString($0, .scheduledTime, .requestedAt) })
         location = try c.decodeIfPresent(String.self, forKey: .location) ?? (try? alt?.decodeIfPresent(String.self, forKey: .location)) ?? nil
         barberName = try c.decodeIfPresent(String.self, forKey: .barberName) ?? (try? alt?.decodeIfPresent(String.self, forKey: .barberName)) ?? nil
         barberBusinessName = try c.decodeIfPresent(String.self, forKey: .barberBusinessName)
@@ -200,6 +201,60 @@ struct MessagingBookingDTO: Decodable, Sendable, Hashable {
         self.barberName = barberName
         self.barberBusinessName = barberBusinessName
         self.barberProfileImageUrl = barberProfileImageUrl
+    }
+}
+
+extension MessagingBookingDTO {
+    /// Lenient parse for inbox `booking` blobs when strict `Decodable` misses schedule keys or timestamp shapes.
+    static func loose(from json: [String: Any]) -> MessagingBookingDTO? {
+        func trimmedString(_ keys: String...) -> String? {
+            for key in keys {
+                if let s = json[key] as? String {
+                    let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !t.isEmpty { return t }
+                }
+                if let n = json[key] as? NSNumber,
+                   let iso = MessagingFlexibleJSON.isoStringFromTimestampish(n.doubleValue) {
+                    return iso
+                }
+                if let d = json[key] as? Double,
+                   let iso = MessagingFlexibleJSON.isoStringFromTimestampish(d) {
+                    return iso
+                }
+                if let i = json[key] as? Int,
+                   let iso = MessagingFlexibleJSON.isoStringFromTimestampish(Double(i)) {
+                    return iso
+                }
+            }
+            return nil
+        }
+
+        let scheduledTime = trimmedString(
+            "scheduledTime", "scheduled_time", "requestedAt", "requested_at"
+        )
+        let barberId = trimmedString("barberId", "barber_id")
+        let barberName = trimmedString("barberName", "barber_name")
+        guard barberId != nil || barberName != nil else { return nil }
+
+        return MessagingBookingDTO(
+            id: trimmedString("id", "bookingId", "booking_id"),
+            status: trimmedString("status"),
+            serviceName: trimmedString("serviceName", "service_name"),
+            scheduledTime: scheduledTime,
+            location: trimmedString("location"),
+            barberId: barberId,
+            barberName: barberName,
+            barberBusinessName: trimmedString("barberBusinessName", "barber_business_name"),
+            barberProfileImageUrl: MessagingNonEmptyURL.first(
+                trimmedString("barberProfileImageUrl", "barber_profile_image_url"),
+                [
+                    trimmedString("barberProfilePhotoUrl", "barber_profile_photo_url"),
+                    trimmedString("barberAvatarUrl", "barber_avatar_url"),
+                    trimmedString("providerImageUrl", "provider_image_url"),
+                    trimmedString("avatarUrl", "avatar_url"),
+                ]
+            )
+        )
     }
 }
 
@@ -737,6 +792,12 @@ extension MessagingConversationRowDTO {
            let blob = try? JSONSerialization.data(withJSONObject: bookingObj),
            let decoded = try? JSONDecoder().decode(MessagingBookingDTO.self, from: blob) {
             bookingDTO = decoded
+        }
+        if let bookingObj = jsonObject["booking"] as? [String: Any] {
+            let loose = MessagingBookingDTO.loose(from: bookingObj)
+            if let loose {
+                bookingDTO = bookingDTO.map { MessagingDTOMapper.mergeBookingDTO(server: loose, prior: $0) ?? loose } ?? loose
+            }
         }
 
         var otherUserDTO: MessagingConversationOtherUserDTO?

@@ -160,6 +160,13 @@ enum BookingPacificSchedule {
     }
 
     private static func parseScheduledInstantForDisplay(_ trimmed: String) -> Date? {
+        parseAPIInstant(trimmed)
+    }
+
+    /// Single parser for API `scheduledTime` strings (UTC `Z`, fractional seconds, or Pacific wall-clock without offset).
+    static func parseAPIInstant(_ raw: String) -> Date? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
         let isoFrac = ISO8601DateFormatter()
         isoFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let d = isoFrac.date(from: trimmed) { return d }
@@ -169,7 +176,27 @@ enum BookingPacificSchedule {
         let pacificFull = ISO8601DateFormatter()
         pacificFull.formatOptions = [.withFullDate, .withTime, .withColonSeparatorInTime]
         pacificFull.timeZone = pacificTimeZone
-        return pacificFull.date(from: trimmed)
+        if let d = pacificFull.date(from: trimmed) { return d }
+        let pg = DateFormatter()
+        pg.locale = Locale(identifier: "en_US_POSIX")
+        pg.timeZone = pacificTimeZone
+        for format in ["yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss"] {
+            pg.dateFormat = format
+            if let d = pg.date(from: trimmed) { return d }
+        }
+        return nil
+    }
+
+    /// Whether `scheduledAt` falls on the same **Pacific** calendar day as `now` (matches bookings Today / Upcoming tabs).
+    static func isSamePacificBookingDay(scheduledAt: Date, now: Date = Date()) -> Bool {
+        pacificCalendar.isDate(scheduledAt, inSameDayAs: now)
+    }
+
+    /// Whole Pacific calendar days from `start` to `end` (start-of-day to start-of-day).
+    static func pacificCalendarDayOffset(from start: Date, to end: Date) -> Int {
+        let fromDay = pacificCalendar.startOfDay(for: start)
+        let toDay = pacificCalendar.startOfDay(for: end)
+        return pacificCalendar.dateComponents([.day], from: fromDay, to: toDay).day ?? 0
     }
 
     /// Pacific `HH:mm` key for availability matching and validation.
@@ -187,6 +214,27 @@ enum BookingPacificSchedule {
         out.locale = Locale.current
         out.timeZone = timeZone
         out.dateFormat = "h:mm a"
+        var s = out.string(from: date)
+        s = s.replacingOccurrences(of: "AM", with: "am")
+        s = s.replacingOccurrences(of: "PM", with: "pm")
+        return s.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Pacific weekday + month + day (e.g. `Wed, Jul 10`) for reminder cards and lists.
+    static func displayAbbreviatedPacificDay(from date: Date) -> String {
+        let out = DateFormatter()
+        out.locale = Locale.current
+        out.timeZone = pacificTimeZone
+        out.dateFormat = "E, MMM d"
+        return out.string(from: date)
+    }
+
+    /// Pacific weekday + month + day + time (e.g. `Wed, Jul 10 · 9:30 am`).
+    static func displayAbbreviatedPacificDayWithTime(from date: Date) -> String {
+        let out = DateFormatter()
+        out.locale = Locale.current
+        out.timeZone = pacificTimeZone
+        out.dateFormat = "E, MMM d · h:mm a"
         var s = out.string(from: date)
         s = s.replacingOccurrences(of: "AM", with: "am")
         s = s.replacingOccurrences(of: "PM", with: "pm")

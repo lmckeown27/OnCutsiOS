@@ -60,7 +60,7 @@ struct HomeTodayBookingHighlight: Identifiable, Equatable, Sendable {
     static func pickTodayHighlight(
         from rows: [ConsumerBookingSimpleRow],
         now: Date = Date(),
-        calendar: Calendar = .current
+        calendar: Calendar = BookingPacificSchedule.pacificCalendar
     ) -> HomeTodayBookingHighlight? {
         let candidates = rows.filter { row in
             let u = row.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -86,14 +86,14 @@ struct HomeTodayBookingHighlight: Identifiable, Equatable, Sendable {
         if until > 24 * 60 * 60 { return .calm }
         if until > 0, until <= 15 * 60 { return .urgent }
         if until <= 0, until >= -45 * 60 { return .urgent }
-        if Calendar.current.isDate(scheduledAt, inSameDayAs: now) {
+        if BookingPacificSchedule.isSamePacificBookingDay(scheduledAt: scheduledAt, now: now) {
             return .today
         }
         return .calm
     }
 
     var isScheduledToday: Bool {
-        Calendar.current.isDateInToday(scheduledAt)
+        BookingPacificSchedule.isSamePacificBookingDay(scheduledAt: scheduledAt)
     }
 }
 
@@ -131,20 +131,52 @@ struct HomePendingPaymentHighlight: Identifiable, Equatable, Sendable {
     }
 }
 
-// MARK: - Countdown
+// MARK: - Home booking reminder schedule line
 
-/// Updates on **minute** boundaries (solid cream line in the home reminder card).
+/// Updates on **minute** boundaries (solid cream line in the home reminder card): `{time} Today`, `Tomorrow {time}`, or a day label — never an hours/minutes countdown.
 struct AppointmentMinuteCountdownText: View {
     let scheduledAt: Date
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
-            Text(Self.format(scheduledAt: scheduledAt, now: context.date))
+            Text(
+                AppointmentReminderScheduleLine.format(
+                    scheduledAt: scheduledAt,
+                    now: context.date
+                )
+            )
         }
     }
+}
 
-    private static func format(scheduledAt: Date, now: Date) -> String {
-        AppointmentLiveCountdownText.format(scheduledAt: scheduledAt, now: now)
+/// Copy for the home booking reminder (Pacific wall clock; no `Starts in 2h 15m` style strings).
+enum AppointmentReminderScheduleLine {
+    static func format(scheduledAt: Date, now: Date) -> String {
+        let delta = scheduledAt.timeIntervalSince(now)
+        let time = BookingPacificSchedule.displayTimeWithMinutes(from: scheduledAt)
+
+        if delta > 0 {
+            switch BookingPacificSchedule.pacificCalendarDayOffset(from: now, to: scheduledAt) {
+            case 0:
+                return "\(time) Today"
+            case 1:
+                return "Tomorrow \(time)"
+            case 2...6:
+                let day = BookingPacificSchedule.displayAbbreviatedPacificDay(from: scheduledAt)
+                return "\(day) · \(time)"
+            default:
+                return BookingPacificSchedule.displayAbbreviatedPacificDayWithTime(from: scheduledAt)
+            }
+        }
+
+        if delta > -45 * 60 {
+            return BookingPacificSchedule.isSamePacificBookingDay(scheduledAt: scheduledAt, now: now)
+                ? "Happening now"
+                : "In progress"
+        }
+        return BookingPacificSchedule.isSamePacificBookingDay(scheduledAt: scheduledAt, now: now)
+            ? "Earlier today"
+            : "Was scheduled"
     }
 }
 
@@ -153,46 +185,14 @@ struct AppointmentLiveCountdownText: View {
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
-            Text(Self.format(scheduledAt: scheduledAt, now: context.date))
+            Text(AppointmentReminderScheduleLine.format(scheduledAt: scheduledAt, now: context.date))
         }
-    }
-
-    fileprivate static func format(scheduledAt: Date, now: Date) -> String {
-        let delta = scheduledAt.timeIntervalSince(now)
-        let calendar = Calendar.current
-        if delta > 7 * 24 * 3600 {
-            return scheduledAt.formatted(
-                .dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute()
-            )
-        }
-        if delta > 48 * 3600 {
-            let days = Int(ceil(delta / 86_400))
-            return "In \(days) days"
-        }
-        if delta > 24 * 3600 {
-            return scheduledAt.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute())
-        }
-        if delta > 3600 {
-            let h = Int(delta / 3600)
-            let m = Int((delta.truncatingRemainder(dividingBy: 3600)) / 60)
-            return "Starts in \(h)h \(m)m"
-        }
-        if delta > 60 {
-            return "Starts in \(Int(ceil(delta / 60))) min"
-        }
-        if delta > 0 {
-            return "Starting soon"
-        }
-        if delta > -45 * 60 {
-            return calendar.isDateInToday(scheduledAt) ? "Happening now" : "In progress"
-        }
-        return calendar.isDateInToday(scheduledAt) ? "Earlier today" : "Was scheduled"
     }
 }
 
 // MARK: - Floating glass reminder (tap → parent opens booking detail for the highlighted row)
 
-/// Compact frosted card below the utility pill: **provider** in `TimelineSectionHeader` “Today” weight, **service** in `headlineSmall` (same as booking rows), minute-based countdown in solid cream.
+/// Compact frosted card below the utility pill: **provider** in `TimelineSectionHeader` “Today” weight, **service** in `headlineSmall` (same as booking rows), schedule line (`{time} Today`, `Tomorrow {time}`, …) in solid cream.
 @available(iOS 26.0, macOS 26.0, *)
 struct HomeTodayBookingReminderGlassCard: View {
     let highlight: HomeTodayBookingHighlight
