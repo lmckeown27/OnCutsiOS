@@ -42,7 +42,7 @@ final class OnCutsAppDelegate: NSObject, UIApplicationDelegate {
         Messaging.messaging().apnsToken = deviceToken
         PushDeviceRegistration.persistAPNsDeviceToken(deviceToken)
         Task {
-            await PushDeviceRegistration.registerStoredTokenWithBackendIfPossible(bearerToken: nil)
+            await PushDeviceRegistration.registerWithRetries(bearerToken: nil)
         }
         #endif
     }
@@ -68,14 +68,32 @@ final class OnCutsAppDelegate: NSObject, UIApplicationDelegate {
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
         let options: UNAuthorizationOptions = [.alert, .badge, .sound]
-        UNUserNotificationCenter.current().requestAuthorization(options: options) { granted, error in
-            if let error {
-                onCutsPushDelegateLog.error("Notification permission request failed: \(error.localizedDescription)")
-            } else {
-                onCutsPushDelegateLog.notice("Notification permission granted=\(granted)")
-            }
+
+        let registerIfAuthorized: () -> Void = {
             DispatchQueue.main.async {
                 application.registerForRemoteNotifications()
+            }
+        }
+
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                onCutsPushDelegateLog.notice("Notification permission already granted — registering for remote notifications")
+                registerIfAuthorized()
+            case .notDetermined:
+                UNUserNotificationCenter.current().requestAuthorization(options: options) { granted, error in
+                    if let error {
+                        onCutsPushDelegateLog.error("Notification permission request failed: \(error.localizedDescription)")
+                    } else {
+                        onCutsPushDelegateLog.notice("Notification permission granted=\(granted)")
+                    }
+                    guard granted else { return }
+                    registerIfAuthorized()
+                }
+            case .denied:
+                onCutsPushDelegateLog.notice("Notification permission denied — enable in Settings to receive alerts")
+            @unknown default:
+                break
             }
         }
         #endif
@@ -89,6 +107,9 @@ extension OnCutsAppDelegate: UNUserNotificationCenterDelegate {
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        let userInfo = notification.request.content.userInfo
+        // Provider parity: refresh inbox / bookings when a push arrives in foreground (no tap required).
+        Self.postForegroundPushDataRefresh(from: userInfo)
         completionHandler([.banner, .badge, .sound])
     }
 
@@ -113,6 +134,16 @@ extension OnCutsAppDelegate: UNUserNotificationCenterDelegate {
             for (k, v) in data { flat[k] = v }
         }
         return flat
+    }
+
+    /// Refetch consumer data when a push arrives while the app is open (matches provider shell behavior).
+    private static func postForegroundPushDataRefresh(from userInfo: [AnyHashable: Any]) {
+        let flat = flattenRemoteNotificationUserInfo(userInfo)
+        let type = (flat["type"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+        if type == "message" || flat["conversationId"] != nil || flat["conversation_id"] != nil {
+            NotificationCenter.default.post(name: .messagingUnreadCountShouldRefresh, object: nil)
+        }
+        postConsumerBookingsRefreshIfNeeded(from: userInfo)
     }
 
     /// Routes message push taps: `conversationId` is set by `pushNotification.service` on the backend.

@@ -1536,7 +1536,7 @@ struct ServiceProviderDetailSheet: View {
                             cornerRadius: 16
                         )
                         
-                        // Name & availability only — rating lives in its own section below (not stacked on the hero).
+                        // Name + distance — rating lives in its own section below (not stacked on the hero).
                         VStack(spacing: 12) {
                             Text(provider.businessName)
                                 .font(OnCutsFont.headlineLarge)
@@ -1553,21 +1553,6 @@ struct ServiceProviderDetailSheet: View {
                                 .foregroundStyle(detailSubtleColor)
                                 .accessibilityElement(children: .combine)
                                 .accessibilityLabel("About \(distanceLabel) from your location")
-                            }
-                            
-                            if provider.isAvailableNow == true {
-                                HStack(spacing: 6) {
-                                    Circle()
-                                        .fill(Color.success)
-                                        .frame(width: 8, height: 8)
-                                    Text("Available Now")
-                                        .font(OnCutsFont.labelSmall)
-                                }
-                                .foregroundStyle(Color.success)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color.success.opacity(0.1))
-                                .cornerRadius(20)
                             }
                         }
                     }

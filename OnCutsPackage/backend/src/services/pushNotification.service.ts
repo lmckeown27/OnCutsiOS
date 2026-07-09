@@ -177,11 +177,23 @@ class PushNotificationService {
         badge: n.badge,
       });
 
-      // Get user's registered devices
-      const devices = await pool.query(
-        'SELECT device_token, platform FROM mobile_devices WHERE user_id = $1 AND is_active = true',
-        [userId]
-      );
+      // Get user's registered devices (bundle_id → per-app APNs topic; migration 030)
+      let devices;
+      try {
+        devices = await pool.query(
+          'SELECT device_token, platform, bundle_id FROM mobile_devices WHERE user_id::text = $1::text AND is_active = true',
+          [String(userId)]
+        );
+      } catch (queryError: any) {
+        if (queryError?.code === '42703') {
+          devices = await pool.query(
+            'SELECT device_token, platform FROM mobile_devices WHERE user_id::text = $1::text AND is_active = true',
+            [String(userId)]
+          );
+        } else {
+          throw queryError;
+        }
+      }
 
       console.log(`📱 Found ${devices.rows.length} registered devices`);
 
@@ -194,7 +206,11 @@ class PushNotificationService {
       for (const device of devices.rows) {
         try {
           if (device.platform === 'ios' && this.apnProvider) {
-            const result = await this.sendIOSNotification(device.device_token, n);
+            const result = await this.sendIOSNotification(
+              device.device_token,
+              n,
+              device.bundle_id
+            );
             results.push({ platform: 'ios', token: device.device_token, result });
           } else if (device.platform === 'android' && this.fcmApp) {
             const result = await this.sendAndroidNotification(device.device_token, n);
@@ -222,8 +238,13 @@ class PushNotificationService {
 
   /**
    * Send iOS notification via APN
+   * @param apnsTopic Stored `mobile_devices.bundle_id` (consumer vs provider); falls back to `APN_BUNDLE_ID`.
    */
-  private async sendIOSNotification(deviceToken: string, notification: NotificationData): Promise<any> {
+  private async sendIOSNotification(
+    deviceToken: string,
+    notification: NotificationData,
+    apnsTopic?: string | null
+  ): Promise<any> {
     if (!this.apnProvider) {
       throw new Error('APN Provider not initialized');
     }
@@ -234,7 +255,8 @@ class PushNotificationService {
     const note = new apn.Notification();
     note.expiry = Math.floor(Date.now() / 1000) + 3600; // 1 hour
     note.badge = notification.badge ?? 0;
-    note.topic = process.env.APN_BUNDLE_ID || 'com.oncutsclient.app';
+    const trimmedTopic = (apnsTopic ?? '').trim();
+    note.topic = trimmedTopic || process.env.APN_BUNDLE_ID || 'com.oncutsclient.app';
 
     if (silentBadgeOnly) {
       // Badge-only: do not set alert/sound — avoids empty banners; icon badge still updates
@@ -272,7 +294,7 @@ class PushNotificationService {
           console.warn(
             `📱 APN permanent failure for token …${String(deviceToken).slice(-8)} status=410 reason=${reason}`
           );
-          await this.deactivateDevice(deviceToken, `APN 410: ${reason}`);
+          await this.deactivateDevice(deviceToken);
         } else {
           console.warn(
             `📱 APN send failed (not deactivating token) status=${failure.status} reason=${reason}`

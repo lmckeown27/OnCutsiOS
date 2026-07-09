@@ -45,58 +45,100 @@ enum PushDeviceRegistration {
         log.info("APNs device token stored length=\(hex.count) prefix=\(prefix)…")
     }
 
-    /// Call after login or when the device token is first received.
-    /// Pass `bearerToken` from `UserSession.token` when available so push registration uses the same JWT as other API calls (keychain can lag some sign-in paths).
-    static func registerStoredTokenWithBackendIfPossible(bearerToken: String? = nil) async {
-        guard let hex = storedAPNsHexToken else {
-            log.notice("register-device skipped: no APNs hex yet (waiting for system didRegisterForRemoteNotifications)")
-            return
-        }
-        let jwt = bearerToken ?? OnCutsAuthTokenStore.loadAccessToken()
-        guard let jwt, !jwt.isEmpty else {
-            log.notice("register-device skipped: no JWT (session token or OnCutsAuthTokenStore)")
-            return
-        }
-
-        throttleLock.lock()
-        let skip: Bool
-        if let last = lastSuccessfulBackendRegister,
-           last.hex == hex,
-           last.jwt == jwt,
-           Date().timeIntervalSince(last.at) < minRegisterInterval
-        {
-            skip = true
-        } else {
-            skip = false
-        }
-        throttleLock.unlock()
-        if skip {
-            log.notice("register-device skipped (throttled: same token+JWT within \(Int(minRegisterInterval))s)")
-            return
-        }
-
-        do {
-            try await PushNotificationAPI.registerDevice(deviceTokenHex: hex, bearerToken: jwt)
-            log.notice("register-device succeeded for OnCuts API")
-            throttleLock.lock()
-            lastSuccessfulBackendRegister = (hex, jwt, Date())
-            throttleLock.unlock()
-        } catch {
-            log.error("register-device failed: \(error.localizedDescription, privacy: .public)")
+    /// Retries registration when the JWT or APNs token is not ready yet (common at cold launch).
+    static func registerWithRetries(bearerToken: String? = nil, maxAttempts: Int = 4) async {
+        let delaysNs: [UInt64] = [0, 400_000_000, 900_000_000, 1_800_000_000]
+        for attempt in 0 ..< maxAttempts {
+            if attempt > 0 {
+                let delay = delaysNs[min(attempt, delaysNs.count - 1)]
+                try? await Task.sleep(nanoseconds: delay)
+            }
+            let ignoreThrottle = attempt > 0
+            if await registerStoredTokenWithBackendIfPossible(bearerToken: bearerToken, ignoreThrottle: ignoreThrottle) {
+                return
+            }
         }
     }
 
-    /// After login, ask the system for a push token again and retry `registerStoredTokenWithBackendIfPossible` (JWT now available).
+    /// Call after login or when the device token is first received.
+    /// Pass `bearerToken` from `UserSession.token` when available so push registration uses the same JWT as other API calls (keychain can lag some sign-in paths).
+    @discardableResult
+    static func registerStoredTokenWithBackendIfPossible(
+        bearerToken: String? = nil,
+        ignoreThrottle: Bool = false
+    ) async -> Bool {
+        guard let hex = storedAPNsHexToken else {
+            log.notice("register-device skipped: no APNs hex yet (waiting for system didRegisterForRemoteNotifications)")
+            return false
+        }
+        var jwt = bearerToken ?? OnCutsAuthTokenStore.loadAccessToken()
+        if jwt?.isEmpty != false {
+            log.notice("register-device skipped: no JWT (session token or OnCutsAuthTokenStore)")
+            return false
+        }
+
+        if !ignoreThrottle {
+            throttleLock.lock()
+            let skip: Bool
+            if let last = lastSuccessfulBackendRegister,
+               last.hex == hex,
+               last.jwt == jwt,
+               Date().timeIntervalSince(last.at) < minRegisterInterval
+            {
+                skip = true
+            } else {
+                skip = false
+            }
+            throttleLock.unlock()
+            if skip {
+                log.notice("register-device skipped (throttled: same token+JWT within \(Int(minRegisterInterval))s)")
+                return true
+            }
+        }
+
+        do {
+            try await PushNotificationAPI.registerDevice(deviceTokenHex: hex, bearerToken: jwt!)
+            log.notice("register-device succeeded for OnCuts API")
+            throttleLock.lock()
+            lastSuccessfulBackendRegister = (hex, jwt!, Date())
+            throttleLock.unlock()
+            return true
+        } catch {
+            if PushNotificationAPI.isUnauthorizedHTTPError(error) {
+                let refreshed = await recoverSessionAfterUnauthorizedIfPossible()
+                if refreshed, let retryJWT = OnCutsAuthTokenStore.loadAccessToken(), !retryJWT.isEmpty {
+                    jwt = retryJWT
+                    do {
+                        try await PushNotificationAPI.registerDevice(deviceTokenHex: hex, bearerToken: retryJWT)
+                        log.notice("register-device succeeded after session refresh")
+                        throttleLock.lock()
+                        lastSuccessfulBackendRegister = (hex, retryJWT, Date())
+                        throttleLock.unlock()
+                        return true
+                    } catch {
+                        log.error("register-device failed after session refresh: \(error.localizedDescription, privacy: .public)")
+                        return false
+                    }
+                }
+            }
+            log.error("register-device failed: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+    }
+
+    @MainActor
+    private static func recoverSessionAfterUnauthorizedIfPossible() async -> Bool {
+        await OnCutsSessionSync.appSessionManager?.recoverSessionAfterUnauthorized() ?? false
+    }
+
+    /// After login or resume, ask the system for a push token again and retry backend registration (JWT now available).
     #if os(iOS) || os(visionOS)
     static func refreshRemoteRegistrationAndRetryBackend(bearerToken: String? = nil) {
         DispatchQueue.main.async {
             UIApplication.shared.registerForRemoteNotifications()
         }
-        // `didRegisterForRemoteNotifications` will call `registerStoredTokenWithBackendIfPossible` with throttling.
-        // Still schedule one explicit attempt for the case where the system does not re-invoke the delegate (cached token).
         Task {
-            try? await Task.sleep(nanoseconds: 350_000_000)
-            await registerStoredTokenWithBackendIfPossible(bearerToken: bearerToken)
+            await registerWithRetries(bearerToken: bearerToken)
         }
     }
     #endif

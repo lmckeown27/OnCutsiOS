@@ -238,13 +238,6 @@ internal struct BarberCardView: View {
             
             Spacer()
             
-            // Available indicator
-            if barber.isAvailableNow == true {
-                Circle()
-                    .fill(.green)
-                    .frame(width: 10, height: 10)
-            }
-            
             Image(systemName: "chevron.right")
                 .foregroundStyle(.secondary)
         }

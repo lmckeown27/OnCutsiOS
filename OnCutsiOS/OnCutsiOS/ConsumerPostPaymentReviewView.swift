@@ -81,28 +81,17 @@ struct ConsumerPostPaymentReviewView: View {
                             }
 
                             VStack(spacing: 12) {
-                                Button {
-                                    dismissReviewKeyboard()
-                                    Task { await finishReviewFlow() }
-                                } label: {
-                                    HStack {
-                                        if isSubmitting {
-                                            ProgressView()
-                                                .tint(Color.paymentFilledButtonLabel)
-                                        }
-                                        Text("Submit")
-                                            .font(OnCutsFont.system(size: 18, weight: .bold))
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .frame(minHeight: 52)
-                                    .foregroundStyle(Color.paymentFilledButtonLabel)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .fill(Color.paymentFilledButtonFill)
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(isSubmitting)
+                                PrimaryButton(
+                                    title: "Submit",
+                                    action: {
+                                        dismissReviewKeyboard()
+                                        Task { await finishReviewFlow() }
+                                    },
+                                    isLoading: isSubmitting,
+                                    isDisabled: isSubmitting,
+                                    variant: .shell,
+                                    size: .footer
+                                )
 
                                 Button("Not now") {
                                     dismissReviewKeyboard()

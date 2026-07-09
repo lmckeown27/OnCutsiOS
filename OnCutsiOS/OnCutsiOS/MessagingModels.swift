@@ -7,6 +7,79 @@
 
 import Foundation
 
+// MARK: - Lenient JSON helpers
+
+private enum MessagingFlexibleJSON {
+    static func trimmedString<K: CodingKey>(_ c: KeyedDecodingContainer<K>, _ keys: K...) -> String? {
+        for key in keys {
+            if let s = (try? c.decodeIfPresent(String.self, forKey: key)) ?? nil {
+                let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !t.isEmpty { return t }
+            }
+            if let i = (try? c.decodeIfPresent(Int.self, forKey: key)) ?? nil {
+                return String(i)
+            }
+            if let d = (try? c.decodeIfPresent(Double.self, forKey: key)) ?? nil,
+               let iso = isoStringFromTimestampish(d) {
+                return iso
+            }
+        }
+        return nil
+    }
+
+    static func intValue<K: CodingKey>(_ c: KeyedDecodingContainer<K>, _ keys: K...) -> Int? {
+        for key in keys {
+            if let i = (try? c.decodeIfPresent(Int.self, forKey: key)) ?? nil { return i }
+            if let s = (try? c.decodeIfPresent(String.self, forKey: key)) ?? nil {
+                let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+                if let i = Int(t) { return i }
+            }
+            if let d = (try? c.decodeIfPresent(Double.self, forKey: key)) ?? nil { return Int(d) }
+        }
+        return nil
+    }
+
+    static func stringId(_ any: Any?) -> String? {
+        if let s = any as? String {
+            let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            return t.isEmpty ? nil : t
+        }
+        if let i = any as? Int { return String(i) }
+        if let n = any as? NSNumber {
+            let t = n.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            return t.isEmpty ? nil : t
+        }
+        return nil
+    }
+
+    static func intValue(_ any: Any?) -> Int? {
+        if let i = any as? Int { return i }
+        if let s = any as? String { return Int(s.trimmingCharacters(in: .whitespacesAndNewlines)) }
+        if let n = any as? NSNumber { return n.intValue }
+        if let d = any as? Double { return Int(d) }
+        return nil
+    }
+
+    static func isoStringFromTimestampish(_ value: Double) -> String? {
+        let secs: TimeInterval
+        if value > 1_000_000_000_000 { secs = value / 1000 }
+        else if value > 1_000_000_000 { secs = value }
+        else { return String(value) }
+        return ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: secs))
+    }
+
+    static func dateString(_ any: Any?) -> String? {
+        if let s = any as? String {
+            let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            return t.isEmpty ? nil : t
+        }
+        if let n = any as? NSNumber, let iso = isoStringFromTimestampish(n.doubleValue) { return iso }
+        if let d = any as? Double, let iso = isoStringFromTimestampish(d) { return iso }
+        if let i = any as? Int, let iso = isoStringFromTimestampish(Double(i)) { return iso }
+        return nil
+    }
+}
+
 // MARK: - Thread / booking context
 
 struct MessagingBookingDTO: Decodable, Sendable, Hashable {
@@ -72,7 +145,8 @@ struct MessagingBookingDTO: Decodable, Sendable, Hashable {
 
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? (try? alt?.decodeIfPresent(String.self, forKey: .status)) ?? nil
         serviceName = try c.decodeIfPresent(String.self, forKey: .serviceName) ?? (try? alt?.decodeIfPresent(String.self, forKey: .serviceName)) ?? nil
-        scheduledTime = try c.decodeIfPresent(String.self, forKey: .scheduledTime) ?? (try? alt?.decodeIfPresent(String.self, forKey: .scheduledTime)) ?? nil
+        scheduledTime = MessagingFlexibleJSON.trimmedString(c, .scheduledTime)
+            ?? (alt.flatMap { MessagingFlexibleJSON.trimmedString($0, .scheduledTime) })
         location = try c.decodeIfPresent(String.self, forKey: .location) ?? (try? alt?.decodeIfPresent(String.self, forKey: .location)) ?? nil
         barberName = try c.decodeIfPresent(String.self, forKey: .barberName) ?? (try? alt?.decodeIfPresent(String.self, forKey: .barberName)) ?? nil
         barberBusinessName = try c.decodeIfPresent(String.self, forKey: .barberBusinessName)
@@ -408,7 +482,7 @@ struct MessagingConversationOtherUserDTO: Decodable, Sendable {
         lastName = try c.decodeIfPresent(String.self, forKey: .lastName)
         var pic = try Self.decodeRootProfilePicture(from: c)
 
-        if let block = try c.decodeIfPresent(BarberInfoBlock.self, forKey: .barberInfo) {
+        if let block = try? c.decodeIfPresent(BarberInfoBlock.self, forKey: .barberInfo) {
             let dnEmpty = dn.map { $0.trimmingCharacters(in: Self.ws).isEmpty } ?? true
             if dnEmpty,
                let inner = block.displayName?.trimmingCharacters(in: Self.ws),
@@ -558,12 +632,33 @@ struct MessagingConversationRowDTO: Decodable, Sendable, Identifiable {
         case id
         case booking
         case otherUser
+        case other_user
         case lastMessagePreview = "last_message_preview"
         case updatedAt = "updated_at"
         case lastMessage
+        case last_message
         case createdAt
+        case created_at
         case unreadCount
         case unread_count
+    }
+
+    fileprivate init(
+        id: String,
+        booking: MessagingBookingDTO?,
+        otherUser: MessagingConversationOtherUserDTO?,
+        lastMessagePreview: String?,
+        lastMessageSenderId: String?,
+        updatedAt: String?,
+        unreadCount: Int?
+    ) {
+        self.id = id
+        self.booking = booking
+        self.otherUser = otherUser
+        self.lastMessagePreview = lastMessagePreview
+        self.lastMessageSenderId = lastMessageSenderId
+        self.updatedAt = updatedAt
+        self.unreadCount = unreadCount
     }
 
     private struct LastMessageBlock: Decodable, Sendable {
@@ -604,25 +699,90 @@ struct MessagingConversationRowDTO: Decodable, Sendable, Identifiable {
         } else {
             throw DecodingError.dataCorrupted(.init(codingPath: c.codingPath, debugDescription: "conversation id missing"))
         }
-        booking = try c.decodeIfPresent(MessagingBookingDTO.self, forKey: .booking)
-        otherUser = try c.decodeIfPresent(MessagingConversationOtherUserDTO.self, forKey: .otherUser)
-        if let flat = try c.decodeIfPresent(String.self, forKey: .lastMessagePreview) {
-            lastMessagePreview = flat.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        booking = try? c.decodeIfPresent(MessagingBookingDTO.self, forKey: .booking)
+        otherUser = (try? c.decodeIfPresent(MessagingConversationOtherUserDTO.self, forKey: .otherUser))
+            ?? (try? c.decodeIfPresent(MessagingConversationOtherUserDTO.self, forKey: .other_user))
+
+        if let flat = MessagingFlexibleJSON.trimmedString(c, .lastMessagePreview) {
+            lastMessagePreview = flat.nilIfEmpty
             lastMessageSenderId = nil
-        } else if let block = try c.decodeIfPresent(LastMessageBlock.self, forKey: .lastMessage) {
-            lastMessagePreview = block.content?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
-            lastMessageSenderId = block.senderId
-        } else {
-            lastMessagePreview = nil
+        } else if let flat = MessagingFlexibleJSON.trimmedString(c, .lastMessage, .last_message) {
+            lastMessagePreview = flat.nilIfEmpty
             lastMessageSenderId = nil
-        }
-        updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
-            ?? c.decodeIfPresent(String.self, forKey: .createdAt)
-        if let u = try c.decodeIfPresent(Int.self, forKey: .unreadCount) {
-            unreadCount = u
         } else {
-            unreadCount = try c.decodeIfPresent(Int.self, forKey: .unread_count)
+            let lastBlock = (try? c.decodeIfPresent(LastMessageBlock.self, forKey: .lastMessage))
+                ?? (try? c.decodeIfPresent(LastMessageBlock.self, forKey: .last_message))
+            if let block = lastBlock {
+                lastMessagePreview = block.content?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+                lastMessageSenderId = block.senderId
+            } else {
+                lastMessagePreview = nil
+                lastMessageSenderId = nil
+            }
         }
+
+        updatedAt = MessagingFlexibleJSON.trimmedString(c, .updatedAt, .createdAt, .created_at)
+        unreadCount = MessagingFlexibleJSON.intValue(c, .unreadCount, .unread_count)
+    }
+}
+
+extension MessagingConversationRowDTO {
+    /// Builds from `JSONSerialization` when strict `Decodable` fails on a single row or the whole payload.
+    init?(jsonObject: [String: Any]) {
+        guard let id = MessagingFlexibleJSON.stringId(jsonObject["id"]) else { return nil }
+
+        var bookingDTO: MessagingBookingDTO?
+        if let bookingObj = jsonObject["booking"] as? [String: Any],
+           JSONSerialization.isValidJSONObject(bookingObj),
+           let blob = try? JSONSerialization.data(withJSONObject: bookingObj),
+           let decoded = try? JSONDecoder().decode(MessagingBookingDTO.self, from: blob) {
+            bookingDTO = decoded
+        }
+
+        var otherUserDTO: MessagingConversationOtherUserDTO?
+        let otherRaw = (jsonObject["otherUser"] as? [String: Any]) ?? (jsonObject["other_user"] as? [String: Any])
+        if let otherObj = otherRaw,
+           JSONSerialization.isValidJSONObject(otherObj),
+           let blob = try? JSONSerialization.data(withJSONObject: otherObj),
+           let decoded = try? JSONDecoder().decode(MessagingConversationOtherUserDTO.self, from: blob) {
+            otherUserDTO = decoded
+        }
+
+        var preview: String?
+        var senderId: String?
+        if let flat = Self.looseTrimmedString(jsonObject["last_message_preview"]) {
+            preview = flat
+        } else if let lm = jsonObject["lastMessage"] ?? jsonObject["last_message"] {
+            if let s = lm as? String {
+                preview = s.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            } else if let dict = lm as? [String: Any] {
+                preview = Self.looseTrimmedString(dict["content"])
+                senderId = MessagingFlexibleJSON.stringId(dict["senderId"] ?? dict["sender_id"])
+            }
+        }
+
+        let updated = MessagingFlexibleJSON.dateString(jsonObject["updatedAt"])
+            ?? MessagingFlexibleJSON.dateString(jsonObject["updated_at"])
+            ?? MessagingFlexibleJSON.dateString(jsonObject["createdAt"])
+            ?? MessagingFlexibleJSON.dateString(jsonObject["created_at"])
+
+        self.init(
+            id: id,
+            booking: bookingDTO,
+            otherUser: otherUserDTO,
+            lastMessagePreview: preview?.nilIfEmpty,
+            lastMessageSenderId: senderId,
+            updatedAt: updated,
+            unreadCount: MessagingFlexibleJSON.intValue(jsonObject["unreadCount"] ?? jsonObject["unread_count"])
+        )
+    }
+
+    private static func looseTrimmedString(_ any: Any?) -> String? {
+        if let s = any as? String {
+            let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            return t.isEmpty ? nil : t
+        }
+        return nil
     }
 }
 

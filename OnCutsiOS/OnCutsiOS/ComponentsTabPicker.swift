@@ -47,8 +47,7 @@ struct TabPicker<T: Hashable>: View {
                 }
                 .font(OnCutsFont.labelMedium)
                 .fontWeight(selectedTab == tab ? .semibold : .regular)
-                .foregroundStyle(selectedTab == tab ? Color.brand : Color.neutral500)
-                .onCutsOliveGreenTextOutline(when: selectedTab == tab)
+                .foregroundStyle(selectedTab == tab ? Color.primary : Color.neutral500)
                 
                 Rectangle()
                     .fill(selectedTab == tab ? Color.brand : Color.clear)

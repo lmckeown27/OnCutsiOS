@@ -48,16 +48,16 @@ struct PrimaryButton: View {
             switch self {
             case .primary: return .white
             case .secondary: return .textDark
-            case .outline: return .oliveGreen
+            case .outline: return .primary
             case .danger: return .white
-            case .ghost: return .oliveGreen
+            case .ghost: return .primary
             case .shell: return .onCutsShellBackground
             }
         }
         
         var borderColor: Color? {
             switch self {
-            case .outline: return .oliveGreen
+            case .outline: return Color.primary.opacity(0.35)
             default: return nil
             }
         }
@@ -131,7 +131,6 @@ struct PrimaryButton: View {
     var body: some View {
         Button(action: action) {
             buttonLabel
-                .onCutsOliveGreenTextOutline(when: !isDisabled && (variant == .outline || variant == .ghost))
                 .onCutsFilledPrimaryButtonLabelOutline(
                     when: !isDisabled && titleUsesOutline && variant == .primary && size != .prominent
                 )

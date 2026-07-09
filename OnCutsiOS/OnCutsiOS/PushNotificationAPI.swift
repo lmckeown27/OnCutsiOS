@@ -10,6 +10,12 @@ import OSLog
 
 enum PushNotificationAPI {
     private static let log = Logger(subsystem: "com.oncuts", category: "PushNotificationAPI")
+
+    static func isUnauthorizedHTTPError(_ error: Error) -> Bool {
+        let ns = error as NSError
+        return ns.domain == "PushNotificationAPI" && ns.code == 401
+    }
+
     private static func throwIfHTTPError(_ response: URLResponse, data: Data) throws {
         guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
@@ -29,7 +35,8 @@ enum PushNotificationAPI {
         guard let url = URL(string: AppConfiguration.messagingAPIRootTrimmed + "/notifications/register-device") else {
             throw URLError(.badURL)
         }
-        log.notice("Starting POST register-device host=\(url.host ?? "?", privacy: .public) path=\(url.path, privacy: .public)")
+        let bundleId = Bundle.main.bundleIdentifier ?? AppBranding.bundleIdentifier
+        log.notice("Starting POST register-device host=\(url.host ?? "?", privacy: .public) path=\(url.path, privacy: .public) bundleId=\(bundleId, privacy: .public)")
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -38,6 +45,7 @@ enum PushNotificationAPI {
         let body: [String: String] = [
             "deviceToken": deviceTokenHex,
             "platform": "ios",
+            "bundleId": bundleId,
         ]
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, resp) = try await URLSession.shared.data(for: req)

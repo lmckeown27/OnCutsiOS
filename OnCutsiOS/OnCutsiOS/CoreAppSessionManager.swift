@@ -183,6 +183,14 @@ public final class AppSessionManager {
         currentSession = refreshedSession
         OnCutsAuthTokenStore.save(accessToken: accessToken, refreshToken: refreshToken)
         saveSessionToKeychain()
+        #if os(iOS) || os(visionOS)
+        Task {
+            await PushDeviceRegistration.registerStoredTokenWithBackendIfPossible(
+                bearerToken: accessToken,
+                ignoreThrottle: true
+            )
+        }
+        #endif
     }
     
     // MARK: - Private Methods

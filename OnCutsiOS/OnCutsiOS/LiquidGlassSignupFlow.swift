@@ -1300,8 +1300,7 @@ struct LiquidGlassSignupFlowView: View {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: coordinator.termsAccepted ? "checkmark.circle.fill" : "doc.text.fill")
                     .font(OnCutsFont.title3)
-                    .foregroundStyle(coordinator.termsAccepted ? Color.oliveGreen : .secondary)
-                    .onCutsOliveGreenTextOutline(when: coordinator.termsAccepted)
+                    .foregroundStyle(coordinator.termsAccepted ? Color.primary : .secondary)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Terms of Service")
                         .font(OnCutsFont.caption(weight: .semibold))
@@ -1337,8 +1336,7 @@ struct LiquidGlassSignupFlowView: View {
                         .font(OnCutsFont.subheadline(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .foregroundStyle(termsDocumentReachedBottom ? Color.oliveGreen : Color.secondary)
-                        .onCutsOliveGreenTextOutline(when: termsDocumentReachedBottom)
+                        .foregroundStyle(termsDocumentReachedBottom ? Color.primary : Color.secondary)
                         .background {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .fill(

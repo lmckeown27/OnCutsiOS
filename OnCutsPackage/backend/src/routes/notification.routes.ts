@@ -193,7 +193,11 @@ router.delete('/:id', authenticate, async (req, res, next) => {
 router.post('/register-device', authenticate, async (req, res, next) => {
   try {
     const userId = (req as any).user.userId;
-    const { deviceToken, platform } = req.body;
+    const { deviceToken, platform, bundleId, bundle_id } = req.body;
+    const resolvedBundleId =
+      (typeof bundleId === 'string' && bundleId.trim()) ||
+      (typeof bundle_id === 'string' && bundle_id.trim()) ||
+      null;
 
     if (!deviceToken || !platform) {
       return res.status(400).json({
@@ -216,26 +220,57 @@ router.post('/register-device', authenticate, async (req, res, next) => {
     );
 
     if (existing.rows.length > 0) {
-      // Update existing device token
+      // Update existing device token (bundle_id when column exists — migration 030)
       await pool.query(
-        'UPDATE mobile_devices SET user_id = $1, platform = $2, is_active = true, updated_at = NOW() WHERE device_token = $3',
-        [userId, platform, deviceToken]
+        `UPDATE mobile_devices
+         SET user_id = $1, platform = $2, is_active = true, updated_at = NOW(),
+             bundle_id = COALESCE($4, bundle_id)
+         WHERE device_token = $3`,
+        [userId, platform, deviceToken, resolvedBundleId]
       );
     } else {
-      // Insert new device token
       await pool.query(
-        'INSERT INTO mobile_devices (user_id, device_token, platform) VALUES ($1, $2, $3)',
-        [userId, deviceToken, platform]
+        `INSERT INTO mobile_devices (user_id, device_token, platform, bundle_id)
+         VALUES ($1, $2, $3, $4)`,
+        [userId, deviceToken, platform, resolvedBundleId]
       );
     }
 
-    console.log(`✅ Registered ${platform} device for user ${userId}`);
+    console.log(
+      `✅ Registered ${platform} device for user ${userId}` +
+        (resolvedBundleId ? ` (bundle ${resolvedBundleId})` : '')
+    );
 
     res.json({
       success: true,
       message: 'Device registered successfully',
     });
-  } catch (error) {
+  } catch (error: any) {
+    // Graceful fallback when `bundle_id` column is not migrated yet
+    if (error?.code === '42703') {
+      try {
+        const userId = (req as any).user.userId;
+        const { deviceToken, platform } = req.body;
+        const existing = await pool.query(
+          'SELECT id FROM mobile_devices WHERE device_token = $1',
+          [deviceToken]
+        );
+        if (existing.rows.length > 0) {
+          await pool.query(
+            'UPDATE mobile_devices SET user_id = $1, platform = $2, is_active = true, updated_at = NOW() WHERE device_token = $3',
+            [userId, platform, deviceToken]
+          );
+        } else {
+          await pool.query(
+            'INSERT INTO mobile_devices (user_id, device_token, platform) VALUES ($1, $2, $3)',
+            [userId, deviceToken, platform]
+          );
+        }
+        return res.json({ success: true, message: 'Device registered successfully' });
+      } catch (fallbackError) {
+        return next(fallbackError);
+      }
+    }
     next(error);
   }
 });
@@ -247,12 +282,40 @@ router.post('/register-device', authenticate, async (req, res, next) => {
 router.delete('/unregister-device', authenticate, async (req, res, next) => {
   try {
     const userId = (req as any).user.userId;
-    const { deviceToken } = req.body;
+    const { deviceToken, logoutSince } = req.body;
 
-    await pool.query(
-      'UPDATE mobile_devices SET is_active = false WHERE device_token = $1 AND user_id = $2',
-      [deviceToken, userId]
-    );
+    if (!deviceToken) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Device token is required' },
+      });
+    }
+
+    // When the client sends `logoutSince`, only deactivate if the row was not re-registered after
+    // logout began (prevents a stale unregister from racing past a fresh login on the same device).
+    if (logoutSince) {
+      const parsedLogoutSince = new Date(logoutSince);
+      if (!Number.isNaN(parsedLogoutSince.getTime())) {
+        await pool.query(
+          `UPDATE mobile_devices
+           SET is_active = false, updated_at = NOW()
+           WHERE device_token = $1
+             AND user_id = $2
+             AND updated_at <= $3`,
+          [deviceToken, userId, parsedLogoutSince]
+        );
+      } else {
+        await pool.query(
+          'UPDATE mobile_devices SET is_active = false, updated_at = NOW() WHERE device_token = $1 AND user_id = $2',
+          [deviceToken, userId]
+        );
+      }
+    } else {
+      await pool.query(
+        'UPDATE mobile_devices SET is_active = false, updated_at = NOW() WHERE device_token = $1 AND user_id = $2',
+        [deviceToken, userId]
+      );
+    }
 
     res.json({
       success: true,

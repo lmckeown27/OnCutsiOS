@@ -70,9 +70,14 @@ struct RootView: View {
         #if os(iOS)
         /// Provider marked complete → `booking-completed` may be missed if Socket.IO connected late; refetch sets `activePaymentRequest` via `syncPaymentTakeover`.
         .onChange(of: scenePhase) { oldPhase, newPhase in
-            guard sessionManager.isAuthenticated, sessionManager.userRole == .student else { return }
+            guard sessionManager.isAuthenticated else { return }
             if newPhase == .active, oldPhase != .active {
-                Task { await chatViewModel.refreshConsumerBookingsAndSyncPayment(sessionManager: sessionManager) }
+                PushDeviceRegistration.refreshRemoteRegistrationAndRetryBackend(
+                    bearerToken: sessionManager.currentSession?.token
+                )
+                if sessionManager.userRole == .student {
+                    Task { await chatViewModel.refreshConsumerBookingsAndSyncPayment(sessionManager: sessionManager) }
+                }
             }
         }
         #endif

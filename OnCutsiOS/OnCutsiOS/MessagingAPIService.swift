@@ -289,6 +289,79 @@ enum MessagingAPIService {
         return d
     }()
 
+    /// Inbox list rows may mix camelCase (OnCuts Node) with snake_case (legacy / proxy).
+    private static let conversationsListJSONDecoder: JSONDecoder = {
+        let d = JSONDecoder()
+        d.keyDecodingStrategy = .convertFromSnakeCase
+        return d
+    }()
+
+    /// When envelope `Decodable` fails (or one bad row breaks the array), read `data.conversations` via `JSONSerialization` and decode row-by-row.
+    private static func parseConversationsFromLooseJSON(_ data: Data) -> [MessagingConversationRowDTO] {
+        guard let top = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
+        let payload = (top["data"] as? [String: Any]) ?? top
+        let rawRows: [Any]?
+        if let arr = payload["conversations"] as? [Any] {
+            rawRows = arr
+        } else if let arr = top["conversations"] as? [Any] {
+            rawRows = arr
+        } else if let arr = payload["data"] as? [Any] {
+            rawRows = arr
+        } else {
+            rawRows = nil
+        }
+        guard let rows = rawRows else { return [] }
+
+        var out: [MessagingConversationRowDTO] = []
+        out.reserveCapacity(rows.count)
+        let rowDecoders = [jsonDecoder, conversationsListJSONDecoder]
+        for el in rows {
+            guard let dict = el as? [String: Any] else { continue }
+            var decoded: MessagingConversationRowDTO?
+            if JSONSerialization.isValidJSONObject(dict), let blob = try? JSONSerialization.data(withJSONObject: dict) {
+                for decoder in rowDecoders {
+                    if let row = try? decoder.decode(MessagingConversationRowDTO.self, from: blob) {
+                        decoded = row
+                        break
+                    }
+                }
+            }
+            if decoded == nil {
+                decoded = MessagingConversationRowDTO(jsonObject: dict)
+            }
+            if let row = decoded {
+                out.append(row)
+            }
+        }
+        return out
+    }
+
+    private static func decodeConversationRows(from data: Data) throws -> [MessagingConversationRowDTO] {
+        let decoders = [jsonDecoder, conversationsListJSONDecoder]
+        for decoder in decoders {
+            if let env = try? decoder.decode(SuccessEnvelope<ConversationsListDataPayload>.self, from: data),
+               let rows = env.data?.conversations {
+                return rows
+            }
+            if let env = try? decoder.decode(SuccessEnvelope<[MessagingConversationRowDTO]>.self, from: data),
+               let rows = env.data {
+                return rows
+            }
+            if let rows = try? decoder.decode([MessagingConversationRowDTO].self, from: data) {
+                return rows
+            }
+        }
+
+        let loose = parseConversationsFromLooseJSON(data)
+        if !loose.isEmpty {
+            return loose
+        }
+
+        // Surface the primary decode error when nothing could be parsed.
+        _ = try jsonDecoder.decode(SuccessEnvelope<ConversationsListDataPayload>.self, from: data)
+        return []
+    }
+
     /// When `JSONDecoder` fails on `users[]` or returns empty rows, read `data.users` / `blockedUserIds` via `JSONSerialization`.
     private static func parseBlockedListFromLooseJSON(_ data: Data) -> (blockedUserIds: [String], users: [MessagingBlockedUserProfile])? {
         guard let top = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
@@ -324,14 +397,7 @@ enum MessagingAPIService {
 
     static func fetchConversations(bearerToken: String?) async throws -> [MessagingConversationRowDTO] {
         let data = try await authorizedGET(url: try conversationsBase(), bearerToken: bearerToken)
-        if let env = try? jsonDecoder.decode(SuccessEnvelope<ConversationsListDataPayload>.self, from: data),
-           let rows = env.data?.conversations {
-            return rows
-        }
-        if let env = try? jsonDecoder.decode(SuccessEnvelope<[MessagingConversationRowDTO]>.self, from: data), let rows = env.data {
-            return rows
-        }
-        return try jsonDecoder.decode([MessagingConversationRowDTO].self, from: data)
+        return try decodeConversationRows(from: data)
     }
 
     static func fetchConversationMessages(

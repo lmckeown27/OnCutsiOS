@@ -148,8 +148,8 @@ extension Color {
     /// Pure black - text, icons
     static let appBlack = Color.black
     
-    /// Olive green - brand color. Lighter on light shell (`849E92`), darker on dark shell (`556860`).
-    /// For **text**, prefer ``View/foregroundStyleOliveGreen(opacity:)`` so glyphs get an adaptive outline.
+    /// Olive green brand color. Lighter on light shell (`849E92`), darker on dark shell (`556860`).
+    /// For text, use SwiftUI `.primary` / `.secondary` so copy follows the user's appearance.
     static var oliveGreen: Color {
         #if canImport(UIKit)
         onCutsDynamic(Self.oliveGreenLightUIColor, Self.oliveGreenDarkUIColor)

@@ -510,8 +510,7 @@ private struct UserProfileReviewsList: View {
                             ForEach(0..<5, id: \.self) { i in
                                 Image(systemName: i < r.rating ? "star.fill" : "star")
                                     .font(OnCutsFont.caption2)
-                                    .foregroundStyle(i < r.rating ? Color.oliveGreen : Color.secondary.opacity(0.4))
-                                    .onCutsOliveGreenTextOutline(when: i < r.rating)
+                                    .foregroundStyle(i < r.rating ? Color.primary : Color.secondary.opacity(0.4))
                             }
                         }
                     }

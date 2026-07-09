@@ -65,8 +65,8 @@ struct ReviewBookingView: View {
                 PrimaryButton(
                     title: "Submit",
                     action: submitTapped,
-                    size: .large,
-                    shape: .pill,
+                    variant: .shell,
+                    size: .footer,
                     isFullWidth: false
                 )
                 Spacer(minLength: 0)
