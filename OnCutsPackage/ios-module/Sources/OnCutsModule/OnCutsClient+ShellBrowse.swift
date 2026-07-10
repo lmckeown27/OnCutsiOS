@@ -105,7 +105,9 @@ private extension BarberListRowDTO {
             ?? trimmedNonEmpty(displayName)
             ?? joinedName(first: firstName, last: lastName)
             ?? "Provider"
-        let image = trimmedNonEmpty(profilePictureUrl) ?? trimmedNonEmpty(profileImageUrl)
+        let image = trimmedNonEmpty(profilePictureUrl)
+            ?? trimmedNonEmpty(profileImageUrl)
+            ?? trimmedNonEmpty(avatarUrl)
         let services = mappedBrowseServices()
         let priceRange = browsePriceRange(from: services)
         return OnCutsBrowseProviderRow(

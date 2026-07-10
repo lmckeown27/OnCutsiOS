@@ -895,7 +895,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
 
                 ScrollView {
                     LazyVStack(spacing: .space4, pinnedViews: showsHomePinnedBookingStripes ? [.sectionHeaders] : []) {
-                        if isLoading {
+                        if isLoading && displayedProviders.isEmpty {
                             if showsHomePinnedBookingStripes {
                                 Section {
                                     GlassEffectContainer(spacing: 0) {
@@ -982,6 +982,17 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     defer { showsPullRefreshProgressIndicator = false }
                     await OnCutsPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
                         await onRefresh()
+                    }
+                }
+                .overlay {
+                    if isLoading && !displayedProviders.isEmpty {
+                        ZStack {
+                            Color.black.opacity(0.1)
+                            ProgressView()
+                                .scaleEffect(1.25)
+                                .tint(.white)
+                        }
+                        .allowsHitTesting(false)
                     }
                 }
 

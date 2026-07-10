@@ -7,7 +7,7 @@ import Foundation
 
 /// Builds public HTTPS URLs for objects in the `campuscut-images` S3 bucket.
 public enum OnCutsS3ImageURL: Sendable {
-    public static let bucketHost = "campuscut-images.s3.amazonaws.com"
+    public static let bucketHost = "campuscut-images.s3.us-west-1.amazonaws.com"
 
     /// Returns a URL suitable for `AsyncImage`. Accepts a full URL string or a bucket-relative key/path.
     public static func url(forStoredPath path: String?) -> URL? {

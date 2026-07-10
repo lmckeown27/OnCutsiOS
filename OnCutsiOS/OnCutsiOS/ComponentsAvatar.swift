@@ -13,14 +13,19 @@ enum ProfileImageURLResolver {
         let t = raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if t.isEmpty { return nil }
         if let absolute = absoluteHTTPURL(from: t) { return absolute }
-        guard let root = URL(string: AppConfiguration.messagingAPIRootTrimmed) else { return nil }
+        if t.hasPrefix("uploads/") {
+            return url(from: "/api/" + t)
+        }
+        guard let root = URL(string: AppConfiguration.messagingAPIRootTrimmed) else {
+            return s3PublicURL(from: t)
+        }
         let origin = root.deletingLastPathComponent().deletingLastPathComponent()
         if let u = URL(string: t, relativeTo: origin)?.absoluteURL { return u }
         // Some APIs omit the leading slash on app-relative paths.
         if !t.hasPrefix("/") {
-            return URL(string: "/" + t, relativeTo: origin)?.absoluteURL
+            if let u = URL(string: "/" + t, relativeTo: origin)?.absoluteURL { return u }
         }
-        return nil
+        return s3PublicURL(from: t)
     }
 
     /// Prefer this for **AsyncImage** so full URLs with spaces / odd characters still load when possible.
@@ -48,6 +53,18 @@ enum ProfileImageURLResolver {
         }
         return nil
     }
+
+    /// Bare S3 object keys and legacy filenames (`abc.webp`) stored on `users.avatarUrl`.
+    private static func s3PublicURL(from stored: String) -> URL? {
+        let trimmed = stored.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !trimmed.contains("://") else { return nil }
+        let key = trimmed.hasPrefix("/") ? String(trimmed.dropFirst()) : trimmed
+        guard !key.isEmpty else { return nil }
+        let encoded = key.split(separator: "/").map { segment in
+            String(segment).addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? String(segment)
+        }.joined(separator: "/")
+        return URL(string: "https://campuscut-images.s3.us-west-1.amazonaws.com/\(encoded)")
+    }
 }
 
 /// Square provider thumb for browse cards (resolves app-relative avatar URLs + reloads reliably in `LazyVStack`).
@@ -70,10 +87,12 @@ struct ServiceProviderProfileThumbnail: View {
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                    case .failure, .empty:
+                    case .empty:
+                        loadingPlaceholder
+                    case .failure:
                         initialsPlaceholder
                     @unknown default:
-                        initialsPlaceholder
+                        loadingPlaceholder
                     }
                 }
                 .id(resolvedURL.absoluteString)
@@ -84,6 +103,14 @@ struct ServiceProviderProfileThumbnail: View {
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .accessibilityHidden(true)
+    }
+
+    private var loadingPlaceholder: some View {
+        Rectangle()
+            .fill(Color.brand.opacity(0.2))
+            .overlay {
+                OnCutsDefaultProfileAvatarGlyph(slotDiameter: size)
+            }
     }
 
     private var initialsPlaceholder: some View {
