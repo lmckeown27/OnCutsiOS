@@ -181,7 +181,7 @@ final class SignupCoordinator {
         }
     }
 
-    func advanceFromContact() {
+    func advanceFromContact() async {
         errorMessage = nil
         guard contactChannel == .email else { return }
         let em = email.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -191,6 +191,20 @@ final class SignupCoordinator {
         }
         guard em.contains("@") else {
             errorMessage = "Enter a valid email address."
+            return
+        }
+        guard !isSubmitting else { return }
+        isSubmitting = true
+        defer { isSubmitting = false }
+        do {
+            let exists = try await OnCutsAuthService.checkAccount(email: em, apiV1BaseTrimmed: apiBase)
+            if exists {
+                errorMessage = "An account with this email is already registered. Try signing in instead."
+                return
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            ProductionLogging.recordNonFatal(error, context: ["area": "liquid_signup_check_email"])
             return
         }
         phoneE164 = ""
@@ -293,7 +307,16 @@ final class SignupCoordinator {
             }
             SignupOnboardingPersistence.save(step: .verification, email: email)
         } catch {
-            errorMessage = error.localizedDescription
+            let message = error.localizedDescription
+            let lower = message.lowercased()
+            if lower.contains("already exists") || lower.contains("already registered") {
+                errorMessage = "An account with this email is already registered. Try signing in instead."
+                withAnimation(.spring(response: 0.48, dampingFraction: 0.86)) {
+                    step = .contact
+                }
+            } else {
+                errorMessage = message
+            }
             ProductionLogging.recordNonFatal(error, context: ["area": "liquid_signup_register"])
         }
     }
@@ -611,10 +634,12 @@ struct LiquidGlassSignupFlowView: View {
 
     private var navigationTitleForStep: String {
         switch coordinator.step {
-        case .name, .contact, .password, .verification:
+        case .name:
             return "Create account"
         case .terms, .legacyProfile:
-            return isPostVerificationTermsResume ? "Terms of Service" : "Create account"
+            return isPostVerificationTermsResume ? "Terms of Service" : ""
+        case .contact, .password, .verification:
+            return ""
         }
     }
 
@@ -841,10 +866,12 @@ struct LiquidGlassSignupFlowView: View {
                         anchor: .leading,
                         isSource: signupPanelIsEmailMorphSource
                     )
-                Text(headerSubtitle)
-                    .font(OnCutsFont.subheadline)
-                    .foregroundStyle(.tertiary)
-            } else {
+                if !headerSubtitle.isEmpty {
+                    Text(headerSubtitle)
+                        .font(OnCutsFont.subheadline)
+                        .foregroundStyle(.tertiary)
+                }
+            } else if !headerSubtitle.isEmpty {
                 Text(headerSubtitle)
                     .font(OnCutsFont.subheadline)
                     .foregroundStyle(.secondary)
@@ -873,7 +900,7 @@ struct LiquidGlassSignupFlowView: View {
     private var headerSubtitle: String {
         switch coordinator.step {
         case .name:
-            return "We’ll use this on your profile and bookings."
+            return ""
         case .contact:
             return SignupPhoneSignupIntegration.isEnabled && coordinator.contactChannel == .phone
                 ? "We’ll text a 6-digit code to verify it’s you."
@@ -890,7 +917,7 @@ struct LiquidGlassSignupFlowView: View {
             if isPostVerificationTermsResume {
                 return "Read and accept the Terms of Service to continue into \(AppBranding.displayName)."
             }
-            return "Use the preview on this page. Scroll to the end, agree, then continue with your email."
+            return ""
         }
     }
 
@@ -1015,12 +1042,14 @@ struct LiquidGlassSignupFlowView: View {
                     if SignupPhoneSignupIntegration.isEnabled, coordinator.contactChannel == .phone {
                         Task { await coordinator.sendPhoneVerificationAfterContact() }
                     } else {
-                        coordinator.advanceFromContact()
+                        Task { await coordinator.advanceFromContact() }
                     }
                 } label: {
                     Text(
-                        SignupPhoneSignupIntegration.isEnabled && coordinator.contactChannel == .phone
-                            ? (coordinator.isSubmitting ? "Sending code…" : "Continue")
+                        coordinator.isSubmitting
+                            ? (SignupPhoneSignupIntegration.isEnabled && coordinator.contactChannel == .phone
+                                ? "Sending code…"
+                                : "Checking email…")
                             : "Continue"
                     )
                         .font(OnCutsFont.body(weight: .semibold))
@@ -1029,7 +1058,7 @@ struct LiquidGlassSignupFlowView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color.oliveGreen)
-                .disabled(SignupPhoneSignupIntegration.isEnabled && coordinator.contactChannel == .phone && coordinator.isSubmitting)
+                .disabled(coordinator.isSubmitting)
             }
         }
         .matchedGeometryEffect(id: "liquidSignupCard", in: signupGlassNS)
@@ -1297,25 +1326,16 @@ struct LiquidGlassSignupFlowView: View {
 
     private var liquidTermsAgreementEntry: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: coordinator.termsAccepted ? "checkmark.circle.fill" : "doc.text.fill")
-                    .font(OnCutsFont.title3)
-                    .foregroundStyle(coordinator.termsAccepted ? Color.primary : .secondary)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Terms of Service")
-                        .font(OnCutsFont.caption(weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    Text(
-                        coordinator.termsAccepted
-                            ? "Accepted — scroll below if you want to read again."
-                            : "Scroll the preview to the bottom, then tap I agree."
-                    )
-                    .font(OnCutsFont.caption2)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-            }
+            Text(
+                coordinator.termsAccepted
+                    ? "Accepted — scroll below if you want to read again."
+                    : "Scroll the preview to the bottom, then tap I agree."
+            )
+            .font(OnCutsFont.caption2)
+            .foregroundStyle(.tertiary)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .fixedSize(horizontal: false, vertical: true)
 
             OnCutsTermsOfServiceDocumentScrollView(reachedEnd: $termsDocumentReachedBottom)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -1336,7 +1356,13 @@ struct LiquidGlassSignupFlowView: View {
                         .font(OnCutsFont.subheadline(weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .foregroundStyle(termsDocumentReachedBottom ? Color.primary : Color.secondary)
+                        // `lavaShellCream` is shell foreground (black/white); pair with shell
+                        // background so the label stays readable in both appearances.
+                        .foregroundStyle(
+                            termsDocumentReachedBottom
+                                ? Color.onCutsShellBackground
+                                : Color.secondary
+                        )
                         .background {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .fill(
@@ -1464,7 +1490,7 @@ struct LiquidGlassSignupFlowView: View {
         case .contact:
             if coordinator.contactChannel == .email {
                 let em = coordinator.email.trimmingCharacters(in: .whitespacesAndNewlines)
-                return !em.isEmpty && em.contains("@")
+                return !em.isEmpty && em.contains("@") && !coordinator.isSubmitting
             }
             return SignupCoordinator.normalizedUSPhoneE164(digits: coordinator.phoneDigits) != nil
                 && !coordinator.isSubmitting
@@ -1507,7 +1533,7 @@ struct LiquidGlassSignupFlowView: View {
             if SignupPhoneSignupIntegration.isEnabled, coordinator.contactChannel == .phone {
                 Task { await coordinator.sendPhoneVerificationAfterContact() }
             } else {
-                coordinator.advanceFromContact()
+                Task { await coordinator.advanceFromContact() }
             }
         case .password:
             Task {

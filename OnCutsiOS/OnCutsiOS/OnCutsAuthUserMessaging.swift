@@ -212,7 +212,8 @@ enum OnCutsAuthUserMessaging {
                 message
             )
         }
-        if lower.contains("invalid") || lower.contains("expired") || lower.contains("already exists") {
+        if lower.contains("invalid") || lower.contains("expired")
+            || lower.contains("already exists") || lower.contains("already registered") {
             return signUpOutcome(for: NSError(domain: "oncuts.signup", code: 0, userInfo: [NSLocalizedDescriptionKey: message]))
         }
         return ("Couldn’t Finish Signing Up", message)
