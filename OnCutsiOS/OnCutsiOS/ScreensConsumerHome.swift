@@ -610,6 +610,10 @@ struct ConsumerHomeScreen: View {
                 get: { providerVM.selectedServiceType },
                 set: { providerVM.selectedServiceType = $0 }
             ),
+            selectedBrowseServiceNames: Binding(
+                get: { providerVM.selectedBrowseServiceNames },
+                set: { providerVM.selectedBrowseServiceNames = $0 }
+            ),
             displayedProviders: displayedProviders,
             isLoading: isLoading,
             glassNamespace: providerGlassNamespace,
@@ -670,6 +674,9 @@ struct ConsumerHomeScreen: View {
             homeHubPageIndex: .constant(0)
         )
         .onChange(of: providerVM.selectedServiceType) { _, _ in
+            providerListShuffleSeed = UInt64.random(in: 1 ... UInt64.max)
+        }
+        .onChange(of: providerVM.selectedBrowseServiceNames) { _, _ in
             providerListShuffleSeed = UInt64.random(in: 1 ... UInt64.max)
         }
         .onChange(of: showMessagesInbox) { _, _ in
@@ -737,7 +744,7 @@ struct ConsumerHomeScreen: View {
                         selectedCategory: $selectedCategory,
                         providers: providers
                     )
-                    SearchBar(text: $searchText, placeholder: "Search providers")
+                    SearchBar(text: $searchText, placeholder: "Search operators")
                         .padding(.horizontal, .space4)
                         .padding(.top, .space3)
                         .padding(.bottom, .space2)
@@ -759,7 +766,7 @@ struct ConsumerHomeScreen: View {
                         selectedCategory: $selectedCategory,
                         providers: providers
                     )
-                    SearchBar(text: $searchText, placeholder: "Search providers")
+                    SearchBar(text: $searchText, placeholder: "Search operators")
                         .padding(.horizontal, .space4)
                         .padding(.top, .space3)
                         .padding(.bottom, .space2)
@@ -2939,6 +2946,9 @@ struct UnifiedProviderHomeScreen: View {
             .onChange(of: providerVM.selectedServiceType) { _, _ in
                 providerListShuffleSeed = UInt64.random(in: 1 ... UInt64.max)
             }
+            .onChange(of: providerVM.selectedBrowseServiceNames) { _, _ in
+                providerListShuffleSeed = UInt64.random(in: 1 ... UInt64.max)
+            }
             .navigationTitle("")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -3436,6 +3446,10 @@ struct UnifiedProviderHomeScreen: View {
                 get: { providerVM.selectedServiceType },
                 set: { providerVM.selectedServiceType = $0 }
             ),
+            selectedBrowseServiceNames: Binding(
+                get: { providerVM.selectedBrowseServiceNames },
+                set: { providerVM.selectedBrowseServiceNames = $0 }
+            ),
             displayedProviders: displayedProviders,
             isLoading: isLoading,
             glassNamespace: providerGlassNamespace,
@@ -3569,7 +3583,7 @@ struct UnifiedProviderHomeScreen: View {
                         selectedCategory: $selectedCategory,
                         providers: serviceProviders
                     )
-                    SearchBar(text: $searchText, placeholder: "Search providers")
+                    SearchBar(text: $searchText, placeholder: "Search operators")
                         .padding(.horizontal, .space4)
                         .padding(.top, .space3)
                         .padding(.bottom, .space2)
@@ -3607,7 +3621,7 @@ struct UnifiedProviderHomeScreen: View {
                         selectedCategory: $selectedCategory,
                         providers: serviceProviders
                     )
-                    SearchBar(text: $searchText, placeholder: "Search providers")
+                    SearchBar(text: $searchText, placeholder: "Search operators")
                         .padding(.horizontal, .space4)
                         .padding(.top, .space3)
                         .padding(.bottom, .space2)
@@ -3764,7 +3778,7 @@ private struct StickyProviderBrowseChrome: View {
             VStack(spacing: 0) {
                 SearchBar(
                     text: $searchText,
-                    placeholder: "Search providers",
+                    placeholder: "Search operators",
                     fillsSearchFieldBackground: false
                 )
                 .padding(.horizontal, .space4)

@@ -41,6 +41,7 @@ export const getAllBarbers = async (req: AuthRequest, res: Response, next: NextF
         b.service_latitude,
         b.service_longitude,
         b.service_radius_km,
+        COALESCE(b.provider_type, 'barber') as provider_type,
         u.email,
         u.first_name,
         u.last_name,
@@ -267,6 +268,27 @@ export const getAllBarbers = async (req: AuthRequest, res: Response, next: NextF
       });
     }
 
+    // Catalog for consumer Tags chips (`provider_types.provider_type` / `label`).
+    let providerTypes: { provider_type: string; label: string }[] = [
+      { provider_type: 'barber', label: 'Barber' },
+      { provider_type: 'beauty', label: 'Beauty' },
+    ];
+    try {
+      const typesResult = await pool.query(
+        `SELECT provider_type, label
+         FROM provider_types
+         ORDER BY label ASC`
+      );
+      if (typesResult.rows.length > 0) {
+        providerTypes = typesResult.rows.map((row: any) => ({
+          provider_type: String(row.provider_type),
+          label: String(row.label),
+        }));
+      }
+    } catch (typesError) {
+      logger.warn('provider_types catalog unavailable; using Barber/Beauty defaults:', typesError);
+    }
+
     res.json({
       success: true,
       data: filteredBarbers,
@@ -283,6 +305,7 @@ export const getAllBarbers = async (req: AuthRequest, res: Response, next: NextF
         max_distance_miles: hasUserLocation && !showingClosestFallback ? Math.round(maxDistanceKm * 0.621371 * 10) / 10 : null,
         total_before_distance_filter: hasUserLocation ? result.rows.length : filteredBarbers.length,
         showing_closest_fallback: showingClosestFallback, // true if no barbers within radius, showing closest instead
+        provider_types: providerTypes,
       },
     });
   } catch (error) {

@@ -67,6 +67,12 @@ extension OnCutsBrowseProviderRow {
             return trimmed.isEmpty ? nil : trimmed
         }
 
+        let resolvedProviderType = (providerType ?? "barber")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        let kind = ServiceType.fromProviderType(resolvedProviderType) ?? .barber
+        let category: ServiceProvider.ServiceCategory = kind == .beauty ? .beauty : .haircuts
+
         return ServiceProvider(
             id: id,
             userId: userId,
@@ -79,8 +85,9 @@ extension OnCutsBrowseProviderRow {
             completedBookings: completedBookings,
             isAvailableNow: isAvailableNow,
             priceRange: mappedPriceRange,
-            category: .haircuts,
-            specialty: "Barber",
+            category: category,
+            specialty: kind.toolbarTitle,
+            providerType: resolvedProviderType,
             services: mappedServices,
             availability: nil,
             locations: nil,

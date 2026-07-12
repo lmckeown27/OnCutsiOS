@@ -48,6 +48,8 @@ public struct OnCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
     public let services: [OnCutsBrowseServiceRow]?
     public let priceRange: OnCutsBrowsePriceRange?
     public let instagramHandle: String?
+    /// DB `provider_type` (`barber`, `beauty`).
+    public let providerType: String?
 
     public init(
         id: String,
@@ -62,7 +64,8 @@ public struct OnCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
         distanceMiles: Double?,
         services: [OnCutsBrowseServiceRow]? = nil,
         priceRange: OnCutsBrowsePriceRange? = nil,
-        instagramHandle: String? = nil
+        instagramHandle: String? = nil,
+        providerType: String? = nil
     ) {
         self.id = id
         self.userId = userId
@@ -77,6 +80,7 @@ public struct OnCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
         self.services = services
         self.priceRange = priceRange
         self.instagramHandle = instagramHandle
+        self.providerType = providerType
     }
 }
 
@@ -110,6 +114,7 @@ private extension BarberListRowDTO {
             ?? trimmedNonEmpty(avatarUrl)
         let services = mappedBrowseServices()
         let priceRange = browsePriceRange(from: services)
+        let resolvedProviderType = trimmedNonEmpty(providerType)?.lowercased() ?? "barber"
         return OnCutsBrowseProviderRow(
             id: id.value,
             userId: userId?.value ?? id.value,
@@ -123,7 +128,8 @@ private extension BarberListRowDTO {
             distanceMiles: distanceMiles,
             services: services,
             priceRange: priceRange,
-            instagramHandle: trimmedNonEmpty(instagramHandle)
+            instagramHandle: trimmedNonEmpty(instagramHandle),
+            providerType: resolvedProviderType
         )
     }
 

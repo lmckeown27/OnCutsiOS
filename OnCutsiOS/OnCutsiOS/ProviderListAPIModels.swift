@@ -55,6 +55,7 @@ struct ProviderListAPIItem: Decodable, Sendable {
     var isAvailableNow: Bool?
     var category: String?
     var specialty: String?
+    var providerType: String?
     var priceMin: Int?
     var priceMax: Int?
 
@@ -64,6 +65,7 @@ struct ProviderListAPIItem: Decodable, Sendable {
         case profileImageUrl, profile_image_url, avatar, imageUrl
         case rating, reviewCount, review_count, completedBookings, completed_bookings, totalBookings, total_bookings
         case isAvailableNow, is_available_now, category, specialty
+        case providerType, provider_type
         case priceMin, price_max, priceMax, price_min
     }
 
@@ -101,6 +103,7 @@ struct ProviderListAPIItem: Decodable, Sendable {
 
         category = str(.category)
         specialty = str(.specialty)
+        providerType = str(.providerType) ?? str(.provider_type)
 
         priceMin = c.firstDecodedInt(keys: [.priceMin, .price_min])
         priceMax = c.firstDecodedInt(keys: [.priceMax, .price_max])
@@ -131,6 +134,10 @@ struct ProviderListAPIItem: Decodable, Sendable {
 
         let cat = parsedCategory()
         let range = parsedPriceRange()
+        let resolvedProviderType: String? = {
+            let t = providerType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return t.isEmpty ? nil : t.lowercased()
+        }()
 
         return ServiceProvider(
             id: pid,
@@ -146,6 +153,7 @@ struct ProviderListAPIItem: Decodable, Sendable {
             priceRange: range,
             category: cat,
             specialty: specialty,
+            providerType: resolvedProviderType,
             services: nil,
             availability: nil,
             locations: nil,

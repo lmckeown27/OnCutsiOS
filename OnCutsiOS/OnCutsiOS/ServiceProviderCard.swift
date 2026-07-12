@@ -391,7 +391,9 @@ struct ServiceProvider: Identifiable, Codable {
     let isAvailableNow: Bool?
     let priceRange: PriceRange?
     let category: ServiceCategory? // For filtering and organization
-    let specialty: String? // Provider kind for browse/card: "Barber", "Makeup", "Nails", "Tanning", etc. (not individual services)
+    let specialty: String? // Provider kind for browse/card: "Barber", "Beauty", etc. (not individual services)
+    /// DB `provider_type` key (`barber`, `beauty`) from `GET /barbers` — drives Tags filtering.
+    let providerType: String?
     let services: [Service]? // Services offered with prices
     let availability: [DayAvailability]? // Weekly availability schedule
     let locations: [String]? // Service locations
@@ -399,6 +401,48 @@ struct ServiceProvider: Identifiable, Codable {
     let distanceMilesFromUser: Double?
     /// Populated from API (list embed or detail fetch); detail UI loads `/barbers/:id/reviews` when needed.
     let customerReviews: [ProviderReview]?
+
+    init(
+        id: String,
+        userId: String,
+        businessName: String,
+        bio: String?,
+        instagramHandle: String?,
+        profileImageUrl: String?,
+        rating: Double?,
+        reviewCount: Int?,
+        completedBookings: Int?,
+        isAvailableNow: Bool?,
+        priceRange: PriceRange?,
+        category: ServiceCategory?,
+        specialty: String?,
+        providerType: String? = nil,
+        services: [Service]?,
+        availability: [DayAvailability]?,
+        locations: [String]?,
+        distanceMilesFromUser: Double?,
+        customerReviews: [ProviderReview]?
+    ) {
+        self.id = id
+        self.userId = userId
+        self.businessName = businessName
+        self.bio = bio
+        self.instagramHandle = instagramHandle
+        self.profileImageUrl = profileImageUrl
+        self.rating = rating
+        self.reviewCount = reviewCount
+        self.completedBookings = completedBookings
+        self.isAvailableNow = isAvailableNow
+        self.priceRange = priceRange
+        self.category = category
+        self.specialty = specialty
+        self.providerType = providerType
+        self.services = services
+        self.availability = availability
+        self.locations = locations
+        self.distanceMilesFromUser = distanceMilesFromUser
+        self.customerReviews = customerReviews
+    }
 
     struct PriceRange: Codable {
         let min: Int

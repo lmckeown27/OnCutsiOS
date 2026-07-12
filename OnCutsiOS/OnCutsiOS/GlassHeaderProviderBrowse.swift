@@ -463,6 +463,8 @@ private struct RadiusDistanceSlider: View {
 struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     @Binding var searchText: String
     @Binding var selectedServiceType: ServiceType
+    /// Multi-select service chips under Barber/Beauty (empty = all services for that type).
+    @Binding var selectedBrowseServiceNames: Set<String>
     let displayedProviders: [ServiceProvider]
     let isLoading: Bool
     let glassNamespace: Namespace.ID
@@ -700,8 +702,18 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         )
     }
 
-    private var filterIsActive: Bool {
+    /// Label on the utility-pill Tags control: selected provider type replaces “Tags”.
+    private var tagsControlTitle: String {
+        selectedServiceType == .all ? "Tags" : selectedServiceType.toolbarTitle
+    }
+
+    /// Root Tags strip (All / Barber / Beauty) vs drilled-in service chips.
+    private var isProviderTypeDrillIn: Bool {
         selectedServiceType != .all
+    }
+
+    private var drillInServiceNames: [String] {
+        ProviderBrowseServiceCatalog.serviceNames(for: selectedServiceType)
     }
 
     private var utilityPillChromeBlocksParentHubPaging: Bool {
@@ -719,7 +731,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     private var matchingSearchServiceTypes: [ServiceType] {
         let q = searchQueryTrimmed.lowercased()
         guard !q.isEmpty else { return [] }
-        return ServiceType.allCases.filter { type in
+        return ServiceType.browseTagCases.filter { type in
             guard type != .all else { return false }
             return type.toolbarTitle.lowercased().contains(q)
         }
@@ -1151,16 +1163,14 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             .frame(maxWidth: .infinity, alignment: .top)
     }
 
-    /// Full-width service-type chips + Done — morphs from the Tags control (same slot as `expandedRadiusSliderGlassBar`).
+    /// Full-width provider-type or service chips + Done — morphs from the Tags control.
     @ViewBuilder
     private var expandedServiceTagsGlassBar: some View {
         #if os(iOS)
         HStack(alignment: .center, spacing: 8) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    ForEach(Array(ServiceType.allCases), id: \.self) { type in
-                        serviceTypeTagChip(type)
-                    }
+                    tagsSelectionChips
                 }
                 .padding(.vertical, 2)
                 .padding(.leading, 2)
@@ -1181,7 +1191,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(UtilityPillPhysicalPressStyle())
-            .accessibilityLabel("Done selecting service types")
+            .accessibilityLabel("Done selecting tags")
         }
         .padding(.leading, 12)
         .padding(.trailing, 10)
@@ -1193,9 +1203,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         HStack(alignment: .center, spacing: 8) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    ForEach(Array(ServiceType.allCases), id: \.self) { type in
-                        serviceTypeTagChip(type)
-                    }
+                    tagsSelectionChips
                 }
                 .padding(.vertical, 2)
                 .padding(.leading, 2)
@@ -1215,7 +1223,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Done selecting service types")
+            .accessibilityLabel("Done selecting tags")
         }
         .padding(.leading, 12)
         .padding(.trailing, 10)
@@ -1231,6 +1239,21 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 .allowsHitTesting(false)
         }
         #endif
+    }
+
+    @ViewBuilder
+    private var tagsSelectionChips: some View {
+        if isProviderTypeDrillIn {
+            // Barber / Beauty stays selected in place of All; remaining chips are that type’s services.
+            serviceTypeTagChip(selectedServiceType, isDrillInContextChip: true)
+            ForEach(drillInServiceNames, id: \.self) { serviceName in
+                browseServiceTagChip(serviceName)
+            }
+        } else {
+            ForEach(ServiceType.browseTagCases, id: \.self) { type in
+                serviceTypeTagChip(type, isDrillInContextChip: false)
+            }
+        }
     }
 
     /// Main frosted capsule: Radius · Search · Tags — same bar always; search formation animates on `isSearchExpanded` only.
@@ -1305,15 +1328,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                             .font(OnCutsFont.body(weight: .semibold))
                             .foregroundStyle(Color.lavaShellCream)
                             .frame(width: 40, height: 40)
-                            .overlay {
-                                if filterIsActive {
-                                    Circle()
-                                        .stroke(Color.oliveGreen.opacity(0.55), lineWidth: 1.5)
-                                        .frame(width: 34, height: 34)
-                                        .allowsHitTesting(false)
-                                }
-                            }
-                        Text("Tags")
+                        Text(tagsControlTitle)
                             .font(OnCutsFont.system(size: 14, weight: .semibold, design: .default))
                             .foregroundStyle(Color.lavaShellCream)
                             .lineLimit(1)
@@ -1325,7 +1340,9 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(UtilityPillPhysicalPressStyle())
-                .accessibilityLabel("Tags, service types \(selectedServiceType.toolbarTitle), show list")
+                .accessibilityLabel(
+                    "Tags, \(tagsAccessibilitySummary), show list"
+                )
             }
             .matchedGeometryEffect(id: "browseServiceTagsGlass", in: serviceTagsMorphNamespace)
             .opacity(utilityPillSideSegmentsOpacity)
@@ -1368,6 +1385,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                             Button {
                                 GlassCapsuleToolbarHaptics.lightTap()
                                 selectedServiceType = type
+                                selectedBrowseServiceNames = []
                                 withAnimation(Self.utilityPillSearchSpring) {
                                     searchText = ""
                                     isSearchFieldFocused = false
@@ -1468,7 +1486,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         )
     }
 
-    /// Collapsed: icon only. Expanded: `TextField` (placeholder “Search providers”) + close.
+    /// Collapsed: icon only. Expanded: `TextField` (placeholder “Search operators”) + close.
     private var utilityPillSearchSegment: some View {
         Group {
             if isSearchExpanded {
@@ -1478,7 +1496,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                         .foregroundStyle(utilityPillSearchInputCharcoal)
                         .accessibilityHidden(true)
 
-                    TextField("Search providers", text: $searchText)
+                    TextField("Search operators", text: $searchText)
                         .font(utilityPillSearchInputFont)
                         .textFieldStyle(.plain)
                         .foregroundStyle(utilityPillSearchInputCharcoal)
@@ -1540,7 +1558,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 }
                 .buttonStyle(UtilityPillPhysicalPressStyle())
                 .fixedSize(horizontal: true, vertical: false)
-                .accessibilityLabel("Search providers")
+                .accessibilityLabel("Search operators")
             }
         }
     }
@@ -1674,22 +1692,50 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         #endif
     }
 
-    private func serviceTypeTagChip(_ type: ServiceType) -> some View {
-        let isSelected = selectedServiceType == type
+    private var tagsAccessibilitySummary: String {
+        if selectedBrowseServiceNames.isEmpty {
+            return selectedServiceType.toolbarTitle
+        }
+        let services = selectedBrowseServiceNames.sorted().joined(separator: ", ")
+        return "\(selectedServiceType.toolbarTitle), \(services)"
+    }
+
+    private func serviceTypeTagChip(_ type: ServiceType, isDrillInContextChip: Bool) -> some View {
+        let isSelected: Bool = {
+            if isDrillInContextChip { return true }
+            return selectedServiceType == type
+        }()
         return Button {
+            if isDrillInContextChip {
+                clearProviderTypeSelectionToAll()
+                return
+            }
             if selectedServiceType != type {
                 GlassCapsuleToolbarHaptics.selectionChanged()
             }
             withAnimation(Self.radiusMorphSpring) {
                 selectedServiceType = type
-                isServiceTagsExpanded = false
+                selectedBrowseServiceNames = []
+                // Keep panel open when drilling into Barber/Beauty so service chips appear.
+                if type == .all {
+                    isServiceTagsExpanded = false
+                }
             }
         } label: {
-            Text(type.toolbarTitle)
-                .font(OnCutsFont.subheadline(weight: isSelected ? .semibold : .medium))
-                .foregroundStyle(isSelected ? Color.white : Color.primary)
+            HStack(spacing: 6) {
+                Text(type.toolbarTitle)
+                    .font(OnCutsFont.subheadline(weight: isSelected ? .semibold : .medium))
+                    .foregroundStyle(isSelected ? Color.white : Color.primary)
+                if isDrillInContextChip {
+                    Image(systemName: "xmark")
+                        .font(OnCutsFont.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.white.opacity(0.95))
+                        .accessibilityHidden(true)
+                }
+            }
             .padding(.vertical, 7)
-            .padding(.horizontal, 12)
+            .padding(.leading, 12)
+            .padding(.trailing, isDrillInContextChip ? 10 : 12)
             .background(
                 Capsule()
                     .fill(isSelected ? Color.oliveGreen : Color.primary.opacity(0.08))
@@ -1700,7 +1746,61 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(type.toolbarTitle) filter")
+        .accessibilityLabel(
+            isDrillInContextChip
+                ? "Clear \(type.toolbarTitle) filter"
+                : "\(type.toolbarTitle) filter"
+        )
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+        .accessibilityHint(
+            isDrillInContextChip
+                ? "Returns to All and shows Barber and Beauty tags"
+                : "Filters providers by \(type.toolbarTitle)"
+        )
+    }
+
+    private func clearProviderTypeSelectionToAll() {
+        GlassCapsuleToolbarHaptics.selectionChanged()
+        withAnimation(Self.radiusMorphSpring) {
+            selectedServiceType = .all
+            selectedBrowseServiceNames = []
+        }
+    }
+
+    private func browseServiceTagChip(_ serviceName: String) -> some View {
+        let isSelected = selectedBrowseServiceNames.contains { selected in
+            selected.trimmingCharacters(in: .whitespacesAndNewlines)
+                .caseInsensitiveCompare(serviceName) == .orderedSame
+        }
+        return Button {
+            GlassCapsuleToolbarHaptics.selectionChanged()
+            withAnimation(Self.radiusMorphSpring) {
+                if isSelected {
+                    selectedBrowseServiceNames = selectedBrowseServiceNames.filter {
+                        $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                            .caseInsensitiveCompare(serviceName) != .orderedSame
+                    }
+                } else {
+                    selectedBrowseServiceNames.insert(serviceName)
+                }
+            }
+        } label: {
+            Text(serviceName)
+                .font(OnCutsFont.subheadline(weight: isSelected ? .semibold : .medium))
+                .foregroundStyle(isSelected ? Color.white : Color.primary)
+                .padding(.vertical, 7)
+                .padding(.horizontal, 12)
+                .background(
+                    Capsule()
+                        .fill(isSelected ? Color.oliveGreen : Color.primary.opacity(0.08))
+                )
+                .overlay {
+                    Capsule()
+                        .stroke(Color.white.opacity(isSelected ? 0.35 : 0.22), lineWidth: 0.75)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(serviceName) service filter")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 

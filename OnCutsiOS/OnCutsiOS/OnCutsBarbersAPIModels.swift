@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OnCutsModule
 
 // MARK: - Response envelope
 
@@ -54,6 +55,8 @@ private struct OnCutsBarberDTO: Decodable, Sendable {
     let distanceMiles: Double?
     let distanceKm: Double?
     let instagramHandle: String?
+    /// Postgres `provider_type` (`barber`, `beauty`) — drives Home Tags filtering.
+    let providerType: String?
 }
 
 private struct OnCutsPricingDTO: Decodable, Sendable {
@@ -215,8 +218,11 @@ private extension OnCutsBarberDTO {
             return ServiceProvider.PriceRange(min: min, max: max)
         }()
 
-        /// Front-of-house **provider kind** (e.g. Barber). Offerings stay in `services` from pricing — not listed here.
-        let specialtyString: String? = "Barber"
+        /// Front-of-house **provider kind** from DB `provider_type` (fallback Barber).
+        let resolvedProviderType = providerType?.trimmingCharacters(in: .whitespacesAndNewlines).trimmedNonEmpty
+            ?? "barber"
+        let specialtyString: String? = ServiceType.fromProviderType(resolvedProviderType)?.toolbarTitle
+            ?? resolvedProviderType.capitalized
 
         let locations: [String]? = {
             let names = serviceLocations?.compactMap { $0.name.flatMap { $0.trimmedNonEmpty } }
@@ -238,6 +244,13 @@ private extension OnCutsBarberDTO {
             }
         }()
 
+        let category: ServiceProvider.ServiceCategory = {
+            switch ServiceType.fromProviderType(resolvedProviderType) {
+            case .beauty: return .beauty
+            default: return .haircuts
+            }
+        }()
+
         return ServiceProvider(
             id: pid,
             userId: uid,
@@ -254,8 +267,9 @@ private extension OnCutsBarberDTO {
             completedBookings: lifetimeBookings,
             isAvailableNow: nil,
             priceRange: range,
-            category: .haircuts,
+            category: category,
             specialty: specialtyString,
+            providerType: resolvedProviderType,
             services: services,
             availability: nil,
             locations: locations,

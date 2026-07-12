@@ -66,7 +66,7 @@ struct SearchBar: View {
 #Preview("Custom Placeholder") {
     SearchBar(
         text: .constant(""),
-        placeholder: "Search providers..."
+        placeholder: "Search operators..."
     )
     .padding()
 }

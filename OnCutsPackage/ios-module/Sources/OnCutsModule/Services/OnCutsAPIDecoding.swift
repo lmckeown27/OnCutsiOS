@@ -130,6 +130,8 @@ internal struct BarberListRowDTO: Decodable {
     let instagramHandle: String?
     /// Service menu from `barbers.pricing` — included on `GET /barbers` list rows.
     let pricing: [BarberPricingRowDTO]?
+    /// Postgres `provider_type` (`barber`, `beauty`).
+    let providerType: String?
 
     func asBarber() -> Barber {
         let business = name?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty

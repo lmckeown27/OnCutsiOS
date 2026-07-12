@@ -32,8 +32,10 @@ final class ProviderViewModel {
     /// Last good payload so a failed refresh doesn’t wipe the list.
     private(set) var lastSuccessfulProviders: [ServiceProvider] = []
 
-    /// Glass toolbar: cycles through `ServiceType` (OnCuts package); filters the barber list in the shell.
+    /// Glass toolbar: provider type Tags (`all` / `barber` / `beauty`).
     var selectedServiceType: ServiceType = .all
+    /// Selected service chips under the provider type (multi-select; empty = all services for that type).
+    var selectedBrowseServiceNames: Set<String> = []
 
     var providersForDisplay: [ServiceProvider] {
         switch state {
@@ -50,7 +52,19 @@ final class ProviderViewModel {
     }
 
     func providersFilteredByServiceType(_ providers: [ServiceProvider]) -> [ServiceProvider] {
-        selectedServiceType.filteredProviders(from: providers)
+        let byType = selectedServiceType.filteredProviders(from: providers)
+        let selectedServices = selectedBrowseServiceNames
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard !selectedServices.isEmpty else { return byType }
+        return byType.filter { provider in
+            selectedServices.contains { provider.offersBrowseService($0) }
+        }
+    }
+
+    func clearBrowseTags() {
+        selectedServiceType = .all
+        selectedBrowseServiceNames = []
     }
 
     /// Tries OnCutsModule `fetchBrowseProviders`, then raw `GET …/barbers`, then legacy `/providers/list`.
