@@ -13,6 +13,8 @@ struct IntegratedSignUpSheet: View {
 
     let sessionManager: AppSessionManager
     let onFinished: () -> Void
+    /// Prefill from the guest email handshake when the address is not registered yet.
+    var handoffEmail: String? = nil
 
     @State private var path: [String] = []
 
@@ -35,7 +37,7 @@ struct IntegratedSignUpSheet: View {
                         .foregroundStyle(Color.lavaShellCream)
                         .tint(Color.lavaShellCream)
                     } else if flows.count == 1, let only = flows.first {
-                        only.hostView(sessionManager: sessionManager) {
+                        only.hostView(sessionManager: sessionManager, handoffEmail: handoffEmail) {
                             onFinished()
                             dismiss()
                         }
@@ -75,7 +77,7 @@ struct IntegratedSignUpSheet: View {
                 }
                 .navigationDestination(for: String.self) { flowId in
                     if let flow = IntegratedSignUpFlowRegistry.flow(id: flowId) {
-                        flow.hostView(sessionManager: sessionManager) {
+                        flow.hostView(sessionManager: sessionManager, handoffEmail: handoffEmail) {
                             onFinished()
                             dismiss()
                         }

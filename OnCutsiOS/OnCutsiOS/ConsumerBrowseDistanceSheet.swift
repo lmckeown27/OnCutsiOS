@@ -69,6 +69,11 @@ struct ConsumerBrowseDistanceSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Apply") {
+                        #if os(iOS)
+                        if constrainDistance, ConsumerLocationFetcher.shared.isLocationPermissionDenied {
+                            ConsumerLocationFetcher.shared.presentPermissionDeniedGuidanceIfNeeded(force: true)
+                        }
+                        #endif
                         ConsumerBrowseDistancePreference.constrainBrowseListByDistance = constrainDistance
                         ConsumerBrowseDistancePreference.maxDistanceMiles = miles
                         dismiss()

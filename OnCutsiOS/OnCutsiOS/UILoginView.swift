@@ -101,8 +101,11 @@ struct LoginView: View {
                     onFinished: {
                         showOAuthSignInSheet = false
                     },
-                    onRequestEmailSignUp: {
+                    onRequestEmailSignUp: { handoff in
                         showOAuthSignInSheet = false
+                        if let handoff, !handoff.isEmpty {
+                            email = handoff
+                        }
                         showIntegratedSignUpSheet = true
                     }
                 )
@@ -111,9 +114,16 @@ struct LoginView: View {
                 #endif
             }
             .sheet(isPresented: $showIntegratedSignUpSheet) {
-                IntegratedSignUpSheet(sessionManager: sessionManager, onFinished: {
-                    showIntegratedSignUpSheet = false
-                })
+                IntegratedSignUpSheet(
+                    sessionManager: sessionManager,
+                    onFinished: {
+                        showIntegratedSignUpSheet = false
+                    },
+                    handoffEmail: {
+                        let t = email.trimmingCharacters(in: .whitespacesAndNewlines)
+                        return t.isEmpty ? nil : t
+                    }()
+                )
                 #if os(iOS)
                 .presentationDetents([.large])
                 #endif

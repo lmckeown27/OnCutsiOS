@@ -9,6 +9,15 @@
 import CoreLocation
 import Foundation
 
+/// Outcome of a nearby-providers location attempt.
+enum ConsumerNearbyLocationResult: Sendable {
+    case coordinate(CLLocationCoordinate2D)
+    /// User denied or restricted Location Services for this app.
+    case permissionDenied
+    /// Authorized but no usable fix (timeout / hardware error).
+    case unavailable
+}
+
 @MainActor
 final class ConsumerLocationFetcher: NSObject, CLLocationManagerDelegate {
     static let shared = ConsumerLocationFetcher()
@@ -18,7 +27,11 @@ final class ConsumerLocationFetcher: NSObject, CLLocationManagerDelegate {
     private var locationContinuation: CheckedContinuation<CLLocationCoordinate2D?, Never>?
     private var timeoutTask: Task<Void, Never>?
     private var locationRoundComplete = false
-    private var inflightFetch: Task<CLLocationCoordinate2D?, Never>?
+    private var inflightFetch: Task<ConsumerNearbyLocationResult, Never>?
+
+    /// Avoid toast spam when browse reloads repeatedly after a denial.
+    private var lastPermissionDeniedNoticeAt: Date?
+    private let permissionDeniedNoticeCooldown: TimeInterval = 90
 
     override init() {
         manager = CLLocationManager()
@@ -27,13 +40,23 @@ final class ConsumerLocationFetcher: NSObject, CLLocationManagerDelegate {
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
     }
 
+    /// Current authorization without prompting.
+    var isLocationPermissionDenied: Bool {
+        switch manager.authorizationStatus {
+        case .denied, .restricted:
+            return true
+        default:
+            return false
+        }
+    }
+
     /// Serialized so concurrent `loadProviders` calls share one fix and don’t corrupt continuations.
-    func coordinateForNearbyProviders(timeoutSeconds: TimeInterval = 12) async -> CLLocationCoordinate2D? {
+    func resolveForNearbyProviders(timeoutSeconds: TimeInterval = 12) async -> ConsumerNearbyLocationResult {
         if let inflightFetch {
             return await inflightFetch.value
         }
-        let task = Task<CLLocationCoordinate2D?, Never> { @MainActor in
-            await self.performFetch(timeoutSeconds: timeoutSeconds)
+        let task = Task<ConsumerNearbyLocationResult, Never> { @MainActor in
+            await self.performResolve(timeoutSeconds: timeoutSeconds)
         }
         inflightFetch = task
         let value = await task.value
@@ -41,10 +64,36 @@ final class ConsumerLocationFetcher: NSObject, CLLocationManagerDelegate {
         return value
     }
 
-    private func performFetch(timeoutSeconds: TimeInterval) async -> CLLocationCoordinate2D? {
+    /// Convenience for callers that only need a coordinate.
+    func coordinateForNearbyProviders(timeoutSeconds: TimeInterval = 12) async -> CLLocationCoordinate2D? {
+        if case let .coordinate(coord) = await resolveForNearbyProviders(timeoutSeconds: timeoutSeconds) {
+            return coord
+        }
+        return nil
+    }
+
+    /// Informational toast: nearby browse works best with location. Coalesced so reloads don’t spam.
+    func presentPermissionDeniedGuidanceIfNeeded(force: Bool = false) {
+        let now = Date()
+        if !force,
+           let last = lastPermissionDeniedNoticeAt,
+           now.timeIntervalSince(last) < permissionDeniedNoticeCooldown {
+            return
+        }
+        lastPermissionDeniedNoticeAt = now
+        AlertManager.shared.present(
+            "\(AppBranding.displayName) works best when it can find the closest service providers to your location. Enable Location for \(AppBranding.displayName) in Settings to use nearby search.",
+            duration: .seconds(6)
+        )
+    }
+
+    private func performResolve(timeoutSeconds: TimeInterval) async -> ConsumerNearbyLocationResult {
         let authorized = await ensureAuthorized()
-        guard authorized else { return nil }
-        return await waitForFirstFix(timeoutSeconds: timeoutSeconds)
+        guard authorized else { return .permissionDenied }
+        if let coord = await waitForFirstFix(timeoutSeconds: timeoutSeconds) {
+            return .coordinate(coord)
+        }
+        return .unavailable
     }
 
     private func ensureAuthorized() async -> Bool {

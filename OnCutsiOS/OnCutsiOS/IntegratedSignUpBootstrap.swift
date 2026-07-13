@@ -25,12 +25,13 @@ enum IntegratedSignUpBootstrap {
                 id: "campuscuts.email",
                 title: AppBranding.displayName,
                 subtitle: "Liquid Glass onboarding — verify email + profile."
-            ) { sessionManager, onFinished in
+            ) { sessionManager, handoffEmail, onFinished in
                 if #available(iOS 17.0, macOS 14.0, *) {
                     LiquidGlassSignupFlowView(
                         apiV1BaseTrimmed: AppConfiguration.messagingAPIRootTrimmed,
                         sessionManager: sessionManager,
-                        onFinished: onFinished
+                        onFinished: onFinished,
+                        handoffEmail: handoffEmail
                     )
                 } else {
                     OnCutsSignUpView(apiV1BaseTrimmed: AppConfiguration.messagingAPIRootTrimmed) { verified in

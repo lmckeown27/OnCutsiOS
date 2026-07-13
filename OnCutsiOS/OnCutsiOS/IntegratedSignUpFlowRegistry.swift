@@ -12,22 +12,26 @@ struct IntegratedSignUpFlow: Identifiable {
     let id: String
     let title: String
     let subtitle: String?
-    private let _makeView: (AppSessionManager, @escaping () -> Void) -> AnyView
+    private let _makeView: (AppSessionManager, String?, @escaping () -> Void) -> AnyView
 
     init(
         id: String,
         title: String,
         subtitle: String? = nil,
-        @ViewBuilder content: @escaping (AppSessionManager, @escaping () -> Void) -> some View
+        @ViewBuilder content: @escaping (AppSessionManager, String?, @escaping () -> Void) -> some View
     ) {
         self.id = id
         self.title = title
         self.subtitle = subtitle
-        _makeView = { sm, done in AnyView(content(sm, done)) }
+        _makeView = { sm, handoff, done in AnyView(content(sm, handoff, done)) }
     }
 
-    func hostView(sessionManager: AppSessionManager, onFinished: @escaping () -> Void) -> AnyView {
-        _makeView(sessionManager, onFinished)
+    func hostView(
+        sessionManager: AppSessionManager,
+        handoffEmail: String? = nil,
+        onFinished: @escaping () -> Void
+    ) -> AnyView {
+        _makeView(sessionManager, handoffEmail, onFinished)
     }
 }
 

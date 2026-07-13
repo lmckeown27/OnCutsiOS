@@ -9,11 +9,11 @@
 import SwiftUI
 
 enum GuestHubSignInMetrics {
-    /// Expanded guest sign-in panel height reference (Manual Sign-In + Apple/Google row + create account).
-    static let expandedChromeHeight: CGFloat = 196
+    /// Expanded guest sign-in panel height reference (email + optional password + Apple/Google row).
+    static let expandedChromeHeight: CGFloat = 220
     static let minimizedChromeHeight: CGFloat = 88
-    static let overlayContentBottomPadding: CGFloat = 220
-    /// Centered width for the side-by-side provider pills.
+    static let overlayContentBottomPadding: CGFloat = 240
+    /// Centered width for the side-by-side provider pills and email field.
     static let pillMaxWidth: CGFloat = 260
 
     static func overlayContentBottomInset(collapseProgress: CGFloat) -> CGFloat {
@@ -28,8 +28,7 @@ enum GuestHubSignInMetrics {
 struct GuestHubSignInBar: View {
     let sessionManager: AppSessionManager
     @ObservedObject var appleOAuthFollowUp: AppleOAuthPostSignInCoordinator
-    let onRequestManualSignIn: () -> Void
-    let onRequestEmailSignUp: () -> Void
+    let onContinueWithNewEmail: (String) -> Void
     var collapseProgress: CGFloat = 0
 
     private static let panelCorner: CGFloat = 28
@@ -52,12 +51,11 @@ struct GuestHubSignInBar: View {
             sessionManager: sessionManager,
             appleOAuthFollowUp: appleOAuthFollowUp,
             layout: .inline,
-            showsCreateAccountLink: true,
+            showsCreateAccountLink: false,
             showsEmailSignInOption: true,
             providerPillStackAxis: .horizontal,
             pillMaxWidth: GuestHubSignInMetrics.pillMaxWidth,
-            onNavigateToEmail: onRequestManualSignIn,
-            onCreateAccount: onRequestEmailSignUp,
+            onContinueWithNewEmail: onContinueWithNewEmail,
             onSignedIn: {}
         )
         .padding(.horizontal, 14)

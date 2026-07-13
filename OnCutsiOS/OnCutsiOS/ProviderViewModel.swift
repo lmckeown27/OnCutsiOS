@@ -74,7 +74,15 @@ final class ProviderViewModel {
         #if os(iOS)
         let coord: CLLocationCoordinate2D?
         if ConsumerBrowseDistancePreference.constrainBrowseListByDistance {
-            coord = await ConsumerLocationFetcher.shared.coordinateForNearbyProviders()
+            switch await ConsumerLocationFetcher.shared.resolveForNearbyProviders() {
+            case let .coordinate(c):
+                coord = c
+            case .permissionDenied:
+                coord = nil
+                ConsumerLocationFetcher.shared.presentPermissionDeniedGuidanceIfNeeded()
+            case .unavailable:
+                coord = nil
+            }
         } else {
             coord = nil
         }

@@ -69,10 +69,11 @@ struct ConsumerHomeScreen: View {
     @State private var showProfileMenu = false
     @State private var showGuestAuthEntrySheet = false
     @State private var guestAuthResumeAction: GuestAuthResumeAction = .none
-    @State private var oauthSignInShowsCreateAccountLink = true
+    @State private var oauthSignInShowsCreateAccountLink = false
     @State private var showOAuthSignInSheet = false
     @StateObject private var appleOAuthPostSignInCoordinator = AppleOAuthPostSignInCoordinator()
     @State private var showIntegratedSignUpSheet = false
+    @State private var authEmailHandoff: String?
     @State private var showLoginPrompt = false
     @State private var selectedProvider: ServiceProvider?
     /// When `false`, the browse list receives taps even if the detail overlay is still animating out.
@@ -345,8 +346,9 @@ struct ConsumerHomeScreen: View {
                         sessionManager: sessionManager,
                         appleOAuthFollowUp: appleOAuthPostSignInCoordinator,
                         onFinished: { showOAuthSignInSheet = false },
-                        onRequestEmailSignUp: {
+                        onRequestEmailSignUp: { email in
                             showOAuthSignInSheet = false
+                            authEmailHandoff = email
                             showIntegratedSignUpSheet = true
                         },
                         showsCreateAccountLink: oauthSignInShowsCreateAccountLink
@@ -356,11 +358,18 @@ struct ConsumerHomeScreen: View {
                     #endif
                 }
             }
-            .sheet(isPresented: $showIntegratedSignUpSheet) {
+            .sheet(isPresented: $showIntegratedSignUpSheet, onDismiss: {
+                authEmailHandoff = nil
+            }) {
                 if #available(iOS 17.0, macOS 14.0, *) {
-                    IntegratedSignUpSheet(sessionManager: sessionManager, onFinished: {
-                        showIntegratedSignUpSheet = false
-                    })
+                    IntegratedSignUpSheet(
+                        sessionManager: sessionManager,
+                        onFinished: {
+                            showIntegratedSignUpSheet = false
+                            authEmailHandoff = nil
+                        },
+                        handoffEmail: authEmailHandoff
+                    )
                     #if os(iOS)
                     .presentationDetents([.large])
                     #endif
@@ -2294,10 +2303,10 @@ struct UnifiedProviderHomeScreen: View {
     @State private var showProfileMenu = false
     @State private var showGuestAuthEntrySheet = false
     @State private var unifiedGuestAuthResumeAction: GuestAuthResumeAction = .none
-    @State private var unifiedOAuthSignInShowsCreateAccountLink = true
+    @State private var unifiedOAuthSignInShowsCreateAccountLink = false
     @State private var showOAuthSignInSheet = false
-    @State private var showManualSignInSheet = false
     @State private var showIntegratedSignUpSheet = false
+    @State private var authEmailHandoff: String?
     @State private var showLoginPrompt = false
     @State private var selectedProvider: ServiceProvider?
     /// When `false`, the browse list receives taps even if the detail overlay is still animating out.
@@ -2746,8 +2755,10 @@ struct UnifiedProviderHomeScreen: View {
                     GuestHubSignInBar(
                         sessionManager: sessionManager,
                         appleOAuthFollowUp: appleOAuthPostSignIn,
-                        onRequestManualSignIn: { showManualSignInSheet = true },
-                        onRequestEmailSignUp: { showIntegratedSignUpSheet = true },
+                        onContinueWithNewEmail: { email in
+                            authEmailHandoff = email
+                            showIntegratedSignUpSheet = true
+                        },
                         collapseProgress: hubBarCollapseProgress
                     )
                 } else if unifiedShowsConsumerStickyHubBar {
@@ -2800,6 +2811,19 @@ struct UnifiedProviderHomeScreen: View {
                 unifiedHubPagedContent
             }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .simultaneousGesture(
+                    TapGesture().onEnded {
+                        guard unifiedShowsGuestSignInBar else { return }
+                        #if os(iOS)
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder),
+                            to: nil,
+                            from: nil,
+                            for: nil
+                        )
+                        #endif
+                    }
+                )
         }
             .background(Color.clear)
             .overlay(alignment: .bottom) {
@@ -3117,8 +3141,9 @@ struct UnifiedProviderHomeScreen: View {
                         sessionManager: sessionManager,
                         appleOAuthFollowUp: appleOAuthPostSignIn,
                         onFinished: { showOAuthSignInSheet = false },
-                        onRequestEmailSignUp: {
+                        onRequestEmailSignUp: { email in
                             showOAuthSignInSheet = false
+                            authEmailHandoff = email
                             showIntegratedSignUpSheet = true
                         },
                         showsCreateAccountLink: unifiedOAuthSignInShowsCreateAccountLink
@@ -3128,26 +3153,18 @@ struct UnifiedProviderHomeScreen: View {
                     #endif
                 }
             }
-            .sheet(isPresented: $showManualSignInSheet) {
+            .sheet(isPresented: $showIntegratedSignUpSheet, onDismiss: {
+                authEmailHandoff = nil
+            }) {
                 if #available(iOS 17.0, macOS 14.0, *) {
-                    ManualEmailSignInSheet(
+                    IntegratedSignUpSheet(
                         sessionManager: sessionManager,
-                        onFinished: { showManualSignInSheet = false },
-                        onRequestEmailSignUp: {
-                            showManualSignInSheet = false
-                            showIntegratedSignUpSheet = true
-                        }
+                        onFinished: {
+                            showIntegratedSignUpSheet = false
+                            authEmailHandoff = nil
+                        },
+                        handoffEmail: authEmailHandoff
                     )
-                    #if os(iOS)
-                    .presentationDetents([.medium, .large])
-                    #endif
-                }
-            }
-            .sheet(isPresented: $showIntegratedSignUpSheet) {
-                if #available(iOS 17.0, macOS 14.0, *) {
-                    IntegratedSignUpSheet(sessionManager: sessionManager, onFinished: {
-                        showIntegratedSignUpSheet = false
-                    })
                     #if os(iOS)
                     .presentationDetents([.large])
                     #endif

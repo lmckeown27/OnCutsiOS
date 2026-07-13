@@ -13,6 +13,10 @@ import SwiftUI
 struct EmailPasswordSignInView: View {
     let sessionManager: AppSessionManager
     let apiV1BaseTrimmed: String
+    /// Prefill from the guest email handshake.
+    var initialEmail: String? = nil
+    /// When `true` (and `initialEmail` is set), skip the account-check step and show the password field.
+    var startAtPasswordStep: Bool = false
     let onSignedIn: () -> Void
     /// When the email is not registered — parent typically opens Create account.
     let onRequestSignUp: () -> Void
@@ -34,6 +38,13 @@ struct EmailPasswordSignInView: View {
                     Text("Enter your password to sign in.")
                         .font(OnCutsFont.subheadline)
                         .foregroundStyle(.secondary)
+
+                    if !email.isEmpty {
+                        Text(email)
+                            .font(OnCutsFont.body(weight: .medium))
+                            .foregroundStyle(.primary)
+                            .padding(.bottom, 4)
+                    }
 
                     HStack(spacing: 10) {
                         Group {
@@ -107,6 +118,21 @@ struct EmailPasswordSignInView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(authOutcomeMessage)
+        }
+        .onAppear {
+            applyInitialEmailIfNeeded()
+        }
+    }
+
+    private func applyInitialEmailIfNeeded() {
+        guard let initial = initialEmail?.trimmingCharacters(in: .whitespacesAndNewlines), !initial.isEmpty else {
+            return
+        }
+        if email.isEmpty {
+            email = initial
+        }
+        if startAtPasswordStep {
+            didCompleteEmailHandshake = true
         }
     }
 
@@ -192,24 +218,29 @@ struct ManualEmailSignInSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let sessionManager: AppSessionManager
+    var initialEmail: String? = nil
+    var startAtPasswordStep: Bool = false
     let onFinished: () -> Void
-    let onRequestEmailSignUp: () -> Void
+    let onRequestEmailSignUp: (String?) -> Void
 
     var body: some View {
         NavigationStack {
             EmailPasswordSignInView(
                 sessionManager: sessionManager,
                 apiV1BaseTrimmed: AppConfiguration.messagingAPIRootTrimmed,
+                initialEmail: initialEmail,
+                startAtPasswordStep: startAtPasswordStep,
                 onSignedIn: {
                     onFinished()
                     dismiss()
                 },
                 onRequestSignUp: {
+                    let handoff = initialEmail
                     onFinished()
-                    onRequestEmailSignUp()
+                    onRequestEmailSignUp(handoff)
                 }
             )
-            .navigationTitle("Manual Sign-In")
+            .navigationTitle("Sign In")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
