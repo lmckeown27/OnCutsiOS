@@ -93,6 +93,8 @@ struct MessagingBookingDTO: Decodable, Sendable, Hashable {
     let barberName: String?
     let barberBusinessName: String?
     let barberProfileImageUrl: String?
+    /// Postgres `barbers.provider_type` (`barber` | `beauty`) from the messaging API.
+    let providerType: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -109,6 +111,7 @@ struct MessagingBookingDTO: Decodable, Sendable, Hashable {
         case barberAvatarUrl = "barber_avatar_url"
         case providerImageUrl = "provider_image_url"
         case avatarUrl = "avatar_url"
+        case providerType = "provider_type"
         case bookingId = "booking_id"
         case requestedAt = "requested_at"
     }
@@ -117,7 +120,7 @@ struct MessagingBookingDTO: Decodable, Sendable, Hashable {
     private enum AltCodingKeys: String, CodingKey {
         case id, status, location, notes
         case serviceName, scheduledTime, barberId, barberName
-        case barberBusinessName, barberProfileImageUrl
+        case barberBusinessName, barberProfileImageUrl, providerType
         case barberProfilePhotoUrl, barberAvatarUrl, providerImageUrl, avatarUrl
         case bookingId, requestedAt
     }
@@ -152,6 +155,9 @@ struct MessagingBookingDTO: Decodable, Sendable, Hashable {
         barberName = try c.decodeIfPresent(String.self, forKey: .barberName) ?? (try? alt?.decodeIfPresent(String.self, forKey: .barberName)) ?? nil
         barberBusinessName = try c.decodeIfPresent(String.self, forKey: .barberBusinessName)
             ?? (try? alt?.decodeIfPresent(String.self, forKey: .barberBusinessName))
+            ?? nil
+        providerType = try c.decodeIfPresent(String.self, forKey: .providerType)
+            ?? (try? alt?.decodeIfPresent(String.self, forKey: .providerType))
             ?? nil
         let primaryProfileImage = try c.decodeIfPresent(String.self, forKey: .barberProfileImageUrl)
             ?? (try? alt?.decodeIfPresent(String.self, forKey: .barberProfileImageUrl))
@@ -190,7 +196,8 @@ struct MessagingBookingDTO: Decodable, Sendable, Hashable {
         barberId: String?,
         barberName: String?,
         barberBusinessName: String?,
-        barberProfileImageUrl: String?
+        barberProfileImageUrl: String?,
+        providerType: String? = nil
     ) {
         self.id = id
         self.status = status
@@ -201,6 +208,7 @@ struct MessagingBookingDTO: Decodable, Sendable, Hashable {
         self.barberName = barberName
         self.barberBusinessName = barberBusinessName
         self.barberProfileImageUrl = barberProfileImageUrl
+        self.providerType = providerType
     }
 }
 
@@ -253,7 +261,8 @@ extension MessagingBookingDTO {
                     trimmedString("providerImageUrl", "provider_image_url"),
                     trimmedString("avatarUrl", "avatar_url"),
                 ]
-            )
+            ),
+            providerType: trimmedString("providerType", "provider_type")
         )
     }
 }
@@ -272,9 +281,9 @@ enum MessagingNonEmptyURL {
 /// Trailing inbox / thread list line: provider role + booked service (replaces “Last active …”).
 enum MessagingProviderRoleLine {
     /// Default provider kind when the booking payload has no explicit service-type tag.
-    static let defaultOccupationTitle = "Service provider"
+    static let defaultOccupationTitle = "Barber"
 
-    /// Title-style line such as `Service provider · Haircut` (no backend `SHOUTING_CASE`).
+    /// Title-style line such as `Barber · Haircut` (no backend `SHOUTING_CASE`).
     static func occupationAndServicePresentable(booking: MessagingBookingDTO?) -> String {
         let occOut = occupationTitle(booking: booking)
         let svcRaw = (booking?.serviceName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -284,11 +293,18 @@ enum MessagingProviderRoleLine {
         return "\(occOut) · \(Self.presentableWordLine(svcRaw))"
     }
 
-    /// Provider kind tag only (e.g. `Barber`, `Makeup`) — browse card pill / thread occupation without the booked service.
+    /// Provider kind tag only (`Barber` or `Beauty`) — thread occupation without the booked service.
     static func occupationTitle(booking: MessagingBookingDTO? = nil) -> String {
-        _ = booking
-        let occ = defaultOccupationTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        return occ.isEmpty ? defaultOccupationTitle : presentableWordLine(occ)
+        let raw = (booking?.providerType ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch raw {
+        case "beauty":
+            return "Beauty"
+        case "barber":
+            return "Barber"
+        default:
+            // Messaging APIs historically omitted provider_type; backend defaults missing DB values to barber.
+            return defaultOccupationTitle
+        }
     }
 
     private static func presentableWordLine(_ raw: String) -> String {

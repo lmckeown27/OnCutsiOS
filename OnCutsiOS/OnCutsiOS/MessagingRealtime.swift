@@ -432,7 +432,8 @@ enum MessagingDTOMapper {
             barberId: field(server?.barberId, prior?.barberId),
             barberName: field(server?.barberName, prior?.barberName),
             barberBusinessName: field(server?.barberBusinessName, prior?.barberBusinessName),
-            barberProfileImageUrl: field(server?.barberProfileImageUrl, prior?.barberProfileImageUrl)
+            barberProfileImageUrl: field(server?.barberProfileImageUrl, prior?.barberProfileImageUrl),
+            providerType: field(server?.providerType, prior?.providerType)
         )
     }
 

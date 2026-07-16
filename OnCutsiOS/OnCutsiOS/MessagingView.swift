@@ -395,6 +395,8 @@ final class MessagingConversationViewModel: ObservableObject {
     @Published var messages: [ChatThreadMessage] = []
     @Published var bookingContext: BookingChatContext?
     @Published var loadError: String?
+    /// Set when GET thread returns 404 (conversation deleted after payment / cancel).
+    @Published private(set) var conversationMissingOnServer = false
     @Published var draftText = ""
     /// Bumped when clearing or restoring the composer so multi-line `TextField` remounts (SwiftUI often keeps stale text otherwise).
     @Published var composerRefreshID = UUID()
@@ -648,6 +650,7 @@ final class MessagingConversationViewModel: ObservableObject {
                 conversationId: conversationId,
                 bearerToken: sessionManager.currentSession?.token
             )
+            conversationMissingOnServer = false
             integrateRESTPayload(
                 messages: result.messages,
                 booking: result.booking,
@@ -668,9 +671,13 @@ final class MessagingConversationViewModel: ObservableObject {
                 }
             }
         } catch {
-            if !OnCutsRefreshCancellation.isBenignCancellation(error) {
-                loadError = error.localizedDescription
+            if OnCutsRefreshCancellation.isBenignCancellation(error) { return }
+            if MessagingAPIService.isConversationMissingHTTPError(error) {
+                conversationMissingOnServer = true
+                loadError = nil
+                return
             }
+            loadError = error.localizedDescription
         }
     }
 
@@ -1238,6 +1245,20 @@ struct MessagingConversationView: View {
             )
         }
         await vm.start()
+        if vm.conversationMissingOnServer {
+            let bookingId = vm.bookingContext?.bookingId
+                ?? initialBooking?.id
+                ?? threadHeaderBookingSnapshot?.id
+            if let bookingId, !bookingId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                chatViewModel.removeConversations(forBookingId: bookingId)
+            } else if !cid.isEmpty {
+                chatViewModel.removeConversation(id: cid)
+            }
+            Task { await chatViewModel.reloadInboxSilently(sessionManager: sessionManager) }
+            AlertManager.shared.present("This conversation is no longer available.")
+            leaveConversation()
+            return
+        }
         await vm.hydrateBookingScheduleIfNeeded(bearerToken: sessionManager.currentSession?.token)
         syncHubInboxPreviewFromThreadContext()
         onInitialThreadHydrationComplete?()

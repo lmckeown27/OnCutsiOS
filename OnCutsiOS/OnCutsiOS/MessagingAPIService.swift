@@ -277,6 +277,16 @@ enum MessagingAPIService {
         return ns.domain == "MessagingAPI" && ns.code == 401
     }
 
+    /// `true` when the conversation was deleted server-side (e.g. after payment) or never existed for this user.
+    static func isConversationMissingHTTPError(_ error: Error) -> Bool {
+        let ns = error as NSError
+        guard ns.domain == "MessagingAPI", ns.code == 404 else { return false }
+        let m = ns.localizedDescription.lowercased()
+        return m.contains("conversation not found")
+            || m.contains("has been deleted")
+            || m.contains("not found")
+    }
+
     private static let jsonDecoder: JSONDecoder = {
         let d = JSONDecoder()
         return d

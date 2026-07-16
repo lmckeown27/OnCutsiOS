@@ -679,6 +679,11 @@ struct ConsumerPaymentTakeoverView: View {
             let barberAvatarForReview = enrichedBarberAvatarURL ?? payload.barberAvatarURL
             chatViewModel.clearPaymentTakeover()
             await Task.yield()
+            // Backend archives + deletes the booking conversation on PAID — drop the inbox row before review.
+            await chatViewModel.pruneInboxAfterBookingConversationDeleted(
+                bookingId: payload.bookingId,
+                sessionManager: sessionManager
+            )
             // Refresh *before* presenting review so `@Published` booking updates don’t cancel the review view’s `.task`
             // mid-flight (which prevented avatar `resolveBarberAvatarURL` from completing).
             await chatViewModel.refreshConsumerBookingsAndSyncPayment(sessionManager: sessionManager)
@@ -708,6 +713,10 @@ struct ConsumerPaymentTakeoverView: View {
             let barberAvatarForReview = enrichedBarberAvatarURL ?? payload.barberAvatarURL
             chatViewModel.clearPaymentTakeover()
             await Task.yield()
+            await chatViewModel.pruneInboxAfterBookingConversationDeleted(
+                bookingId: payload.bookingId,
+                sessionManager: sessionManager
+            )
             await chatViewModel.refreshConsumerBookingsAndSyncPayment(sessionManager: sessionManager)
             await Task.yield()
             chatViewModel.beginPostPaymentReview(from: payload, barberAvatarURLOverride: barberAvatarForReview)

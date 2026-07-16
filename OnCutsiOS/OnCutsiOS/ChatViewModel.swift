@@ -304,6 +304,24 @@ final class ChatViewModel: ObservableObject {
     private var threadPrefetchTasks: [String: Task<Void, Never>] = [:]
     private static let maxThreadSnapshotCacheEntries = 12
 
+    /// Conversation / booking ids whose threads were deleted server-side (paid, cancelled, user delete, 404).
+    /// Prevents ``replaceFromServer`` sticky retention and handoff re-insert from resurrecting them.
+    private var suppressedConversationIds: Set<String> = []
+    private var suppressedBookingIds: Set<String> = []
+    /// After payment/cancel, the next inbox merge should trust the server list only (no local sticky rows).
+    private var skipStickyRetentionOnNextReplace = false
+
+    /// Backend deletes the messaging thread for these booking statuses (see `booking-simple.routes.ts`).
+    private static let bookingStatusesThatDeleteConversation: Set<String> = [
+        "PAID", "CANCELLED", "CANCELED", "REJECTED", "DECLINED", "REFUNDED",
+    ]
+
+    private static func bookingStatusDeletesConversation(_ status: String?) -> Bool {
+        let s = (status ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !s.isEmpty else { return false }
+        return bookingStatusesThatDeleteConversation.contains(s)
+    }
+
     func cachedThreadSnapshot(conversationId: String) -> CachedThreadSnapshot? {
         let key = Self.normalizedConversationKey(conversationId)
         guard !key.isEmpty else { return nil }
@@ -359,6 +377,15 @@ final class ChatViewModel: ObservableObject {
                 )
             } catch {
                 if OnCutsRefreshCancellation.isBenignCancellation(error) { return }
+                if MessagingAPIService.isConversationMissingHTTPError(error) {
+                    if let bid = self.rows.first(where: {
+                        $0.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == key
+                    })?.booking?.id {
+                        self.removeConversations(forBookingId: bid)
+                    } else {
+                        self.removeConversation(id: conversationId)
+                    }
+                }
             }
         }
     }
@@ -662,7 +689,17 @@ final class ChatViewModel: ObservableObject {
         for r in rows {
             priorById[r.id.lowercased()] = r
         }
-        let visibleDtos = dtos.filter { !MessagingCommunitySafety.shouldHideConversation(otherUserId: $0.otherUser?.id) }
+        let visibleDtos = dtos.filter { dto in
+            let cid = dto.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if !cid.isEmpty, suppressedConversationIds.contains(cid) { return false }
+            if let bid = dto.booking?.id?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+               !bid.isEmpty,
+               suppressedBookingIds.contains(bid) {
+                return false
+            }
+            if Self.bookingStatusDeletesConversation(dto.booking?.status) { return false }
+            return !MessagingCommunitySafety.shouldHideConversation(otherUserId: dto.otherUser?.id)
+        }
         let serverKeys = Set(visibleDtos.map { $0.id.lowercased() })
         var next: [PreviewRow] = visibleDtos.map { dto in
             let key = dto.id.lowercased()
@@ -670,12 +707,24 @@ final class ChatViewModel: ObservableObject {
         }
         // If the conversations list briefly omits a thread (read lag, pagination quirks, or eventual consistency),
         // dropping the row makes the hub look “empty” while Socket/thread state still shows an active chat.
-        // Keep prior rows the server didn’t return **only** when they already looked like a real thread locally.
-        for (key, prior) in priorById where !serverKeys.contains(key) {
-            if MessagingCommunitySafety.shouldHideConversation(otherUserId: prior.otherUser?.id) { continue }
-            let preview = (prior.lastMessagePreview ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            if prior.otherUser != nil || !preview.isEmpty {
-                next.append(prior)
+        // Keep prior rows the server didn’t return **only** when they already looked like a real thread locally —
+        // never for paid/cancelled bookings (backend deletes those conversations) or explicitly suppressed ids.
+        let allowSticky = !skipStickyRetentionOnNextReplace
+        skipStickyRetentionOnNextReplace = false
+        if allowSticky {
+            for (key, prior) in priorById where !serverKeys.contains(key) {
+                if suppressedConversationIds.contains(key) { continue }
+                if let bid = prior.booking?.id?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+                   !bid.isEmpty,
+                   suppressedBookingIds.contains(bid) {
+                    continue
+                }
+                if Self.bookingStatusDeletesConversation(prior.booking?.status) { continue }
+                if MessagingCommunitySafety.shouldHideConversation(otherUserId: prior.otherUser?.id) { continue }
+                let preview = (prior.lastMessagePreview ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                if prior.otherUser != nil || !preview.isEmpty {
+                    next.append(prior)
+                }
             }
         }
         rows = next
@@ -688,8 +737,17 @@ final class ChatViewModel: ObservableObject {
         bookingSnapshot: MessagingBookingDTO?,
         lastMessageSenderId: String? = nil
     ) {
+        let key = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return }
+        let lowered = key.lowercased()
+        if suppressedConversationIds.contains(lowered) { return }
+        if let bid = bookingSnapshot?.id?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+           !bid.isEmpty,
+           suppressedBookingIds.contains(bid) {
+            return
+        }
         var existing: PreviewRow?
-        if let i = rows.firstIndex(where: { $0.id == conversationId }) {
+        if let i = rows.firstIndex(where: { $0.id == conversationId || $0.id.caseInsensitiveCompare(key) == .orderedSame }) {
             existing = rows.remove(at: i)
         }
         var next = existing
@@ -706,15 +764,40 @@ final class ChatViewModel: ObservableObject {
         let key = id.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return }
         let lowered = key.lowercased()
+        suppressedConversationIds.insert(lowered)
+        if let bid = rows.first(where: {
+            $0.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == lowered
+        })?.booking?.id?.trimmingCharacters(in: .whitespacesAndNewlines), !bid.isEmpty {
+            suppressedBookingIds.insert(bid.lowercased())
+        }
         rows.removeAll {
             $0.id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == lowered
         }
+        threadSnapshotCache.removeValue(forKey: Self.normalizedConversationKey(key))
+        threadPrefetchTasks.removeValue(forKey: Self.normalizedConversationKey(key))?.cancel()
+        inboundSocketMessageTapeByConversation.removeValue(forKey: Self.normalizedConversationSocketKey(key))
         if let hub = hubMessagesThreadPresentation {
             let hid = hub.conversationId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             if hid == lowered { clearHubMessagesThreadPresentation() }
         }
         if let fid = hubForegroundConversationId?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), fid == lowered {
             hubForegroundConversationId = nil
+        }
+    }
+
+    /// Drops inbox rows tied to a booking after the backend deletes that conversation (payment / cancel).
+    func removeConversations(forBookingId bookingId: String) {
+        let bid = bookingId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !bid.isEmpty else { return }
+        let loweredBid = bid.lowercased()
+        suppressedBookingIds.insert(loweredBid)
+        let matchingIds = rows.compactMap { row -> String? in
+            let rowBid = row.booking?.id?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !rowBid.isEmpty, rowBid.caseInsensitiveCompare(bid) == .orderedSame else { return nil }
+            return row.id
+        }
+        for cid in matchingIds {
+            removeConversation(id: cid)
         }
     }
 
@@ -734,6 +817,14 @@ final class ChatViewModel: ObservableObject {
     func promoteOrInsertConversation(conversationId: String, bookingSnapshot: MessagingBookingDTO?) {
         let key = conversationId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return }
+        let lowered = key.lowercased()
+        if suppressedConversationIds.contains(lowered) { return }
+        if let bid = bookingSnapshot?.id?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+           !bid.isEmpty,
+           suppressedBookingIds.contains(bid) {
+            return
+        }
+        if Self.bookingStatusDeletesConversation(bookingSnapshot?.status) { return }
         if let i = rows.firstIndex(where: { $0.id.caseInsensitiveCompare(key) == .orderedSame }) {
             var r = rows.remove(at: i)
             r.booking = Self.mergedInboxBooking(server: bookingSnapshot, prior: r.booking)
@@ -764,7 +855,8 @@ final class ChatViewModel: ObservableObject {
             barberId: snapshot.barberId,
             barberName: snapshot.barberName,
             barberBusinessName: snapshot.barberBusinessName,
-            barberProfileImageUrl: avatar
+            barberProfileImageUrl: avatar,
+            providerType: snapshot.providerType
         )
     }
 
@@ -824,6 +916,9 @@ final class ChatViewModel: ObservableObject {
         connectedUserId = nil
         hubMessagesThreadPresentation = nil
         deferredPaymentTakeoverBookingIds.removeAll()
+        suppressedConversationIds.removeAll()
+        suppressedBookingIds.removeAll()
+        skipStickyRetentionOnNextReplace = false
         pendingThreadSocketMessages.removeAll()
         inboundSocketMessageTapeByConversation.removeAll()
         socket.disconnect(clearConversationSubscriptions: true)
@@ -932,26 +1027,46 @@ final class ChatViewModel: ObservableObject {
         if s != "COMPLETED", !bid.isEmpty {
             deferredPaymentTakeoverBookingIds.remove(bid)
         }
+        if Self.bookingStatusDeletesConversation(s), !bid.isEmpty {
+            removeConversations(forBookingId: bid)
+        }
         guard let active = activePaymentRequest, active.bookingId == bookingId else { return }
         if s == "COMPLETED" { return }
         activePaymentRequest = nil
     }
 
     /// Refetch consumer bookings and dismiss the payment takeover when the booking is paid.
+    /// Also drops messaging inbox rows for paid bookings (backend deletes those conversations).
     func refreshConsumerBookingsAndSyncPayment(sessionManager: AppSessionManager) async {
         guard sessionManager.isAuthenticated else { return }
         do {
-            let rows = try await ConsumerBookingsSimpleAPI.fetchConsumerBookings(
+            let bookingRows = try await ConsumerBookingsSimpleAPI.fetchConsumerBookings(
                 bearerToken: sessionManager.currentSession?.token,
                 consumerUserId: sessionManager.currentSession?.userId
             )
             await Task.yield()
-            syncPaymentTakeover(withBookings: rows)
+            var prunedPaidOrTerminal = false
+            for row in bookingRows where Self.bookingStatusDeletesConversation(row.status) {
+                removeConversations(forBookingId: row.id)
+                prunedPaidOrTerminal = true
+            }
+            if prunedPaidOrTerminal {
+                skipStickyRetentionOnNextReplace = true
+            }
+            syncPaymentTakeover(withBookings: bookingRows)
+            await reloadInboxSilently(sessionManager: sessionManager)
         } catch {
             if ConsumerBookingsSimpleAPI.isUnauthorizedHTTPError(error) {
                 await sessionManager.recoverSessionAfterUnauthorized()
             }
         }
+    }
+
+    /// Call immediately after a successful pay/confirm so the inbox doesn’t keep a deleted conversation.
+    func pruneInboxAfterBookingConversationDeleted(bookingId: String, sessionManager: AppSessionManager) async {
+        removeConversations(forBookingId: bookingId)
+        skipStickyRetentionOnNextReplace = true
+        await reloadInboxSilently(sessionManager: sessionManager)
     }
 
     /// Register that a conversation thread UI is on-screen (call from ``MessagingConversationView`` `onAppear`).
@@ -1087,7 +1202,8 @@ final class ChatViewModel: ObservableObject {
         let bb = booking.barberBusinessName ?? ""
         let img = booking.barberProfileImageUrl ?? ""
         let loc = booking.location ?? ""
-        return "\(booking.id ?? "")|\(booking.status ?? "")|\(booking.serviceName ?? "")|\(booking.scheduledTime ?? "")|\(bid)|\(bn)|\(bb)|\(img)|\(loc)"
+        let providerType = booking.providerType ?? ""
+        return "\(booking.id ?? "")|\(booking.status ?? "")|\(booking.serviceName ?? "")|\(booking.scheduledTime ?? "")|\(bid)|\(bn)|\(bb)|\(img)|\(loc)|\(providerType)"
     }
 
     private static func inboxOtherUserFingerprint(_ other: MessagingConversationOtherUserDTO?) -> String {
@@ -1143,7 +1259,8 @@ final class ChatViewModel: ObservableObject {
             barberId: mergedInboxBookingField(server?.barberId, prior?.barberId),
             barberName: mergedInboxBookingField(server?.barberName, prior?.barberName),
             barberBusinessName: mergedInboxBookingField(server?.barberBusinessName, prior?.barberBusinessName),
-            barberProfileImageUrl: mergedInboxBookingField(server?.barberProfileImageUrl, prior?.barberProfileImageUrl)
+            barberProfileImageUrl: mergedInboxBookingField(server?.barberProfileImageUrl, prior?.barberProfileImageUrl),
+            providerType: mergedInboxBookingField(server?.providerType, prior?.providerType)
         )
     }
 
