@@ -477,7 +477,12 @@ struct ConsumerHomeScreen: View {
             }
         }
         .task {
-            await loadProviders()
+            ConsumerBrowseLocationController.shared.prepareForBrowseAppearance()
+            // Hub / NavigationStack remounts cancel `.task` work; isolate like pull-to-refresh so the
+            // first provider fetch (which may wait on GPS) still completes.
+            await OnCutsPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
+                await loadProviders()
+            }
             await loadConsumerBookingsForHome()
             await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager)
         }
@@ -485,6 +490,9 @@ struct ConsumerHomeScreen: View {
             Task { await loadProviders() }
             Task { await loadConsumerBookingsForHome() }
             Task { await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .consumerBrowseLocationDidChange)) { _ in
+            Task { await loadProviders() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .messagingUnreadCountShouldRefresh)) { _ in
             Task { await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager) }
@@ -660,6 +668,9 @@ struct ConsumerHomeScreen: View {
             todayBookingActivity: homeTodayBookingHighlight,
             pendingPaymentBooking: homePendingPaymentHighlight,
             onMaxDistanceTap: consumerBrowseOnMaxDistanceTap,
+            onBrowseRadiusCommitted: {
+                Task { await loadProviders() }
+            },
             onTodayBookingReminderTap: { (row: ConsumerBookingSimpleRow) in
                 if sessionManager.isAuthenticated {
                     navigationPath = NavigationPath()
@@ -834,9 +845,32 @@ struct ConsumerHomeScreen: View {
     private var emptyBrowseState: some View {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let noProvidersInRadius = providers.isEmpty
+        let locationLabel = ConsumerBrowseLocationController.shared.locationLabel
+        let miles = Int(ConsumerBrowseDistancePreference.maxDistanceMiles.rounded())
+        let distanceOn = ConsumerBrowseDistancePreference.constrainBrowseListByDistance
 
         if trimmed.isEmpty, noProvidersInRadius {
-            HomeNoBarbersInRadiusEmptyLabel()
+            if distanceOn {
+                HomeNoBarbersInRadiusEmptyLabel(
+                    miles: miles,
+                    locationLabel: locationLabel
+                )
+            } else {
+                VStack(spacing: .space4) {
+                    Spacer()
+                    Image(systemName: "scissors")
+                        .font(OnCutsFont.system(size: 60))
+                        .foregroundStyle(Color.lavaShellCreamTertiary)
+                    Text("No providers available yet")
+                        .font(OnCutsFont.headlineMedium)
+                        .foregroundStyle(Color.lavaShellCream)
+                    Text("Check back later for available service providers")
+                        .onCutsStyle(.bodyMedium)
+                        .multilineTextAlignment(.center)
+                    Spacer()
+                }
+                .padding()
+            }
         } else {
             VStack(spacing: .space4) {
                 Spacer()
@@ -2335,9 +2369,15 @@ struct UnifiedProviderHomeScreen: View {
     @State private var isProfileHubNameFieldFocused = false
     /// When `true`, miles slider, expanded search, or Tags strip — hub `TabView` horizontal swipe is disabled.
     @State private var isUtilityPillChromeExpanded = false
-    /// Provider utility-pill search (expanded field / keyboard) — hub bar is unmounted, not merely hidden.
+    /// Provider utility-pill search / manual place field (expanded field / keyboard) — hub bar is unmounted, not merely hidden.
     private var browseProviderSearchSuppressesHubBar: Bool {
-        isUtilityPillChromeExpanded || isBrowseUtilitySearchFocused
+        #if os(iOS)
+        return isUtilityPillChromeExpanded
+            || isBrowseUtilitySearchFocused
+            || ConsumerBrowseLocationController.shared.isPlaceFieldEditing
+        #else
+        return isUtilityPillChromeExpanded || isBrowseUtilitySearchFocused
+        #endif
     }
     /// UIKit paging bridge + cream bubble driver (shared by scroll observer and hub bar).
     #if os(iOS)
@@ -3263,7 +3303,12 @@ struct UnifiedProviderHomeScreen: View {
             syncHubPagingAfterHomeShellNavigationChange(pathDepth: count)
         }
         .task {
-            await loadProviders()
+            ConsumerBrowseLocationController.shared.prepareForBrowseAppearance()
+            // Hub / NavigationStack remounts cancel `.task` work; isolate like pull-to-refresh so the
+            // first provider fetch (which may wait on GPS) still completes.
+            await OnCutsPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
+                await loadProviders()
+            }
             await loadUnifiedConsumerBookingsForHome()
             await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager)
         }
@@ -3278,6 +3323,9 @@ struct UnifiedProviderHomeScreen: View {
                 hubTabSyncPagingScrollToSelection = true
                 #endif
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .consumerBrowseLocationDidChange)) { _ in
+            Task { await loadProviders() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .messagingUnreadCountShouldRefresh)) { _ in
             Task { await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager) }
@@ -3490,6 +3538,9 @@ struct UnifiedProviderHomeScreen: View {
             todayBookingActivity: homeTodayBookingHighlight,
             pendingPaymentBooking: homePendingPaymentHighlight,
             onMaxDistanceTap: unifiedBrowseOnMaxDistanceTap,
+            onBrowseRadiusCommitted: {
+                Task { await loadProviders() }
+            },
             hidesQuickNavigationIcons: true,
             utilitySearchFieldFocused: $isBrowseUtilitySearchFocused,
             utilityPillSuppressesHubPaging: $isUtilityPillChromeExpanded,
@@ -3724,9 +3775,31 @@ struct UnifiedProviderHomeScreen: View {
     private var emptyState: some View {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let noProvidersInRadius = serviceProviders.isEmpty
+        let locationLabel = ConsumerBrowseLocationController.shared.locationLabel
+        let miles = Int(ConsumerBrowseDistancePreference.maxDistanceMiles.rounded())
+        let distanceOn = ConsumerBrowseDistancePreference.constrainBrowseListByDistance
 
         if trimmed.isEmpty, noProvidersInRadius {
-            HomeNoBarbersInRadiusEmptyLabel()
+            if distanceOn {
+                HomeNoBarbersInRadiusEmptyLabel(
+                    miles: miles,
+                    locationLabel: locationLabel
+                )
+            } else {
+                VStack(spacing: .space4) {
+                    Spacer()
+                    Image(systemName: "person.2")
+                        .font(OnCutsFont.system(size: 60))
+                        .foregroundStyle(Color.lavaShellCreamTertiary)
+                    Text("No providers available yet")
+                        .font(OnCutsFont.headlineMedium)
+                        .foregroundStyle(Color.lavaShellCream)
+                    Text("Check back later")
+                        .onCutsStyle(.bodyMedium)
+                    Spacer()
+                }
+                .padding()
+            }
         } else {
             VStack(spacing: .space4) {
                 Spacer()
@@ -3793,15 +3866,28 @@ private struct StickyProviderBrowseChrome: View {
                 providers: providers
             )
             VStack(spacing: 0) {
-                SearchBar(
-                    text: $searchText,
-                    placeholder: "Search operators",
-                    fillsSearchFieldBackground: false
+                #if os(iOS)
+                ConsumerBrowseLocationChrome(
+                    locationController: ConsumerBrowseLocationController.shared,
+                    usesGlassChrome: false
                 )
-                .padding(.horizontal, .space4)
-                .padding(.top, .space3)
-                .padding(.bottom, .space2)
+                #endif
+                if !ConsumerBrowseLocationController.shared.isPlaceFieldEditing {
+                    SearchBar(
+                        text: $searchText,
+                        placeholder: "Search operators",
+                        fillsSearchFieldBackground: false
+                    )
+                    .padding(.horizontal, .space4)
+                    .padding(.top, .space3)
+                    .padding(.bottom, .space2)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
             }
+            .animation(
+                .spring(response: 0.32, dampingFraction: 0.88),
+                value: ConsumerBrowseLocationController.shared.isPlaceFieldEditing
+            )
             .frame(maxWidth: .infinity, alignment: .top)
             .background {
                 Group {
@@ -3911,8 +3997,11 @@ struct CategoryChip: View {
 
 /// Shown when `GET /barbers` returns no providers within the consumer’s distance preference.
 private struct HomeNoBarbersInRadiusEmptyLabel: View {
+    var miles: Int = Int(ConsumerBrowseDistancePreference.maxDistanceMiles.rounded())
+    var locationLabel: String = ConsumerBrowseLocationController.shared.locationLabel
+
     var body: some View {
-        Text("No service providers in your selectable radius")
+        Text("No providers within \(miles) mi of \(locationLabel)")
             .font(OnCutsFont.headlineMedium)
             .foregroundStyle(Color.lavaShellCream)
             .multilineTextAlignment(.center)

@@ -10,6 +10,8 @@ import Foundation
 extension Notification.Name {
     /// Posted when the user changes **Maximum distance** on the browse screen.
     static let consumerBrowseMaxDistanceDidChange = Notification.Name("consumerBrowseMaxDistanceDidChange")
+    /// Posted when device tracking or the manual browse place changes (Home should reload providers).
+    static let consumerBrowseLocationDidChange = Notification.Name("consumerBrowseLocationDidChange")
     /// Posted after a thread is loaded and marked read so global message badges can refetch `GET /messages/unread-count`.
     static let messagingUnreadCountShouldRefresh = Notification.Name("messagingUnreadCountShouldRefresh")
     /// Posted after the user blocks someone so inbox lists refetch and hide that counterparty immediately.
@@ -53,14 +55,59 @@ enum OnCutsPushNavigationPayload {
     }
 }
 
+/// Saved town/place used when device tracking is off (web key: `oncuts_selected_college_town`).
+struct ConsumerBrowsePlace: Codable, Hashable, Sendable {
+    var label: String
+    var latitude: Double
+    var longitude: Double
+
+    var trimmedLabel: String {
+        label.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
 enum ConsumerBrowseDistancePreference {
     private static let key = "consumer.browse.maxDistanceMiles"
     private static let constrainKey = "consumer.browse.constrainListByDistance"
+    private static let deviceTrackingKey = "consumer.browse.deviceTracking"
+    private static let manualPlaceKey = "oncuts_selected_college_town"
 
     static let minimumMiles: Double = 1
     static let maximumMiles: Double = 100
     /// Within 1…100 mi; default 25 mi when no valid preference is stored.
     static let defaultMiles: Double = 25
+
+    /// When `true` (default), browse center prefers device GPS; when `false`, uses ``manualPlace``.
+    static var deviceTrackingEnabled: Bool {
+        get {
+            if UserDefaults.standard.object(forKey: deviceTrackingKey) == nil {
+                return true
+            }
+            return UserDefaults.standard.bool(forKey: deviceTrackingKey)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: deviceTrackingKey)
+            NotificationCenter.default.post(name: .consumerBrowseLocationDidChange, object: nil)
+        }
+    }
+
+    /// Manually chosen place (city/town) for browse centering when tracking is off.
+    static var manualPlace: ConsumerBrowsePlace? {
+        get {
+            guard let data = UserDefaults.standard.data(forKey: manualPlaceKey) else { return nil }
+            return try? JSONDecoder().decode(ConsumerBrowsePlace.self, from: data)
+        }
+        set {
+            if let newValue {
+                if let data = try? JSONEncoder().encode(newValue) {
+                    UserDefaults.standard.set(data, forKey: manualPlaceKey)
+                }
+            } else {
+                UserDefaults.standard.removeObject(forKey: manualPlaceKey)
+            }
+            NotificationCenter.default.post(name: .consumerBrowseLocationDidChange, object: nil)
+        }
+    }
 
     /// When `false`, `GET /barbers` is called **without** `lat`/`lng` so the server returns the full consumer list (rating order), same as before location-aware browse.
     static var constrainBrowseListByDistance: Bool {

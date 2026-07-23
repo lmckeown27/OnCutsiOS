@@ -485,6 +485,8 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     var pendingPaymentBooking: HomePendingPaymentHighlight? = nil
     /// iOS: opens maximum-distance sheet (`ConsumerBrowseDistanceSheet`). Omitted on macOS where browse geo uses no `lat`/`lng`.
     var onMaxDistanceTap: (() -> Void)? = nil
+    /// Called after the inline MI radius slider commits a new preference (parent should reload providers).
+    var onBrowseRadiusCommitted: (() -> Void)? = nil
     /// When `true`, hides Messages / Bookings / profile avatar from the right split capsule (replaced by `ConsumerStickyHubBar`).
     var hidesQuickNavigationIcons: Bool = false
     /// When provided, mirrors utility-pill search `FocusState` so parents can hide UI (e.g. bottom hub) while the user types.
@@ -548,8 +550,14 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     private static var pullRefreshWheelRevealDistance: CGFloat { 56 }
     /// Taller than the collapsed utility pill so service chips are easier to scan and tap.
     private static var serviceTagsExpandedBarMinHeight: CGFloat { 88 }
-    /// Fallback before the utility chrome preference reports — pill row (56) + top inset (4) + list gap (`.space4`).
-    private static var headerHeightFallbackUtilityOnly: CGFloat { 4 + utilityPillMainBarHeight + GlassHeaderConstants.utilityPillToBookingSpacing }
+    /// Fallback before the utility chrome preference reports — location chrome + pill row + top inset + list gap.
+    private static var headerHeightFallbackUtilityOnly: CGFloat {
+        #if os(iOS)
+        return 4 + 72 + utilityPillMainBarHeight + GlassHeaderConstants.utilityPillToBookingSpacing
+        #else
+        return 4 + utilityPillMainBarHeight + GlassHeaderConstants.utilityPillToBookingSpacing
+        #endif
+    }
 
     private var shouldShowRadiusSlider: Bool {
         #if os(iOS)
@@ -564,10 +572,20 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         headerMeasuredHeight > 2 ? headerMeasuredHeight : Self.headerHeightFallbackUtilityOnly
     }
 
-    /// Resting clearance from scroll top to booking — pill row only, not the inflated full-chrome measure.
+    /// Resting clearance from scroll top to booking / list — full measured chrome (location + pill), not pill-only.
     private var utilityPillBookingStackOffset: CGFloat {
-        let topInset = showsHomePinnedBookingStripes ? 4 : 10
-        return CGFloat(topInset) + Self.utilityPillMainBarHeight + GlassHeaderConstants.utilityPillToBookingSpacing
+        let gap = GlassHeaderConstants.utilityPillToBookingSpacing
+        if headerMeasuredHeight > 2 {
+            return headerMeasuredHeight + gap
+        }
+        let topInset = CGFloat(showsHomePinnedBookingStripes ? 4 : 10)
+        #if os(iOS)
+        // Fallback before first measure: location label + toggle + spacing above the pill.
+        let locationChromeEstimate: CGFloat = 72
+        #else
+        let locationChromeEstimate: CGFloat = 0
+        #endif
+        return topInset + locationChromeEstimate + Self.utilityPillMainBarHeight + gap
     }
 
     /// Vertical inset for the custom pull-to-refresh wheel — centered in the gap below the utility pill and above the upcoming booking / first provider card.
@@ -575,12 +593,22 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         if isSearchExpanded || isServiceTagsExpanded || isAdjustingRadius {
             return safeAreaTop + browseTopUnderlap + effectiveHeaderHeight * 0.5 + GlassHeaderConstants.pullRefreshWheelVerticalNudge
         }
-        let topInset = CGFloat(showsHomePinnedBookingStripes ? 4 : 10)
-        let pillBottom = safeAreaTop + browseTopUnderlap + topInset + Self.utilityPillMainBarHeight
+        let chromeBottom = safeAreaTop + browseTopUnderlap + (
+            headerMeasuredHeight > 2
+                ? headerMeasuredHeight
+                : {
+                    let topInset = CGFloat(showsHomePinnedBookingStripes ? 4 : 10)
+                    #if os(iOS)
+                    return topInset + 72 + Self.utilityPillMainBarHeight
+                    #else
+                    return topInset + Self.utilityPillMainBarHeight
+                    #endif
+                }()
+        )
         let gapBelowPill: CGFloat = showsHomePinnedBookingStripes
             ? GlassHeaderConstants.utilityPillToBookingSpacing
             : 10
-        return pillBottom + gapBelowPill * 0.5 + GlassHeaderConstants.pullRefreshWheelVerticalNudge
+        return chromeBottom + gapBelowPill * 0.5 + GlassHeaderConstants.pullRefreshWheelVerticalNudge
     }
 
     /// 0…1 progress for the reload wheel load-in (pull gesture or active refresh).
@@ -597,6 +625,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     private var utilityPillHandoffClearance: CGFloat {
         if showsHomePinnedBookingStripes,
            !isSearchExpanded, !isServiceTagsExpanded, !isAdjustingRadius {
+            // Include location chrome + pill so payment / booking cards sit fully below the floating header.
             return utilityPillBookingStackOffset
         }
         let gap = showsHomePinnedBookingStripes ? GlassHeaderConstants.utilityPillToBookingSpacing : 0
@@ -716,8 +745,16 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         ProviderBrowseServiceCatalog.serviceNames(for: selectedServiceType)
     }
 
+    private var isManualPlaceFieldEditing: Bool {
+        #if os(iOS)
+        ConsumerBrowseLocationController.shared.isPlaceFieldEditing
+        #else
+        false
+        #endif
+    }
+
     private var utilityPillChromeBlocksParentHubPaging: Bool {
-        isSearchExpanded || isServiceTagsExpanded || isAdjustingRadius
+        isSearchExpanded || isServiceTagsExpanded || isAdjustingRadius || isManualPlaceFieldEditing
     }
 
     /// Expanded search session (`isSearchExpanded`); drives wide pill + suggestions.
@@ -787,18 +824,23 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         withAnimation(Self.radiusMorphSpring) {
             isAdjustingRadius = false
         }
+        onBrowseRadiusCommitted?()
     }
 
     /// True when expanded search, tags, radius slider, or keyboard would steal the first list tap.
     private var shouldDismissUtilityChromeOnListTap: Bool {
-        isSearchExpanded || isServiceTagsExpanded || isAdjustingRadius || isSearchFieldFocused
+        isSearchExpanded || isServiceTagsExpanded || isAdjustingRadius || isSearchFieldFocused || isManualPlaceFieldEditing
     }
 
     /// Collapses search, tag picker, and keyboard when the user scrolls / taps the list backdrop.
     private func dismissChromeFromScroll() {
         if isAdjustingRadius {
             applyRadiusEditingToPreference()
+            onBrowseRadiusCommitted?()
         }
+        #if os(iOS)
+        ConsumerBrowseLocationController.shared.resignPlaceFieldFocus()
+        #endif
         withAnimation(Self.utilityPillSearchSpring) {
             isSearchFieldFocused = false
             isSearchExpanded = false
@@ -1019,7 +1061,22 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .onChange(of: isSearchFieldFocused) { _, focused in
-                utilitySearchFieldFocused?.wrappedValue = focused
+                // Keep hub suppressed if the manual place field still owns the keyboard.
+                utilitySearchFieldFocused?.wrappedValue = focused || isManualPlaceFieldEditing
+            }
+            .onChange(of: isManualPlaceFieldEditing) { _, editing in
+                utilityPillSuppressesHubPaging?.wrappedValue = utilityPillChromeBlocksParentHubPaging
+                utilitySearchFieldFocused?.wrappedValue = editing || isSearchFieldFocused
+                if editing {
+                    withAnimation(Self.utilityPillSearchSpring) {
+                        isSearchExpanded = false
+                        isServiceTagsExpanded = false
+                        if isAdjustingRadius {
+                            applyRadiusEditingToPreference()
+                            isAdjustingRadius = false
+                        }
+                    }
+                }
             }
             .onChange(of: utilityPillChromeBlocksParentHubPaging) { _, active in
                 utilityPillSuppressesHubPaging?.wrappedValue = active
@@ -1048,31 +1105,45 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     .matchedGeometryEffect(id: "browseRadiusGlass", in: radiusMorphNamespace)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .center, spacing: 16) {
-                        if isServiceTagsExpanded {
-                            expandedServiceTagsGlassBar
-                                .scaleEffect(serviceTypeControlScale)
-                                .frame(maxWidth: .infinity)
-                                .matchedGeometryEffect(id: "browseServiceTagsGlass", in: serviceTagsMorphNamespace)
-                        } else {
-                            floatingUtilityPill
-                                .scaleEffect(serviceTypeControlScale)
-                                .frame(maxWidth: .infinity)
-                        }
-
-                        if !hidesQuickNavigationIcons && !isSearchExpanded && !isServiceTagsExpanded {
-                            rightNavOnlyCapsule
-                        }
+                    #if os(iOS)
+                    if !isSearchExpanded && !isServiceTagsExpanded {
+                        ConsumerBrowseLocationChrome(
+                            locationController: ConsumerBrowseLocationController.shared,
+                            usesGlassChrome: true
+                        )
+                        .zIndex(40)
                     }
-                    .padding(.horizontal, (isSearchExpanded || isServiceTagsExpanded) ? 20 : 0)
-                    .animation(Self.utilityPillSearchSpring, value: isSearchExpanded)
-                    .animation(Self.radiusMorphSpring, value: isServiceTagsExpanded)
-                    .frame(
-                        minHeight: isServiceTagsExpanded
-                            ? Self.serviceTagsExpandedBarMinHeight
-                            : Self.utilityPillMainBarHeight,
-                        alignment: .center
-                    )
+                    #endif
+                    // Hide utility pill while typing a manual place (same idea as search hiding location chrome).
+                    if !isManualPlaceFieldEditing {
+                        HStack(alignment: .center, spacing: 16) {
+                            if isServiceTagsExpanded {
+                                expandedServiceTagsGlassBar
+                                    .scaleEffect(serviceTypeControlScale)
+                                    .frame(maxWidth: .infinity)
+                                    .matchedGeometryEffect(id: "browseServiceTagsGlass", in: serviceTagsMorphNamespace)
+                            } else {
+                                floatingUtilityPill
+                                    .scaleEffect(serviceTypeControlScale)
+                                    .frame(maxWidth: .infinity)
+                            }
+
+                            if !hidesQuickNavigationIcons && !isSearchExpanded && !isServiceTagsExpanded {
+                                rightNavOnlyCapsule
+                            }
+                        }
+                        .zIndex(1)
+                        .padding(.horizontal, (isSearchExpanded || isServiceTagsExpanded) ? 20 : 0)
+                        .animation(Self.utilityPillSearchSpring, value: isSearchExpanded)
+                        .animation(Self.radiusMorphSpring, value: isServiceTagsExpanded)
+                        .frame(
+                            minHeight: isServiceTagsExpanded
+                                ? Self.serviceTagsExpandedBarMinHeight
+                                : Self.utilityPillMainBarHeight,
+                            alignment: .center
+                        )
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
 
                     if showsSearchSuggestionsPanel {
                         searchLiveSuggestionsPanel
@@ -1080,6 +1151,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     }
                 }
                 .animation(Self.utilityPillSearchSpring, value: showsSearchSuggestionsPanel)
+                .animation(Self.utilityPillSearchSpring, value: isManualPlaceFieldEditing)
             }
         }
         .animation(Self.utilityPillSearchSpring, value: isSearchExpanded)

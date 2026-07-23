@@ -90,6 +90,13 @@ final class ConsumerLocationFetcher: NSObject, CLLocationManagerDelegate {
     private func performResolve(timeoutSeconds: TimeInterval) async -> ConsumerNearbyLocationResult {
         let authorized = await ensureAuthorized()
         guard authorized else { return .permissionDenied }
+        // Prefer a fresh enough cached fix so cold launch does not sit in `.loading` for the full timeout.
+        if let cached = manager.location,
+           cached.horizontalAccuracy >= 0,
+           cached.timestamp.timeIntervalSinceNow > -180,
+           CLLocationCoordinate2DIsValid(cached.coordinate) {
+            return .coordinate(cached.coordinate)
+        }
         if let coord = await waitForFirstFix(timeoutSeconds: timeoutSeconds) {
             return .coordinate(coord)
         }
