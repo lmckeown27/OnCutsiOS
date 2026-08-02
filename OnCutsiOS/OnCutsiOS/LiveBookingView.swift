@@ -306,11 +306,11 @@ struct LiveBookingView: View {
 
             if let igURL = provider.instagramProfileURL {
                 Link(destination: igURL) {
-                    Label("Instagram", systemImage: "camera.fill")
-                        .font(OnCutsFont.subheadline(weight: .medium))
-                        .labelStyle(.iconOnly)
-                        .foregroundStyleOnCutsShellIcon()
-                        .frame(width: 36, height: 36)
+                    Image("Instagram")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 40, height: 40)
+                        .frame(width: 52, height: 52)
                         .background {
                             Circle().fill(.ultraThinMaterial)
                         }

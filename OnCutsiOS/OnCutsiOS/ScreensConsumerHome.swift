@@ -1633,20 +1633,16 @@ struct ServiceProviderDetailSheet: View {
                                 .foregroundStyle(detailHeadlineColor)
                             
                             Link(destination: instagramURL) {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "camera.fill")
-                                        .font(OnCutsFont.body)
-                                        .foregroundStyle(detailEmphasisColor)
+                                HStack(spacing: 14) {
+                                    Image("Instagram")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 36, height: 36)
                                         .accessibilityHidden(true)
-                                    
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Instagram")
-                                            .font(OnCutsFont.caption)
-                                            .foregroundStyle(detailCaptionColor)
-                                        Text(provider.instagramDisplayHandle)
-                                            .font(OnCutsFont.bodyMedium)
-                                            .foregroundStyle(detailHeadlineColor)
-                                    }
+
+                                    Text(provider.instagramDisplayHandle)
+                                        .font(OnCutsFont.bodyMedium)
+                                        .foregroundStyle(detailHeadlineColor)
                                     
                                     Spacer(minLength: 8)
                                     
@@ -2363,6 +2359,8 @@ struct UnifiedProviderHomeScreen: View {
     @State private var homeOuterPushedMessagingThread = false
     @State private var consumerBookingRows: [ConsumerBookingSimpleRow] = []
     @State private var showMaxDistanceSheet = false
+    /// Admin-controlled Home: nearby providers vs waitlist user count (`GET /platform/frontend-config`).
+    @State private var frontendConfigStore = PlatformFrontendConfigStore.shared
     /// Hides `ConsumerStickyHubBar` while the utility-pill search field is focused so it is not stacked above the keyboard.
     @State private var isBrowseUtilitySearchFocused = false
     /// Hides `ConsumerStickyHubBar` while Profile first/last name fields are focused (same reason as browse search).
@@ -2534,7 +2532,30 @@ struct UnifiedProviderHomeScreen: View {
     @ViewBuilder
     private var unifiedHubHomePage: some View {
         Group {
-            if #available(iOS 26.0, macOS 26.0, *) {
+            if !frontendConfigStore.hasCompletedInitialFetch {
+                ProgressView()
+                    .tint(Color.oliveGreen)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if frontendConfigStore.showsWaitlistHome {
+                ConsumerWaitlistHomeView(
+                    userCount: frontendConfigStore.config.consumerUserCount,
+                    isAuthenticated: sessionManager.isAuthenticated,
+                    isRefreshing: frontendConfigStore.isLoading,
+                    onRefresh: {
+                        await refreshUnifiedHomeSurfaceForPullToRefresh()
+                    },
+                    onCreateAccount: {
+                        showIntegratedSignUpSheet = true
+                    },
+                    onSignIn: {
+                        unifiedOAuthSignInShowsCreateAccountLink = false
+                        showOAuthSignInSheet = true
+                    }
+                )
+                #if os(iOS)
+                .background(Color.clear)
+                #endif
+            } else if #available(iOS 26.0, macOS 26.0, *) {
                 unifiedBrowseLiquidGlassRoot
             } else {
                 unifiedBrowseStack()
@@ -3024,7 +3045,7 @@ struct UnifiedProviderHomeScreen: View {
                         profileButton
                     }
                 }
-                if #unavailable(iOS 26.0) {
+                if #unavailable(iOS 26.0), !frontendConfigStore.showsWaitlistHome {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             showMaxDistanceSheet = true
@@ -3303,17 +3324,26 @@ struct UnifiedProviderHomeScreen: View {
             syncHubPagingAfterHomeShellNavigationChange(pathDepth: count)
         }
         .task {
-            ConsumerBrowseLocationController.shared.prepareForBrowseAppearance()
-            // Hub / NavigationStack remounts cancel `.task` work; isolate like pull-to-refresh so the
-            // first provider fetch (which may wait on GPS) still completes.
             await OnCutsPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
+                await frontendConfigStore.refresh()
+                if frontendConfigStore.showsWaitlistHome {
+                    return
+                }
+                ConsumerBrowseLocationController.shared.prepareForBrowseAppearance()
+                // Hub / NavigationStack remounts cancel `.task` work; isolate like pull-to-refresh so the
+                // first provider fetch (which may wait on GPS) still completes.
                 await loadProviders()
             }
             await loadUnifiedConsumerBookingsForHome()
             await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager)
         }
         .onChange(of: sessionManager.isAuthenticated) { _, authed in
-            Task { await loadProviders() }
+            Task {
+                await frontendConfigStore.refresh()
+                if !frontendConfigStore.showsWaitlistHome {
+                    await loadProviders()
+                }
+            }
             Task { await loadUnifiedConsumerBookingsForHome() }
             Task { await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager) }
             if !authed {
@@ -3325,6 +3355,7 @@ struct UnifiedProviderHomeScreen: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .consumerBrowseLocationDidChange)) { _ in
+            guard !frontendConfigStore.showsWaitlistHome else { return }
             Task { await loadProviders() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .messagingUnreadCountShouldRefresh)) { _ in
@@ -3390,9 +3421,16 @@ struct UnifiedProviderHomeScreen: View {
         }
     }
 
-    /// Home pull-to-refresh: provider list, bookings snapshot, and message unread badge — aligned with Messages (`reloadInbox` + badge) and Bookings (`load`).
+    /// Home pull-to-refresh: frontend config (waitlist vs providers), provider list when enabled, bookings, unread badge.
     @MainActor
     private func refreshUnifiedHomeSurface() async {
+        await frontendConfigStore.refresh()
+        if frontendConfigStore.showsWaitlistHome {
+            await loadUnifiedConsumerBookingsForHome()
+            await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager)
+            return
+        }
+        ConsumerBrowseLocationController.shared.prepareForBrowseAppearance()
         await loadProviders()
         await loadUnifiedConsumerBookingsForHome()
         await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager)
@@ -3818,6 +3856,7 @@ struct UnifiedProviderHomeScreen: View {
     }
     
     private func loadProviders() async {
+        guard !frontendConfigStore.showsWaitlistHome else { return }
         OnCutsSessionSync.appSessionManager = sessionManager
         await providerVM.loadProviders(bearerToken: sessionManager.currentSession?.token)
         providerListShuffleSeed = UInt64.random(in: 1 ... UInt64.max)

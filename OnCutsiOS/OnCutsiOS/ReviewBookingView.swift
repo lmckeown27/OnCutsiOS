@@ -101,19 +101,6 @@ struct ReviewBookingView: View {
                     .font(OnCutsLiquidGlassTypography.title(18, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
-
-                if let igURL = booking.instagramProfileURL {
-                    Link(destination: igURL) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "camera.fill")
-                                .font(OnCutsFont.caption(weight: .semibold))
-                                .foregroundStyleOnCutsShellIconSecondary()
-                            Text("Instagram")
-                                .font(OnCutsFont.subheadline(weight: .medium))
-                                .foregroundStyleOliveGreen()
-                        }
-                    }
-                }
             }
             Spacer(minLength: 0)
         }

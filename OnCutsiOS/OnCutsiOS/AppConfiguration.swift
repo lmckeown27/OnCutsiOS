@@ -200,6 +200,9 @@ enum AppConfiguration: Sendable {
     /// `POST` — same handler the OnCuts web app uses for simple bookings.
     static var urlBookingsSimpleCreate: URL { url(forPath: pathBookingsSimpleCreate) }
 
+    /// `GET …/api/v1/platform/frontend-config` — public; `consumerHomeMode`, waitlist count, cash flag.
+    static var urlPlatformFrontendConfig: URL { url(forPath: "/platform/frontend-config") }
+
     static func url(forPath path: String) -> URL {
         let trimmedBase = apiBaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let segment = path.hasPrefix("/") ? String(path.dropFirst()) : path

@@ -35,8 +35,7 @@ private enum PaymentTipButtonMetrics {
 
 /// Primary online payment CTAs (Apple Pay + Card).
 private let paymentPrimaryActionLabelFont = OnCutsFont.system(size: 19, weight: .bold, design: .default)
-// Cash checkout temporarily disabled.
-// private let paymentCashActionLabelFont = OnCutsFont.system(size: 16, weight: .semibold, design: .default)
+private let paymentCashActionLabelFont = OnCutsFont.system(size: 16, weight: .semibold, design: .default)
 
 private enum PaymentMethodButtonMetrics {
     static let primaryHeight: CGFloat = 58
@@ -123,8 +122,9 @@ struct ConsumerPaymentTakeoverView: View {
     @State private var isPaying = false
     @State private var isStartingApplePay = false
     @State private var isConfirmingCash = false
-    // Cash checkout temporarily disabled.
-    // @State private var showCashPaymentConfirm = false
+    /// When Admin enables cash (`cashPaymentEnabled`), user can select Cash — tips forced to $0.
+    @State private var prefersCashPayment = false
+    @State private var frontendConfigStore = PlatformFrontendConfigStore.shared
     /// Filled via `GET /bookings-simple/:id` when the socket payload omitted `barberAvatar` (e.g. older servers).
     @State private var enrichedBarberAvatarURL: String?
     /// Publishable key chosen in `configureStripeIfPossible` (server client-config or plist); reapplied at pay time so the SDK cannot drift from a stale value.
@@ -188,6 +188,10 @@ struct ConsumerPaymentTakeoverView: View {
             }
         }
         .task {
+            await frontendConfigStore.refresh()
+            if !frontendConfigStore.cashPaymentEnabled {
+                prefersCashPayment = false
+            }
             await configureStripeIfPossible()
             await enrichBookingMetadataIfNeeded()
         }
@@ -206,15 +210,17 @@ struct ConsumerPaymentTakeoverView: View {
                 }
             }
         }
-        // Cash checkout temporarily disabled.
-        // .alert("Confirm Cash Payment?", isPresented: $showCashPaymentConfirm) {
-        //     Button("Cancel", role: .cancel) {}
-        //     Button("Confirm") {
-        //         Task { await completeCashPayment() }
-        //     }
-        // } message: {
-        //     Text("Please ensure you have paid your provider in person.")
-        // }
+        .onChange(of: prefersCashPayment) { _, cash in
+            if cash {
+                selectedTipPreset = nil
+                tipAmountCents = 0
+            }
+        }
+        .onChange(of: frontendConfigStore.cashPaymentEnabled) { _, enabled in
+            if !enabled {
+                prefersCashPayment = false
+            }
+        }
     }
 
     private var loadingBlock: some View {
@@ -249,6 +255,19 @@ struct ConsumerPaymentTakeoverView: View {
     private var displayBarberName: String {
         let t = payload.barberName.trimmingCharacters(in: .whitespacesAndNewlines)
         return t.isEmpty ? "Your provider" : t
+    }
+
+    private var barberFirstName: String {
+        let parts = displayBarberName.split(whereSeparator: \.isWhitespace)
+        return parts.first.map(String.init) ?? displayBarberName
+    }
+
+    private var showsCashPaymentOption: Bool {
+        frontendConfigStore.cashPaymentEnabled
+    }
+
+    private var cashConfirmButtonTitle: String {
+        "Confirm Cash Payment \(payload.priceFormatted)"
     }
 
     private static let paymentAvatarCorner: CGFloat = 12
@@ -301,38 +320,60 @@ struct ConsumerPaymentTakeoverView: View {
                         .foregroundStyle(Color.lavaShellCream)
                         .multilineTextAlignment(.center)
 
-                    VStack(alignment: .center, spacing: 16) {
-                        Text("Tip")
-                            .font(paymentTipSectionTitleFont)
-                            .foregroundStyle(Color.lavaShellCreamSecondary)
-                            .textCase(.uppercase)
-                            .tracking(1.4)
+                    if !prefersCashPayment {
+                        VStack(alignment: .center, spacing: 16) {
+                            Text("Tip")
+                                .font(paymentTipSectionTitleFont)
+                                .foregroundStyle(Color.lavaShellCreamSecondary)
+                                .textCase(.uppercase)
+                                .tracking(1.4)
 
-                        tipPillRow
+                            tipPillRow
+                        }
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity)
 
                     VStack(spacing: 20) {
-                        Text(isApplePayConfigured ? "Pay with Apple Pay or Manually input card" : "Manually input card")
-                            .font(OnCutsFont.subheadline)
-                            .foregroundStyle(Color.lavaShellCreamTertiary)
-                            .multilineTextAlignment(.center)
-                            .fixedSize(horizontal: false, vertical: true)
+                        if prefersCashPayment {
+                            Text("Please give cash directly to \(barberFirstName)")
+                                .font(OnCutsFont.subheadline)
+                                .foregroundStyle(Color.lavaShellCreamTertiary)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
 
-                        VStack(spacing: 10) {
-                            if isApplePayConfigured {
-                                applePayPrimaryButton
-                                paymentMethodOrDivider
+                            cashConfirmPrimaryButton
+
+                            if showsCashPaymentOption {
+                                Button("Pay with card instead") {
+                                    prefersCashPayment = false
+                                }
+                                .font(OnCutsFont.footnote(weight: .semibold))
+                                .foregroundStyle(Color.lavaShellCreamSecondary)
+                                .disabled(isConfirmingCash)
+                            }
+                        } else {
+                            Text(isApplePayConfigured ? "Pay with Apple Pay or Manually input card" : "Manually input card")
+                                .font(OnCutsFont.subheadline)
+                                .foregroundStyle(Color.lavaShellCreamTertiary)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            VStack(spacing: 10) {
+                                if isApplePayConfigured {
+                                    applePayPrimaryButton
+                                    paymentMethodOrDivider
+                                }
+
+                                cardPrimaryButton
                             }
 
-                            cardPrimaryButton
-                        }
+                            if showsCashPaymentOption {
+                                paymentCashPreferenceHint
+                                    .padding(.top, 4)
 
-                        // Cash checkout temporarily disabled.
-                        // paymentCashPreferenceHint
-                        //     .padding(.top, 4)
-                        //
-                        // cashSecondaryButton
+                                cashSecondaryButton
+                            }
+                        }
 
                         if let bannerError {
                             Text(bannerError)
@@ -354,19 +395,18 @@ struct ConsumerPaymentTakeoverView: View {
             .accessibilityLabel("or")
     }
 
-    // Cash checkout temporarily disabled.
-    // private var paymentCashPreferenceHint: some View {
-    //     (
-    //         Text("If you prefer to pay with cash, select the ")
-    //             + Text("Cash").fontWeight(.semibold)
-    //             + Text(" option below.")
-    //     )
-    //     .font(OnCutsFont.footnote)
-    //     .foregroundStyle(Color.lavaShellCreamTertiary)
-    //     .multilineTextAlignment(.center)
-    //     .fixedSize(horizontal: false, vertical: true)
-    //     .frame(maxWidth: .infinity)
-    // }
+    private var paymentCashPreferenceHint: some View {
+        (
+            Text("If you prefer to pay with cash, select the ")
+                + Text("Cash").fontWeight(.semibold)
+                + Text(" option below.")
+        )
+        .font(OnCutsFont.footnote)
+        .foregroundStyle(Color.lavaShellCreamTertiary)
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity)
+    }
 
     @ViewBuilder
     private var applePayPrimaryButton: some View {
@@ -418,41 +458,64 @@ struct ConsumerPaymentTakeoverView: View {
         .buttonStyle(BookButtonStyle())
     }
 
-    // Cash checkout temporarily disabled.
-    // private var cashSecondaryButton: some View {
-    //     HStack {
-    //         Spacer(minLength: 0)
-    //         Button {
-    //             showCashPaymentConfirm = true
-    //         } label: {
-    //             HStack(spacing: 8) {
-    //                 if isConfirmingCash {
-    //                     ProgressView()
-    //                         .controlSize(.small)
-    //                         .tint(Color.paymentOutlineButtonLabel)
-    //                 } else {
-    //                     Image(systemName: "banknote")
-    //                         .font(OnCutsFont.subheadline(weight: .semibold))
-    //                 }
-    //                 Text(isConfirmingCash ? "Completing…" : "Cash")
-    //                     .font(paymentCashActionLabelFont)
-    //             }
-    //             .foregroundStyle(Color.paymentOutlineButtonLabel)
-    //             .padding(.horizontal, PaymentMethodButtonMetrics.cashHorizontalPadding)
-    //             .padding(.vertical, PaymentMethodButtonMetrics.cashVerticalPadding)
-    //             .background(Color.clear)
-    //             .clipShape(Capsule(style: .continuous))
-    //             .overlay(
-    //                 Capsule(style: .continuous)
-    //                     .stroke(Color.paymentOutlineButtonLabel, lineWidth: 1)
-    //             )
-    //             .contentShape(Capsule(style: .continuous))
-    //         }
-    //         .disabled(isConfirmingCash || isPaying || isStartingApplePay)
-    //         .buttonStyle(BookButtonStyle())
-    //         Spacer(minLength: 0)
-    //     }
-    // }
+    private var cashSecondaryButton: some View {
+        HStack {
+            Spacer(minLength: 0)
+            Button {
+                prefersCashPayment = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "banknote")
+                        .font(OnCutsFont.subheadline(weight: .semibold))
+                    Text("Cash")
+                        .font(paymentCashActionLabelFont)
+                }
+                .foregroundStyle(Color.paymentOutlineButtonLabel)
+                .padding(.horizontal, PaymentMethodButtonMetrics.cashHorizontalPadding)
+                .padding(.vertical, PaymentMethodButtonMetrics.cashVerticalPadding)
+                .background(Color.clear)
+                .clipShape(Capsule(style: .continuous))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .stroke(Color.paymentOutlineButtonLabel, lineWidth: 1)
+                )
+                .contentShape(Capsule(style: .continuous))
+            }
+            .disabled(isConfirmingCash || isPaying || isStartingApplePay)
+            .buttonStyle(BookButtonStyle())
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var cashConfirmPrimaryButton: some View {
+        Button {
+            Task { await completeCashPayment() }
+        } label: {
+            HStack(spacing: 12) {
+                if isConfirmingCash {
+                    ProgressView()
+                        .tint(Color.paymentFilledButtonLabel)
+                } else {
+                    Image(systemName: "banknote.fill")
+                        .font(OnCutsFont.title3(weight: .semibold))
+                        .foregroundStyle(Color.paymentFilledButtonLabel)
+                }
+                Text(isConfirmingCash ? "Completing…" : cashConfirmButtonTitle)
+                    .font(paymentPrimaryActionLabelFont)
+                    .foregroundStyle(Color.paymentFilledButtonLabel)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: PaymentMethodButtonMetrics.primaryHeight)
+            .padding(.horizontal, 12)
+            .background(Color.paymentFilledButtonFill)
+            .clipShape(RoundedRectangle(cornerRadius: PaymentMethodButtonMetrics.primaryCornerRadius, style: .continuous))
+        }
+        .disabled(isConfirmingCash || isPaying || isStartingApplePay)
+        .buttonStyle(BookButtonStyle())
+    }
 
     private var tipPillRow: some View {
         HStack {
@@ -701,42 +764,53 @@ struct ConsumerPaymentTakeoverView: View {
         }
     }
 
-    // Cash checkout temporarily disabled.
-    // @MainActor
-    // private func completeCashPayment() async {
-    //     bannerError = nil
-    //     isConfirmingCash = true
-    //     do {
-    //         try await BookingSimplePaymentAPI.payWithCash(
-    //             bookingId: payload.bookingId,
-    //             tipAmountCents: tipAmountCents,
-    //             bearerToken: sessionManager.currentSession?.token
-    //         )
-    //         isConfirmingCash = false
-    //         // Dismiss the fullScreenCover on the next run loop tick so SwiftUI isn’t updating the presented view and toggling `activePaymentRequest` in the same frame (avoids black flash / broken dismissal).
-    //         await Task.yield()
-    //         NotificationCenter.default.post(name: .onCutsNavigateToConsumerHomeAfterPayment, object: nil)
-    //         await Task.yield()
-    //         let barberAvatarForReview = enrichedBarberAvatarURL ?? payload.barberAvatarURL
-    //         chatViewModel.clearPaymentTakeover()
-    //         await Task.yield()
-    //         await chatViewModel.pruneInboxAfterBookingConversationDeleted(
-    //             bookingId: payload.bookingId,
-    //             sessionManager: sessionManager
-    //         )
-    //         await chatViewModel.refreshConsumerBookingsAndSyncPayment(sessionManager: sessionManager)
-    //         await Task.yield()
-    //         chatViewModel.beginPostPaymentReview(from: payload, barberAvatarURLOverride: barberAvatarForReview)
-    //     } catch {
-    //         isConfirmingCash = false
-    //         let ns = error as NSError
-    //         if ns.domain == "BookingSimplePaymentAPI", ns.code == 401 {
-    //             await sessionManager.recoverSessionAfterUnauthorized()
-    //             return
-    //         }
-    //         bannerError = error.localizedDescription
-    //     }
-    // }
+    @MainActor
+    private func completeCashPayment() async {
+        bannerError = nil
+        guard frontendConfigStore.cashPaymentEnabled else {
+            prefersCashPayment = false
+            bannerError = "Cash payments are currently disabled"
+            return
+        }
+        tipAmountCents = 0
+        selectedTipPreset = nil
+        isConfirmingCash = true
+        do {
+            try await BookingSimplePaymentAPI.payWithCash(
+                bookingId: payload.bookingId,
+                tipAmountCents: 0,
+                bearerToken: sessionManager.currentSession?.token
+            )
+            isConfirmingCash = false
+            // Dismiss the fullScreenCover on the next run loop tick so SwiftUI isn’t updating the presented view and toggling `activePaymentRequest` in the same frame (avoids black flash / broken dismissal).
+            await Task.yield()
+            NotificationCenter.default.post(name: .onCutsNavigateToConsumerHomeAfterPayment, object: nil)
+            await Task.yield()
+            let barberAvatarForReview = enrichedBarberAvatarURL ?? payload.barberAvatarURL
+            chatViewModel.clearPaymentTakeover()
+            await Task.yield()
+            await chatViewModel.pruneInboxAfterBookingConversationDeleted(
+                bookingId: payload.bookingId,
+                sessionManager: sessionManager
+            )
+            await chatViewModel.refreshConsumerBookingsAndSyncPayment(sessionManager: sessionManager)
+            await Task.yield()
+            chatViewModel.beginPostPaymentReview(from: payload, barberAvatarURLOverride: barberAvatarForReview)
+        } catch {
+            isConfirmingCash = false
+            if BookingSimplePaymentAPI.isUnauthorizedHTTPError(error) {
+                await sessionManager.recoverSessionAfterUnauthorized()
+                return
+            }
+            if BookingSimplePaymentAPI.isCashPaymentsDisabledHTTPError(error) {
+                prefersCashPayment = false
+                await frontendConfigStore.refresh()
+                bannerError = "Cash payments are currently disabled"
+                return
+            }
+            bannerError = error.localizedDescription
+        }
+    }
 }
 
 private extension UIApplication {

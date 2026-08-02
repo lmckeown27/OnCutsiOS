@@ -27,6 +27,12 @@ enum BookingSimplePaymentAPI {
         return ns.domain == "BookingSimplePaymentAPI" && ns.code == 401
     }
 
+    /// Admin disabled cash (`403` from `POST …/pay`).
+    static func isCashPaymentsDisabledHTTPError(_ error: Error) -> Bool {
+        let ns = error as NSError
+        return ns.domain == "BookingSimplePaymentAPI" && ns.code == 403
+    }
+
     /// `POST /api/v1/bookings-simple/:id/create-payment-intent`
     static func createPaymentIntent(
         bookingId: String,
@@ -137,7 +143,9 @@ enum BookingSimplePaymentAPI {
             throw URLError(.badServerResponse)
         }
         guard (200 ... 299).contains(http.statusCode) else {
-            let msg = String(data: data, encoding: .utf8) ?? HTTPURLResponse.localizedString(forStatusCode: http.statusCode)
+            let msg = serverMessage(from: data)
+                ?? String(data: data, encoding: .utf8)
+                ?? HTTPURLResponse.localizedString(forStatusCode: http.statusCode)
             throw NSError(
                 domain: "BookingSimplePaymentAPI",
                 code: http.statusCode,
@@ -145,5 +153,15 @@ enum BookingSimplePaymentAPI {
             )
         }
         return data
+    }
+
+    private static func serverMessage(from data: Data) -> String? {
+        struct ErrEnvelope: Decodable {
+            let message: String?
+            let error: String?
+        }
+        guard let decoded = try? JSONDecoder().decode(ErrEnvelope.self, from: data) else { return nil }
+        let m = (decoded.message ?? decoded.error)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (m?.isEmpty == false) ? m : nil
     }
 }

@@ -301,14 +301,11 @@ struct BookingIntakeView: View {
 
                 if let igURL = provider.instagramProfileURL {
                     Link(destination: igURL) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "camera.fill")
-                                .font(OnCutsFont.caption(weight: .semibold))
-                                .foregroundStyleOnCutsShellIconSecondary()
-                            Text("Instagram")
-                                .font(OnCutsFont.subheadline(weight: .medium))
-                                .foregroundStyleOliveGreen()
-                        }
+                        Image("Instagram")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 28, height: 28)
+                            .accessibilityLabel("Instagram")
                     }
                     .opacity(headerCollapse > 0.95 ? 0 : 1)
                     .frame(height: headerCollapse > 0.95 ? 0 : nil)
