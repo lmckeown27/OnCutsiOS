@@ -2,7 +2,7 @@
 //  PostPaymentReviewContext.swift
 //  OnCuts
 //
-//  Shown after card/cash payment so the consumer can rate the provider (0 = skip, 1–5 submitted to API).
+//  Shown after card/cash payment so the consumer can rate satisfaction (faces → 1/3/5) and optionally comment.
 //
 
 import Foundation

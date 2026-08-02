@@ -238,7 +238,7 @@ final class ChatViewModel: ObservableObject {
     /// Booking ids the user dismissed with **Pay later** — `syncPaymentTakeover` / socket will not auto-present again until they tap **Pay** on the booking detail.
     private var deferredPaymentTakeoverBookingIds: Set<String> = []
 
-    /// After successful pay (card/cash), optional star + text review before returning home.
+    /// After successful pay (card/cash), optional satisfaction + text review before returning home.
     @Published var postPaymentReviewContext: PostPaymentReviewContext?
 
     /// Same handoff shape as inbox `NavigationLink` → `MessagingConversationView`.

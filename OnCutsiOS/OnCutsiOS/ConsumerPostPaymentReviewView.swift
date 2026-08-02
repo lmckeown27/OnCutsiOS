@@ -2,12 +2,41 @@
 //  ConsumerPostPaymentReviewView.swift
 //  OnCuts
 //
-//  After paying, rate the provider (0 = no rating) and optionally leave a written review.
+//  After paying, rate satisfaction with three faces and optionally leave a written review.
 //
 
 #if os(iOS)
 import SwiftUI
 import UIKit
+
+/// Three-face satisfaction choice mapped to the bookings-simple `rating` (1…5) API.
+private enum PostPaymentSatisfaction: Int, CaseIterable, Identifiable {
+    case dissatisfied = 1
+    case neutral = 3
+    case satisfied = 5
+
+    var id: Int { rawValue }
+
+    var assetName: String {
+        switch self {
+        case .dissatisfied: return "Dissatisfied Face"
+        case .neutral: return "Neutral Face"
+        case .satisfied: return "Satisfied Face"
+        }
+    }
+
+    var accessibilityLabel: String {
+        switch self {
+        case .dissatisfied: return "Dissatisfied"
+        case .neutral: return "Neutral"
+        case .satisfied: return "Satisfied"
+        }
+    }
+
+    var caption: String {
+        accessibilityLabel
+    }
+}
 
 struct ConsumerPostPaymentReviewView: View {
     let context: PostPaymentReviewContext
@@ -15,8 +44,8 @@ struct ConsumerPostPaymentReviewView: View {
 
     @EnvironmentObject private var chatViewModel: ChatViewModel
 
-    /// 0 = no star rating (skip rating on API); 1…5 are submitted.
-    @State private var starRating: Int = 0
+    /// `nil` = no selection (skip rating on submit / “Not now”).
+    @State private var selectedSatisfaction: PostPaymentSatisfaction?
     @State private var comment: String = ""
     @State private var isSubmitting = false
     @State private var bannerError: String?
@@ -36,7 +65,7 @@ struct ConsumerPostPaymentReviewView: View {
                                 .multilineTextAlignment(.center)
                                 .onTapGesture { dismissReviewKeyboard() }
 
-                            interactiveStarRow
+                            interactiveSatisfactionRow
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 4)
 
@@ -119,29 +148,41 @@ struct ConsumerPostPaymentReviewView: View {
         .interactiveDismissDisabled()
     }
 
-    private var interactiveStarRow: some View {
-        HStack(spacing: 10) {
-            ForEach(1 ... 5, id: \.self) { index in
+    private var interactiveSatisfactionRow: some View {
+        HStack(spacing: 20) {
+            ForEach(PostPaymentSatisfaction.allCases) { option in
+                let isSelected = selectedSatisfaction == option
                 Button {
                     dismissReviewKeyboard()
-                    if starRating == index {
-                        starRating = 0
+                    if selectedSatisfaction == option {
+                        selectedSatisfaction = nil
                     } else {
-                        starRating = index
+                        selectedSatisfaction = option
                     }
                 } label: {
-                    Image(systemName: index <= starRating ? "star.fill" : "star")
-                        .font(OnCutsFont.system(size: 36, weight: .medium))
-                        .foregroundStyle(
-                            index <= starRating
-                                ? Color(red: 1, green: 0.84, blue: 0.35)
-                                : Color.onCutsShellForegroundTertiary
-                        )
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
+                    VStack(spacing: 10) {
+                        Image(option.assetName)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 72, height: 72)
+                            .opacity(selectedSatisfaction == nil || isSelected ? 1 : 0.38)
+                            .scaleEffect(isSelected ? 1.08 : 1)
+                            .animation(.spring(response: 0.28, dampingFraction: 0.82), value: selectedSatisfaction)
+
+                        Text(option.caption)
+                            .font(OnCutsFont.caption(weight: isSelected ? .semibold : .medium))
+                            .foregroundStyle(
+                                isSelected
+                                    ? Color.lavaShellCream
+                                    : Color.onCutsShellForegroundTertiary
+                            )
+                    }
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Set rating to \(index) stars")
+                .accessibilityLabel(option.accessibilityLabel)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
         }
     }
@@ -179,7 +220,7 @@ struct ConsumerPostPaymentReviewView: View {
     @MainActor
     private func finishReviewFlow() async {
         bannerError = nil
-        if starRating < 1 {
+        guard let selectedSatisfaction else {
             await skipWithoutSubmitting()
             return
         }
@@ -189,7 +230,7 @@ struct ConsumerPostPaymentReviewView: View {
             let trimmed = comment.trimmingCharacters(in: .whitespacesAndNewlines)
             try await BookingSimplePaymentAPI.submitReview(
                 bookingId: context.bookingId,
-                rating: starRating,
+                rating: selectedSatisfaction.rawValue,
                 comment: trimmed.isEmpty ? nil : trimmed,
                 bearerToken: sessionManager.currentSession?.token
             )
