@@ -63,9 +63,6 @@ struct ConsumerBookingDetailView: View {
     @State private var scheduleEditLoadingOpenDaysMonthKeys: Set<String> = []
     @State private var scheduleEditDisplayedMonth = Date()
 
-    @State private var alternativeServiceNames: [String] = []
-    @State private var alternativeLocationNames: [String] = []
-    @State private var isLoadingEditPickerOptions = false
     @State private var isConfirmingEdits = false
     @State private var isConfirmingCancelBooking = false
     @State private var isCancellingBooking = false
@@ -113,16 +110,28 @@ struct ConsumerBookingDetailView: View {
     private var allowsBookingEdit: Bool {
         let segmentOk = bookingRow.scheduleSegment() == .today || bookingRow.scheduleSegment() == .upcoming
         let u = bookingRow.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        let statusOk = u == "PENDING" || u == "ACCEPTED"
+        // Direct Reschedule for accepted / upcoming paid; PENDING still uses reschedule-request.
+        let statusOk =
+            u == "PENDING"
+            || u == "ACCEPTED"
+            || bookingRow.isUpcomingPaidAppointment
         return segmentOk && statusOk
     }
 
+    /// `true` when schedule edits apply immediately via PUT (no provider approval).
+    private var usesDirectReschedule: Bool {
+        let u = bookingRow.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return u == "ACCEPTED" || bookingRow.isUpcomingPaidAppointment
+    }
+
     private var requestChangeToolbarTitle: String {
-        bookingRow.hasPendingRescheduleRequest ? "Update Request" : "Request Change"
+        if usesDirectReschedule { return "Reschedule" }
+        return bookingRow.hasPendingRescheduleRequest ? "Update Request" : "Request Change"
     }
 
     private var submitRequestButtonTitle: String {
-        bookingRow.hasPendingRescheduleRequest ? "Update Request" : "Submit Request"
+        if usesDirectReschedule { return "Reschedule" }
+        return bookingRow.hasPendingRescheduleRequest ? "Update Request" : "Submit Request"
     }
 
     private var confirmedScheduledAt: Date {
@@ -207,31 +216,24 @@ struct ConsumerBookingDetailView: View {
         allowsBookingEdit && isEditing
     }
 
-    /// Provider marked the booking **COMPLETED** — consumer owes payment (same gate as `BookingPaymentRequestPayload.from(bookingRow:)`).
+    /// Unpaid accepted (service) or tip-pending completed — open payment takeover.
     private var showsPayForServiceCTA: Bool {
-        let u = bookingRow.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        guard u == "COMPLETED" else { return false }
-        return BookingPaymentRequestPayload.from(bookingRow: bookingRow) != nil
+        bookingRow.needsPaymentAction
+    }
+
+    private var paymentCTAButtonTitle: String {
+        if bookingRow.needsTipDecision { return "Choose Tip" }
+        if let cents = bookingRow.priceUsdCents, cents > 0 {
+            let formatted = Self.currencyFormatter.string(from: NSNumber(value: Double(cents) / 100.0)) ?? ""
+            return formatted.isEmpty ? "Pay now to confirm" : "Pay \(formatted) to confirm"
+        }
+        return "Pay now to confirm"
     }
 
     private var showsMessageProviderCTA: Bool {
         guard sessionManager.isAuthenticated else { return false }
         let u = bookingRow.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
         return !["CANCELLED", "REJECTED", "DECLINED", "REFUNDED"].contains(u)
-    }
-
-    /// Location isn’t persisted reliably for consumer bookings from iOS; hide it on **Past** detail so we don’t show a blank "—" row.
-    private var showsLocationInBookingTimeline: Bool {
-        bookingRow.scheduleSegment() != .past
-    }
-
-    /// Hides the entire location block when the only value is the “coordinate in chat” placeholder (no map / no label row for that).
-    private var showsReadOnlyLocationTimelineBlock: Bool {
-        guard showsLocationInBookingTimeline else { return false }
-        if let loc = effectiveLocationString {
-            return !Self.isCoordinateLocationPlaceholder(loc)
-        }
-        return true
     }
 
     private var scheduledAtForDisplay: Date {
@@ -295,6 +297,59 @@ struct ConsumerBookingDetailView: View {
     }
 
     private var bookingDetailScrollRootCore: some View {
+        bookingDetailScrollWithNavigationChrome
+            .bookingDetailPresentedSheets(
+                showRebookSheet: $showRebookSheet,
+                showScheduleEditSheet: $showScheduleEditSheet,
+                rebookProvider: $rebookProvider,
+                sessionManager: sessionManager,
+                onShowLogin: onShowLogin,
+                preselectServiceName: bookingRow.displayServiceName,
+                dismissDetail: dismiss,
+                scheduleEditHalfSheet: { scheduleEditHalfSheet }
+            )
+            .bookingDetailStatusAlerts(
+                showActiveBookingAlert: $showActiveBookingAlert,
+                showLiveDataStripeAlert: $showLiveDataStripeAlert,
+                showMessagingUnavailableAlert: $showMessagingUnavailableAlert
+            )
+            .onAppear {
+                if localScheduledAt == nil { localScheduledAt = bookingRow.scheduledAtDate }
+                if localServiceName == nil { localServiceName = bookingRow.displayServiceName }
+            }
+            .toolbar { bookingDetailToolbarContent }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if allowsBookingEdit && isEditing {
+                    confirmChangesInset
+                } else if isConfirmingCancelBooking {
+                    heroCancelBookingConfirmInset
+                }
+            }
+            .task(id: isEditing) {
+                guard isEditing, allowsBookingEdit else {
+                    requestChangeBaselinesReady = false
+                    return
+                }
+                requestChangeBaselinesReady = false
+                captureRequestChangeBaselines()
+            }
+            .navigationDestination(item: chatViewModel.bookingDetailMessagingThreadHandoffBinding(forBookingId: bookingRow.id)) { handoff in
+                bookingDetailMessagingThreadDestination(handoff)
+            }
+    }
+
+    private var bookingDetailScrollWithNavigationChrome: some View {
+        bookingDetailScrollSurface
+            .navigationTitle("")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .navigationBarBackButtonHidden(isRequestChangeEditing)
+            #endif
+            .tint(BookingSelectorTheme.cream)
+    }
+
+    private var bookingDetailScrollSurface: some View {
         ScrollView {
             bookingDetailScrollContent
         }
@@ -303,120 +358,52 @@ struct ConsumerBookingDetailView: View {
         }
         #if os(iOS)
         .scrollDismissesKeyboard(isRequestChangeEditing ? .immediately : .automatic)
-        #endif
-        #if os(iOS)
         .scrollContentBackground(.hidden)
         #endif
         .background {
-            Group {
-                if usesExternalLavaBackdrop {
-                    Color.clear
-                } else {
-                    OnCutsLavaLampBackground()
-                        .ignoresSafeArea()
+            bookingDetailScrollBackground
+        }
+    }
+
+    @ViewBuilder
+    private var bookingDetailScrollBackground: some View {
+        if usesExternalLavaBackdrop {
+            Color.clear
+        } else {
+            OnCutsLavaLampBackground()
+                .ignoresSafeArea()
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var bookingDetailToolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            Text(displayableServiceLine)
+                .font(Self.heroServiceDisplayFont)
+                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.92))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        if allowsBookingEdit && !isEditing {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: beginEditing) {
+                    bookingDetailToolbarIcon(
+                        systemName: "pencil",
+                        accessibilityLabel: requestChangeToolbarTitle
+                    )
                 }
+                .buttonStyle(.borderless)
             }
-        }
-        .navigationTitle("")
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.hidden, for: .navigationBar)
-        #endif
-        .tint(BookingSelectorTheme.cream)
-        .sheet(isPresented: $showRebookSheet, onDismiss: {
-            if let p = rebookProvider {
-                PendingPostLoginBooking.clearIfGuestClosedBooking(
-                    providerId: p.id,
-                    isAuthenticated: sessionManager.isAuthenticated
-                )
-            }
-            rebookProvider = nil
-        }) {
-            if let provider = rebookProvider {
-                LiveBookingView(
-                    provider: provider,
-                    sessionManager: sessionManager,
-                    onShowLogin: onShowLogin,
-                    onDismiss: { showRebookSheet = false },
-                    onBookingRequestSuccessfullySent: {
-                        showRebookSheet = false
-                        rebookProvider = nil
-                        dismiss()
-                    },
-                    preselectServiceName: bookingRow.displayServiceName
-                )
-                .tint(Color.oliveGreen)
-                .onCutsBookingFlowSheetPresentation()
-            }
-        }
-        .alert("Active Booking Exists", isPresented: $showActiveBookingAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("You already have an active booking. Please complete or cancel it before making a new one.")
-        }
-        .alert("Stripe test mode", isPresented: $showLiveDataStripeAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("Live Data Mode is on. Booking and live checkout are disabled so you do not email real service providers or charge real cards. Use a build with this flag off and Stripe test keys to exercise the full flow.")
-        }
-        .alert("Messages unavailable", isPresented: $showMessagingUnavailableAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("We couldn’t open your conversation with this provider. Try again from the Messages tab.")
-        }
-        .onAppear {
-            if localScheduledAt == nil { localScheduledAt = bookingRow.scheduledAtDate }
-            if localServiceName == nil { localServiceName = bookingRow.displayServiceName }
-        }
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text(displayableServiceLine)
-                    .font(Self.heroServiceDisplayFont)
-                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.92))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-            if allowsBookingEdit && !isEditing {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: beginEditing) {
-                        bookingDetailToolbarIcon(
-                            systemName: "pencil",
-                            accessibilityLabel: requestChangeToolbarTitle
-                        )
-                    }
-                    .buttonStyle(.borderless)
+        } else if allowsBookingEdit && isEditing {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: cancelEditing) {
+                    bookingDetailToolbarIcon(
+                        systemName: "xmark",
+                        accessibilityLabel: "Cancel editing"
+                    )
                 }
-            } else if allowsBookingEdit && isEditing {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: cancelEditing) {
-                        bookingDetailToolbarIcon(
-                            systemName: "xmark",
-                            accessibilityLabel: "Cancel editing"
-                        )
-                    }
-                    .buttonStyle(.borderless)
-                }
+                .buttonStyle(.borderless)
             }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if allowsBookingEdit && isEditing {
-                confirmChangesInset
-            }
-        }
-        .sheet(isPresented: $showScheduleEditSheet) {
-            scheduleEditHalfSheet
-        }
-        .task(id: isEditing) {
-            guard isEditing, allowsBookingEdit else {
-                requestChangeBaselinesReady = false
-                return
-            }
-            requestChangeBaselinesReady = false
-            await loadEditPickerOptions()
-            captureRequestChangeBaselines()
-        }
-        .navigationDestination(item: chatViewModel.bookingDetailMessagingThreadHandoffBinding(forBookingId: bookingRow.id)) { handoff in
-            bookingDetailMessagingThreadDestination(handoff)
         }
     }
 
@@ -453,10 +440,10 @@ struct ConsumerBookingDetailView: View {
             requestChangeEditingHeroSection
 
             if !isRequestChangeEditing {
-                bookingStatusAndPriceRow
+                bookingReferenceAndPriceRow
             }
 
-            if bookingRow.hasPendingRescheduleRequest {
+            if bookingRow.hasPendingRescheduleRequest, !usesDirectReschedule {
                 pendingRescheduleBanner
             }
 
@@ -475,8 +462,8 @@ struct ConsumerBookingDetailView: View {
                 supplementaryDetailsCard
             }
 
-            if !isRequestChangeEditing {
-                bookingReferenceFooter
+            if showsCancelBookingCTA {
+                cancelBookingFooterButton
             }
         }
         .padding(.horizontal, 20)
@@ -494,7 +481,7 @@ struct ConsumerBookingDetailView: View {
             Button {
                 chatViewModel.presentPaymentTakeover(forBookingRow: bookingRow)
             } label: {
-                Text("Pay for this service")
+                Text(paymentCTAButtonTitle)
                     .font(BookingSelectorTheme.todayBoldFont)
                     .foregroundStyle(BookingSelectorTheme.deepCharcoal)
                     .frame(maxWidth: .infinity)
@@ -506,6 +493,14 @@ struct ConsumerBookingDetailView: View {
             }
             .buttonStyle(BookButtonStyle())
             .shadow(color: Color.oliveGreen.opacity(0.28), radius: 7, y: 2)
+
+            if bookingRow.needsServicePayment {
+                Text("Full refund if booking is cancelled")
+                    .font(OnCutsFont.caption)
+                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+            }
         }
         .padding(.top, 4)
     }
@@ -583,8 +578,12 @@ struct ConsumerBookingDetailView: View {
     }
 
     private static let heroServiceDisplayFont = OnCutsFont.subheadline(weight: .semibold)
-    private static let editBottomBarButtonFont = OnCutsFont.footnote(weight: .semibold)
+    private static let editBottomBarButtonFont = OnCutsFont.body(weight: .semibold)
     private static let bookingDetailCircularActionButtonSize: CGFloat = 44
+
+    private var showsCancelBookingCTA: Bool {
+        allowsBookingEdit && !isEditing
+    }
 
     private var messageProviderCircularButton: some View {
         Button {
@@ -599,9 +598,32 @@ struct ConsumerBookingDetailView: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(isOpeningMessaging)
+        .disabled(isOpeningMessaging || isConfirmingCancelBooking)
         .opacity(isOpeningMessaging ? 0.55 : 1)
         .accessibilityHint("Opens your conversation with this provider about this booking.")
+    }
+
+    private var cancelBookingFooterButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) {
+                isConfirmingCancelBooking = true
+            }
+        } label: {
+            Text("Cancel Booking")
+                .font(OnCutsFont.body(weight: .semibold))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 22)
+                .frame(minHeight: 48)
+                .background {
+                    Capsule(style: .continuous)
+                        .fill(Color.red)
+                }
+        }
+        .buttonStyle(BookButtonStyle())
+        .disabled(isCancellingBooking || isOpeningMessaging)
+        .opacity((isCancellingBooking || isOpeningMessaging) ? 0.55 : 1)
+        .accessibilityLabel("Cancel booking")
     }
 
     @MainActor
@@ -701,6 +723,29 @@ struct ConsumerBookingDetailView: View {
         .frame(maxWidth: .infinity)
     }
 
+    private var heroCancelBookingConfirmInset: some View {
+        VStack(spacing: 0) {
+            Text(cancelBookingConfirmMessage)
+                .font(OnCutsFont.caption)
+                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 24)
+                .padding(.top, 10)
+                .padding(.bottom, 8)
+
+            cancelBookingConfirmationButtons
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea(edges: .bottom)
+        }
+        .animation(.spring(response: 0.38, dampingFraction: 0.78), value: isConfirmingCancelBooking)
+    }
+
     private var displayableServiceLine: String {
         if let local = localServiceName?.trimmingCharacters(in: .whitespacesAndNewlines), !local.isEmpty {
             return ConsumerBookingSimpleRow.displayableServiceLabel(local)
@@ -760,29 +805,6 @@ struct ConsumerBookingDetailView: View {
         }
     }
 
-    private var confirmedBookingLocationLine: String? {
-        let s = (bookingRow.location ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !s.isEmpty, !Self.isCoordinateLocationPlaceholder(s) else { return nil }
-        return s
-    }
-
-    private var pendingRequestedLocationLine: String? {
-        let pending = bookingRow.pendingRescheduleRequest?.location?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !pending.isEmpty, !Self.isCoordinateLocationPlaceholder(pending) {
-            return pending
-        }
-        return confirmedBookingLocationLine
-    }
-
-    private var pendingLocationDiffersFromConfirmed: Bool {
-        let confirmed = normalizedRequestChangeDraft(confirmedBookingLocationLine ?? "")
-        let requestedRaw = bookingRow.pendingRescheduleRequest?.location?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !requestedRaw.isEmpty, !Self.isCoordinateLocationPlaceholder(requestedRaw) else { return false }
-        return normalizedRequestChangeDraft(requestedRaw) != confirmed
-    }
-
     private var pendingRescheduleBanner: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Schedule change pending approval")
@@ -806,25 +828,36 @@ struct ConsumerBookingDetailView: View {
         }
     }
 
-    private var bookingStatusAndPriceRow: some View {
+    private var bookingReferenceAndPriceRow: some View {
         HStack(alignment: .center, spacing: 12) {
             bookingDetailMetricButton(
-                title: "Status",
-                value: bookingRow.displayStatus
+                title: "Booking Reference",
+                value: bookingRow.displayBookingReference,
+                usesMonospacedValue: true
             )
+            .accessibilityLabel("Booking reference, \(bookingRow.displayBookingReference)")
+
             if let price = formattedPrice {
                 bookingDetailMetricButton(title: "Price", value: price)
             }
         }
     }
 
-    private func bookingDetailMetricButton(title: String, value: String) -> some View {
+    private func bookingDetailMetricButton(
+        title: String,
+        value: String,
+        usesMonospacedValue: Bool = false
+    ) -> some View {
         VStack(alignment: .center, spacing: 6) {
             Text(title)
                 .bookingDetailFieldTitleStyle()
                 .multilineTextAlignment(.center)
             Text(value)
-                .font(OnCutsFont.body(weight: .semibold))
+                .font(
+                    usesMonospacedValue
+                        ? OnCutsFont.subheadline(weight: .medium).monospaced()
+                        : OnCutsFont.body(weight: .semibold)
+                )
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -832,23 +865,17 @@ struct ConsumerBookingDetailView: View {
         .frame(maxWidth: .infinity, minHeight: 54)
     }
 
-    // MARK: - Timeline (date / time / location)
+    // MARK: - Timeline (date / time)
 
     private var infoTimelineCard: some View {
         VStack(alignment: .leading, spacing: (allowsBookingEdit && isEditing) ? 16 : 0) {
             if allowsBookingEdit && isEditing {
-                requestChangeInstructions
-
                 dateEditTimelineRow()
                 timeEditTimelineRow()
-                if !alternativeLocationNames.isEmpty {
-                    locationPickerEditRow(isLast: false)
-                }
                 notesEditRow(isLast: true)
             } else if bookingRow.hasPendingRescheduleRequest {
-                pendingScheduleComparisonTimeline(showLocation: showsReadOnlyLocationTimelineBlock)
+                pendingScheduleComparisonTimeline()
             } else {
-                let showLocation = showsReadOnlyLocationTimelineBlock
                 timelineRow(
                     isLast: false,
                     label: "Date",
@@ -856,14 +883,11 @@ struct ConsumerBookingDetailView: View {
                     isEditingChrome: false
                 )
                 timelineRow(
-                    isLast: !showLocation,
+                    isLast: true,
                     label: "Time",
                     value: formattedTimeLine,
                     isEditingChrome: false
                 )
-                if showLocation {
-                    readOnlyLocationBlock(isLast: true)
-                }
             }
         }
         .padding(.horizontal, 20)
@@ -882,13 +906,12 @@ struct ConsumerBookingDetailView: View {
     }
 
     @ViewBuilder
-    private func pendingScheduleComparisonTimeline(showLocation: Bool) -> some View {
+    private func pendingScheduleComparisonTimeline() -> some View {
         VStack(alignment: .leading, spacing: 16) {
             pendingScheduleSnapshotSection(
                 title: "Confirmed appointment",
                 dateLine: confirmedFormattedDateLine,
                 timeLine: confirmedFormattedTimeLine,
-                locationLine: showLocation ? confirmedBookingLocationLine : nil,
                 style: .confirmed
             )
 
@@ -896,9 +919,6 @@ struct ConsumerBookingDetailView: View {
                 title: "Requested change",
                 dateLine: proposedFormattedDateLine ?? confirmedFormattedDateLine,
                 timeLine: proposedFormattedTimeLine ?? confirmedFormattedTimeLine,
-                locationLine: showLocation && pendingLocationDiffersFromConfirmed
-                    ? pendingRequestedLocationLine
-                    : nil,
                 style: .requested
             )
         }
@@ -908,7 +928,6 @@ struct ConsumerBookingDetailView: View {
         title: String,
         dateLine: String,
         timeLine: String,
-        locationLine: String?,
         style: PendingScheduleSnapshotStyle
     ) -> some View {
         let isRequested = style == .requested
@@ -920,10 +939,6 @@ struct ConsumerBookingDetailView: View {
 
             scheduleSnapshotField(label: "Date", value: dateLine, emphasized: isRequested)
             scheduleSnapshotField(label: "Time", value: timeLine, emphasized: isRequested)
-
-            if let locationLine {
-                scheduleSnapshotField(label: "Location", value: locationLine, emphasized: isRequested)
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
@@ -964,20 +979,6 @@ struct ConsumerBookingDetailView: View {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(Color.white.opacity(0.05))
             }
-        }
-    }
-
-    @ViewBuilder
-    private func readOnlyLocationBlock(isLast: Bool) -> some View {
-        if let loc = effectiveLocationString, !Self.isCoordinateLocationPlaceholder(loc) {
-            locationTimelineRow(isLast: isLast, locationText: loc)
-        } else {
-            timelineRow(
-                isLast: isLast,
-                label: "Location",
-                value: "—",
-                isEditingChrome: false
-            )
         }
     }
 
@@ -1033,43 +1034,6 @@ struct ConsumerBookingDetailView: View {
         "Add a note for your \(bookingRow.providerKindTag)"
     }
 
-    private var requestChangeInstructions: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("You can edit your appointment date and time, and add an optional note for your \(bookingRow.providerKindTag).")
-                .font(OnCutsFont.caption)
-                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
-                .fixedSize(horizontal: false, vertical: true)
-
-            VStack(alignment: .leading, spacing: 4) {
-                requestChangeInstructionLine("Tap 'Date' or 'Time' to edit either field")
-            }
-
-            Text("When you submit, your changes are sent to your \(bookingRow.providerKindTag) as a request. They must approve before your booking updates.")
-                .font(OnCutsFont.caption)
-                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.65))
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .fixedSize(horizontal: false, vertical: true)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if isRequestChangeEditing {
-                dismissRequestChangeNotesKeyboard()
-            }
-        }
-    }
-
-    private func requestChangeInstructionLine(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: 6) {
-            Text("•")
-                .font(OnCutsFont.caption(weight: .semibold))
-                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
-            Text(text)
-                .font(OnCutsFont.caption)
-                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
     // private static let serviceEditHeroMaxWidth: CGFloat = 280
 
     private func notesEditRow(isLast: Bool) -> some View {
@@ -1107,52 +1071,6 @@ struct ConsumerBookingDetailView: View {
             for: nil
         )
         #endif
-    }
-
-    /// Menu-style picker for provider preset locations (only shown when at least one exists).
-    private func locationPickerEditRow(isLast: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Location")
-                .bookingDetailFieldTitleStyle()
-            if isLoadingEditPickerOptions {
-                ProgressView()
-                    .tint(BookingSelectorTheme.cream)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 6)
-            } else {
-                Picker(selection: $draftLocation) {
-                    ForEach(alternativeLocationNames, id: \.self) { name in
-                        Text(name).tag(name)
-                    }
-                } label: {
-                    HStack(alignment: .center, spacing: 10) {
-                        Text(draftLocation)
-                            .font(OnCutsFont.body(weight: .medium))
-                            .foregroundStyle(BookingSelectorTheme.cream)
-                            .multilineTextAlignment(.leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(OnCutsFont.system(size: 11, weight: .bold))
-                            .foregroundStyle(BookingSelectorTheme.cream.opacity(0.85))
-                    }
-                }
-                .pickerStyle(.menu)
-                .tint(BookingSelectorTheme.cream)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(Color.clear)
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(BookingSelectorTheme.cream, lineWidth: 1)
-        }
-        .simultaneousGesture(
-            TapGesture().onEnded {
-                dismissRequestChangeNotesKeyboard()
-            }
-        )
     }
 
     private static let requestChangeEditableAccentColor = Color.oliveGreen
@@ -1237,20 +1155,6 @@ struct ConsumerBookingDetailView: View {
         BookingPacificSchedule.displayTimeWithMinutes(from: draftScheduledAt)
     }
 
-    private func locationTimelineRow(isLast: Bool, locationText: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Location")
-                .bookingDetailFieldTitleStyle()
-            Text(locationText)
-                .font(OnCutsFont.body(weight: .medium))
-                .foregroundStyle(BookingSelectorTheme.cream)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.bottom, isLast ? 0 : 18)
-        .background(Color.clear)
-    }
-
     private func timelineRow(
         isLast: Bool,
         label: String,
@@ -1278,21 +1182,6 @@ struct ConsumerBookingDetailView: View {
     }
 
     // MARK: - Supplementary (notes)
-
-    private var bookingReferenceFooter: some View {
-        VStack(spacing: 6) {
-            Text("Booking Reference")
-                .bookingDetailFieldTitleStyle()
-            Text(bookingRow.displayBookingReference)
-                .font(OnCutsFont.subheadline(weight: .medium).monospaced())
-                .foregroundStyle(BookingSelectorTheme.cream.opacity(0.82))
-        }
-        .multilineTextAlignment(.center)
-        .frame(maxWidth: .infinity)
-        .padding(.top, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Booking reference, \(bookingRow.displayBookingReference)")
-    }
 
     private var supplementaryDetailsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -1334,10 +1223,17 @@ struct ConsumerBookingDetailView: View {
     }
 
     private var payForServiceSubtitle: String {
-        if let p = formattedPrice {
-            return "Your provider marked this visit complete. Pay \(p) with Apple Pay, card, or cash (in person)."
+        if bookingRow.needsTipDecision {
+            return "Thanks for your visit. Choose a tip to finish — you can also tip $0."
         }
-        return "Your provider marked this visit complete. Pay with Apple Pay, card, or cash (in person)."
+        return "\(bookingRow.barberDisplayName) accepted. Please pay now to confirm the booking"
+    }
+
+    private var cancelBookingConfirmMessage: String {
+        if bookingRow.isUpcomingPaidAppointment {
+            return "Your \(bookingRow.providerKindTag) will be notified. Cancelling may refund the card payment for this service. This can’t be undone."
+        }
+        return "Your \(bookingRow.providerKindTag) will be notified. This can’t be undone."
     }
 
     // MARK: - Edit mode actions
@@ -1361,6 +1257,7 @@ struct ConsumerBookingDetailView: View {
         draftCalendarCommitted = true
         requestChangeBaselinesReady = false
         withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
+            isConfirmingCancelBooking = false
             isEditing = true
         }
         #if os(iOS)
@@ -1405,7 +1302,11 @@ struct ConsumerBookingDetailView: View {
         do {
             let fresh = try await ConsumerBookingsSimpleAPI.fetchConsumerBookingById(bookingId: bookingRow.id, bearerToken: token)
             let u = fresh.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
-            guard u == "PENDING" || u == "ACCEPTED" else {
+            let canCancel =
+                u == "PENDING"
+                || u == "ACCEPTED"
+                || fresh.isUpcomingPaidAppointment
+            guard canCancel else {
                 AlertManager.shared.presentErrorToast(
                     "This booking cannot be cancelled. Current status: \(fresh.displayStatus)."
                 )
@@ -1442,7 +1343,7 @@ struct ConsumerBookingDetailView: View {
         defer { isConfirmingEdits = false }
 
         guard hasRequestChangeDraftChanges else {
-            AlertManager.shared.presentErrorToast("Change the date, time, location, or notes before submitting.")
+            AlertManager.shared.presentErrorToast("Change the date, time, or notes before submitting.")
             return
         }
 
@@ -1461,26 +1362,24 @@ struct ConsumerBookingDetailView: View {
 
         do {
             if scheduleDraftChanged {
-                _ = try await ConsumerBookingsSimpleAPI.submitRescheduleRequest(
-                    bookingId: bookingRow.id,
-                    scheduledTimeISO: iso,
-                    location: locForAPI,
-                    notes: notesForAPI,
-                    bearerToken: token
-                )
+                if usesDirectReschedule {
+                    try await ConsumerBookingsSimpleAPI.rescheduleBooking(
+                        bookingId: bookingRow.id,
+                        scheduledTimeISO: iso,
+                        location: locForAPI,
+                        notes: notesForAPI,
+                        bearerToken: token
+                    )
+                } else {
+                    _ = try await ConsumerBookingsSimpleAPI.submitRescheduleRequest(
+                        bookingId: bookingRow.id,
+                        scheduledTimeISO: iso,
+                        location: locForAPI,
+                        notes: notesForAPI,
+                        bearerToken: token
+                    )
+                }
             }
-            // Service metadata updates disabled during Request Change.
-            // if serviceDraftChanged {
-            //     try await ConsumerBookingsSimpleAPI.updateConsumerBookingMetadata(
-            //         bookingId: bookingRow.id,
-            //         location: scheduleDraftChanged ? nil : locForAPI,
-            //         serviceName: svcForAPI,
-            //         bearerToken: token
-            //     )
-            // }
-            // if serviceDraftChanged {
-            //     localServiceName = draftServiceName
-            // }
             await performBookingDetailRefresh()
             withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
                 isEditing = false
@@ -1488,11 +1387,12 @@ struct ConsumerBookingDetailView: View {
             #if os(iOS)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             #endif
-            AlertManager.shared.present(
-                scheduleDraftChanged
-                    ? "Schedule change requested. Your provider will review it."
-                    : "Booking details updated."
-            )
+            let successMessage: String = {
+                guard scheduleDraftChanged else { return "Booking details updated." }
+                if usesDirectReschedule { return "Appointment rescheduled." }
+                return "Schedule change requested. Your provider will review it."
+            }()
+            AlertManager.shared.present(successMessage)
             NotificationCenter.default.post(name: .consumerBookingsListShouldRefresh, object: nil)
         } catch {
             if ConsumerBookingsSimpleAPI.isUnauthorizedHTTPError(error) {
@@ -1500,60 +1400,6 @@ struct ConsumerBookingDetailView: View {
             } else {
                 AlertManager.shared.presentErrorToast(error.localizedDescription)
             }
-        }
-    }
-
-    @MainActor
-    private func loadEditPickerOptions() async {
-        isLoadingEditPickerOptions = true
-        defer { isLoadingEditPickerOptions = false }
-
-        // Service picker options disabled during Request Change.
-        // func mergeServiceNames(_ apiNames: [String]) -> [String] {
-        //     let trimmed = apiNames.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-        //     var merged = trimmed.isEmpty ? [effectiveServiceName] : trimmed
-        //     if !merged.contains(where: { $0.caseInsensitiveCompare(draftServiceName) == .orderedSame }) {
-        //         merged.insert(draftServiceName, at: 0)
-        //     }
-        //     return merged
-        // }
-
-        func mergeLocationNames(_ apiLocs: [String]) -> [String] {
-            var set = Set(
-                apiLocs
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    .filter { !$0.isEmpty && !Self.isCoordinateLocationPlaceholder($0) }
-            )
-            let cur = draftLocation.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !cur.isEmpty, !Self.isCoordinateLocationPlaceholder(cur) { set.insert(cur) }
-            if let persisted = effectiveLocationString, !Self.isCoordinateLocationPlaceholder(persisted) {
-                set.insert(persisted)
-            }
-            return set.sorted()
-        }
-
-        guard let bid = bookingRow.barberId?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty else {
-            // alternativeServiceNames = mergeServiceNames([])
-            alternativeLocationNames = mergeLocationNames([])
-            return
-        }
-
-        do {
-            let provider = try await OnCutsBarberDetailAPI.fetchServiceProvider(
-                barberId: bid,
-                bearerToken: sessionManager.currentSession?.token
-            )
-            // let serviceNames = (provider.services ?? []).map(\.name)
-            // alternativeServiceNames = mergeServiceNames(serviceNames)
-            let locs = provider.locations ?? []
-            alternativeLocationNames = mergeLocationNames(locs)
-            if normalizedRequestChangeDraft(draftLocation).isEmpty,
-               let firstLocation = alternativeLocationNames.first {
-                draftLocation = firstLocation
-            }
-        } catch {
-            // alternativeServiceNames = mergeServiceNames([])
-            alternativeLocationNames = mergeLocationNames([])
         }
     }
 
@@ -1741,7 +1587,7 @@ struct ConsumerBookingDetailView: View {
     private var confirmChangesInset: some View {
         VStack(spacing: 0) {
             if isConfirmingCancelBooking {
-                Text("Your \(bookingRow.providerKindTag) will be notified. This can’t be undone.")
+                Text(cancelBookingConfirmMessage)
                     .font(OnCutsFont.caption)
                     .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
                     .multilineTextAlignment(.center)
@@ -1804,13 +1650,13 @@ struct ConsumerBookingDetailView: View {
             } label: {
                 Text("Cancel Booking")
                     .font(Self.editBottomBarButtonFont)
-                    .foregroundStyle(Color.red)
+                    .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 54)
                     .background {
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(Color.red.opacity(0.85), lineWidth: 1.5)
+                            .fill(Color.red)
                     }
             }
             .buttonStyle(.plain)
@@ -2026,6 +1872,71 @@ private extension View {
                 }
             }
     }
+
+    func bookingDetailStatusAlerts(
+        showActiveBookingAlert: Binding<Bool>,
+        showLiveDataStripeAlert: Binding<Bool>,
+        showMessagingUnavailableAlert: Binding<Bool>
+    ) -> some View {
+        self
+            .alert("Active Booking Exists", isPresented: showActiveBookingAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("You already have an active booking. Please complete or cancel it before making a new one.")
+            }
+            .alert("Stripe test mode", isPresented: showLiveDataStripeAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Live Data Mode is on. Booking and live checkout are disabled so you do not email real service providers or charge real cards. Use a build with this flag off and Stripe test keys to exercise the full flow.")
+            }
+            .alert("Messages unavailable", isPresented: showMessagingUnavailableAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("We couldn’t open your conversation with this provider. Try again from the Messages tab.")
+            }
+    }
+
+    func bookingDetailPresentedSheets<ScheduleSheet: View>(
+        showRebookSheet: Binding<Bool>,
+        showScheduleEditSheet: Binding<Bool>,
+        rebookProvider: Binding<ServiceProvider?>,
+        sessionManager: AppSessionManager,
+        onShowLogin: @escaping () -> Void,
+        preselectServiceName: String,
+        dismissDetail: DismissAction,
+        @ViewBuilder scheduleEditHalfSheet: @escaping () -> ScheduleSheet
+    ) -> some View {
+        self
+            .sheet(isPresented: showRebookSheet, onDismiss: {
+                if let p = rebookProvider.wrappedValue {
+                    PendingPostLoginBooking.clearIfGuestClosedBooking(
+                        providerId: p.id,
+                        isAuthenticated: sessionManager.isAuthenticated
+                    )
+                }
+                rebookProvider.wrappedValue = nil
+            }) {
+                if let provider = rebookProvider.wrappedValue {
+                    LiveBookingView(
+                        provider: provider,
+                        sessionManager: sessionManager,
+                        onShowLogin: onShowLogin,
+                        onDismiss: { showRebookSheet.wrappedValue = false },
+                        onBookingRequestSuccessfullySent: {
+                            showRebookSheet.wrappedValue = false
+                            rebookProvider.wrappedValue = nil
+                            dismissDetail()
+                        },
+                        preselectServiceName: preselectServiceName
+                    )
+                    .tint(Color.oliveGreen)
+                    .onCutsBookingFlowSheetPresentation()
+                }
+            }
+            .sheet(isPresented: showScheduleEditSheet) {
+                scheduleEditHalfSheet()
+            }
+    }
 }
 
 private extension ConsumerBookingSimpleRow {
@@ -2043,30 +1954,43 @@ private extension String {
 
 #if DEBUG
 #Preview {
-    let manager = AppSessionManager()
-    manager.mockLogin(as: .student)
-    let coordinator = MainCoordinator(sessionManager: manager)
+    ConsumerBookingDetailPreviewHost()
+}
 
-    return NavigationStack {
-        ConsumerBookingDetailView(
-            row: ConsumerBookingSimpleRow(
-                id: "preview-1",
-                barberId: "barber-preview",
-                serviceType: "HAIRCUT",
-                serviceName: "Fade",
-                scheduledTime: "2026-04-02T15:00:00.000Z",
-                status: "PENDING",
-                barberName: "Alex Barber",
-                barberAvatar: nil,
-                location: "Dorm quad",
-                notes: "Please bring clippers",
-                priceUsdCents: 3500,
-                pendingRescheduleRequest: nil
-            ),
-            sessionManager: manager,
-            coordinator: coordinator
-        )
+private struct ConsumerBookingDetailPreviewHost: View {
+    @State private var sessionManager = {
+        let manager = AppSessionManager()
+        manager.mockLogin(as: .student)
+        return manager
+    }()
+
+    var body: some View {
+        NavigationStack {
+            ConsumerBookingDetailView(
+                row: ConsumerBookingSimpleRow(
+                    id: "preview-1",
+                    barberId: "barber-preview",
+                    serviceType: "HAIRCUT",
+                    serviceName: "Fade",
+                    scheduledTime: "2026-04-02T15:00:00.000Z",
+                    status: "PENDING",
+                    barberName: "Alex Barber",
+                    barberAvatar: nil,
+                    location: "Dorm quad",
+                    notes: "Please bring clippers",
+                    priceUsdCents: 3500,
+                    paidAt: nil,
+                    completedAt: nil,
+                    tipRequestedAt: nil,
+                    tipDecidedAt: nil,
+                    tipAmountCents: nil,
+                    pendingRescheduleRequest: nil
+                ),
+                sessionManager: sessionManager,
+                coordinator: MainCoordinator(sessionManager: sessionManager)
+            )
+        }
+        .environmentObject(ChatViewModel())
     }
-    .environmentObject(ChatViewModel())
 }
 #endif

@@ -895,7 +895,10 @@ final class ChatViewModel: ObservableObject {
             }
             socket.onBookingStatusChanged = { [weak self] bookingId, status in
                 Task { @MainActor in
-                    self?.applyProviderPaymentStateChange(bookingId: bookingId, status: status)
+                    guard let self else { return }
+                    self.applyProviderPaymentStateChange(bookingId: bookingId, status: status)
+                    // Accept → unpaid service pay, tip settled, undo-complete, cancel: home/hub refresh runs `syncPaymentTakeover`.
+                    NotificationCenter.default.post(name: .consumerBookingsListShouldRefresh, object: nil)
                 }
             }
         }
@@ -933,7 +936,7 @@ final class ChatViewModel: ObservableObject {
         return deferredPaymentTakeoverBookingIds.contains(k)
     }
 
-    /// Dismisses the payment takeover and returns the user to the app shell; they can pay later from **Bookings → booking → Pay**.
+    /// Dismisses the payment takeover and returns the user to the app shell; they can finish later from **Bookings → booking → Pay / Choose Tip**.
     func dismissPaymentTakeoverForLater() {
         guard let bid = activePaymentRequest?.bookingId.trimmingCharacters(in: .whitespacesAndNewlines), !bid.isEmpty else {
             activePaymentRequest = nil
@@ -953,39 +956,38 @@ final class ChatViewModel: ObservableObject {
         activePaymentRequest = payload
     }
 
-    /// Presents takeover if any booking is `COMPLETED` (awaiting payment). Clears takeover when the booking is `PAID` or no longer awaiting payment.
+    /// Presents takeover for unpaid `ACCEPTED` (service) or tip-pending `COMPLETED`. Clears when that action is done.
     func syncPaymentTakeover(withBookings rows: [ConsumerBookingSimpleRow]) {
         for row in rows {
-            let s = row.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
             let bid = row.id.trimmingCharacters(in: .whitespacesAndNewlines)
-            if s == "PAID", !bid.isEmpty {
+            guard !bid.isEmpty else { continue }
+            // Clear deferral once this booking no longer needs a payment action (service paid and/or tip decided).
+            if !row.needsPaymentAction {
                 deferredPaymentTakeoverBookingIds.remove(bid)
             }
         }
         if let active = activePaymentRequest {
             if let row = rows.first(where: { $0.id == active.bookingId }) {
-                let s = row.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
-                if s == "PAID" {
+                if !row.needsPaymentAction {
                     activePaymentRequest = nil
                     return
                 }
-                if s != "COMPLETED" {
-                    activePaymentRequest = nil
+                // Refresh mode if the booking moved service → tip between syncs.
+                if let refreshed = BookingPaymentRequestPayload.from(bookingRow: row),
+                   refreshed.mode != active.mode {
+                    activePaymentRequest = refreshed
                 }
                 return
             }
-            // Booking not in this fetch (e.g. filter); keep takeover until socket/refetch updates.
             return
         }
-        let pending = rows.filter {
-            $0.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines) == "COMPLETED"
-        }
-        .sorted { a, b in
-            let da = a.scheduledAtDate ?? .distantPast
-            let db = b.scheduledAtDate ?? .distantPast
-            if da != db { return da > db }
-            return a.id > b.id
-        }
+        let pending = rows.filter(\.needsPaymentAction)
+            .sorted { a, b in
+                let da = a.scheduledAtDate ?? .distantPast
+                let db = b.scheduledAtDate ?? .distantPast
+                if da != db { return da > db }
+                return a.id > b.id
+            }
         guard let first = pending.first(where: { !isPaymentTakeoverDeferred(bookingId: $0.id) }),
               let payload = BookingPaymentRequestPayload.from(bookingRow: first)
         else {
@@ -1020,19 +1022,26 @@ final class ChatViewModel: ObservableObject {
         postPaymentReviewContext = nil
     }
 
-    /// When the provider reverts completion (`undo-complete`) or otherwise leaves **COMPLETED**, dismiss in-app payment UI immediately.
+    /// When booking status changes (accept, undo-complete, tip decided, cancel), refresh or dismiss payment UI.
     private func applyProviderPaymentStateChange(bookingId: String, status: String) {
         let s = status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let bid = bookingId.trimmingCharacters(in: .whitespacesAndNewlines)
-        if s != "COMPLETED", !bid.isEmpty {
-            deferredPaymentTakeoverBookingIds.remove(bid)
-        }
         if Self.bookingStatusDeletesConversation(s), !bid.isEmpty {
             removeConversations(forBookingId: bid)
         }
         guard let active = activePaymentRequest, active.bookingId == bookingId else { return }
-        if s == "COMPLETED" { return }
-        activePaymentRequest = nil
+        switch active.mode {
+        case .tipDecide:
+            // Stay open while still COMPLETED (tip pending); dismiss otherwise (e.g. undo-complete → PAID).
+            if s == "COMPLETED" { return }
+            activePaymentRequest = nil
+            if !bid.isEmpty { deferredPaymentTakeoverBookingIds.remove(bid) }
+        case .serviceConfirm:
+            // Stay open while ACCEPTED unpaid; dismiss once paid or rejected/cancelled.
+            if s == "ACCEPTED" { return }
+            activePaymentRequest = nil
+            if !bid.isEmpty { deferredPaymentTakeoverBookingIds.remove(bid) }
+        }
     }
 
     /// Refetch consumer bookings and dismiss the payment takeover when the booking is paid.

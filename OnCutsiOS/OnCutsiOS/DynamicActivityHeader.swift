@@ -56,7 +56,7 @@ struct HomeTodayBookingHighlight: Identifiable, Equatable, Sendable {
         self.statusLabel = row.displayStatus
     }
 
-    /// Earliest **PENDING** or **ACCEPTED** booking in **Today** or **Upcoming** — any future slot, not only calendar-today.
+    /// Earliest active appointment in **Today** or **Upcoming** (pending, accepted, upcoming paid, or tip-required).
     static func pickTodayHighlight(
         from rows: [ConsumerBookingSimpleRow],
         now: Date = Date(),
@@ -64,7 +64,12 @@ struct HomeTodayBookingHighlight: Identifiable, Equatable, Sendable {
     ) -> HomeTodayBookingHighlight? {
         let candidates = rows.filter { row in
             let u = row.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
-            guard u == "PENDING" || u == "ACCEPTED" else { return false }
+            let isActive =
+                u == "PENDING"
+                || u == "ACCEPTED"
+                || row.isUpcomingPaidAppointment
+                || row.needsTipDecision
+            guard isActive else { return false }
             switch row.scheduleSegment(now: now, calendar: calendar) {
             case .today, .upcoming:
                 return true
@@ -94,40 +99,6 @@ struct HomeTodayBookingHighlight: Identifiable, Equatable, Sendable {
 
     var isScheduledToday: Bool {
         BookingPacificSchedule.isSamePacificBookingDay(scheduledAt: scheduledAt)
-    }
-}
-
-/// Completed visit **awaiting consumer payment** (e.g. after **Pay later** on the takeover). Mirrors `ChatViewModel.syncPaymentTakeover` ordering.
-struct HomePendingPaymentHighlight: Identifiable, Equatable, Sendable {
-    let id: String
-    /// Original row — drives `BookingPaymentRequestPayload.from` / takeover presentation.
-    let sourceRow: ConsumerBookingSimpleRow
-    let barberDisplayName: String
-    let barberAvatarURL: URL?
-    let serviceTitle: String
-    let priceFormatted: String
-
-    private init?(row: ConsumerBookingSimpleRow) {
-        guard let payload = BookingPaymentRequestPayload.from(bookingRow: row) else { return nil }
-        id = row.id
-        sourceRow = row
-        barberDisplayName = payload.barberName
-        barberAvatarURL = ProfileImageURLResolver.url(from: row.barberAvatar)
-        serviceTitle = payload.displayServiceName
-        priceFormatted = payload.priceFormatted
-    }
-
-    static func pickAwaitingPayment(from rows: [ConsumerBookingSimpleRow]) -> HomePendingPaymentHighlight? {
-        let sorted = rows
-            .filter { BookingPaymentRequestPayload.from(bookingRow: $0) != nil }
-            .sorted { a, b in
-                let da = a.scheduledAtDate ?? .distantPast
-                let db = b.scheduledAtDate ?? .distantPast
-                if da != db { return da > db }
-                return a.id > b.id
-            }
-        guard let first = sorted.first else { return nil }
-        return HomePendingPaymentHighlight(row: first)
     }
 }
 
@@ -299,95 +270,3 @@ struct HomeTodayBookingReminderGlassCard: View {
     }
 }
 
-/// Home stripe: reopen in-app checkout when payment was deferred or the takeover was dismissed.
-@available(iOS 26.0, macOS 26.0, *)
-struct HomePendingPaymentReminderGlassCard: View {
-    let highlight: HomePendingPaymentHighlight
-    let onTap: () -> Void
-
-    private let corner: CGFloat = 20
-    private let avatarSize: CGFloat = 64
-    private let avatarCornerRadius: CGFloat = 10
-
-    var body: some View {
-        Button {
-            HomeActivityHeaderHaptics.lightTap()
-            onTap()
-        } label: {
-            HStack(alignment: .center, spacing: 12) {
-                providerAvatar
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Payment due")
-                        .font(OnCutsFont.subheadline(weight: .semibold))
-                        .foregroundStyle(Color.lavaShellCream.opacity(0.92))
-                    Text(highlight.barberDisplayName)
-                        .font(OnCutsFont.system(size: 28, weight: .bold, design: .default))
-                        .foregroundStyle(Color.lavaShellCream)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.45)
-                    Text("\(highlight.serviceTitle) · \(highlight.priceFormatted)")
-                        .font(OnCutsFont.headlineSmall)
-                        .foregroundStyle(Color.lavaShellCream)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.85)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "creditcard.circle.fill")
-                    .font(OnCutsFont.title3)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(Color.lavaShellCream.opacity(0.55))
-                    .accessibilityHidden(true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background {
-                RoundedRectangle(cornerRadius: corner, style: .continuous)
-                    .fill(.ultraThinMaterial)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: corner, style: .continuous)
-                    .stroke(Color.white.opacity(0.38), lineWidth: 0.75)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .contentShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
-        .accessibilityLabel("Payment due, \(highlight.barberDisplayName), \(highlight.serviceTitle), \(highlight.priceFormatted)")
-    }
-
-    private var providerAvatar: some View {
-        Group {
-            if let url = highlight.barberAvatarURL {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    default:
-                        avatarPlaceholder
-                    }
-                }
-            } else {
-                avatarPlaceholder
-            }
-        }
-        .frame(width: avatarSize, height: avatarSize)
-        .clipShape(RoundedRectangle(cornerRadius: avatarCornerRadius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: avatarCornerRadius, style: .continuous)
-                .stroke(Color.white.opacity(0.35), lineWidth: 0.75)
-        }
-    }
-
-    private var avatarPlaceholder: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: avatarCornerRadius, style: .continuous)
-                .fill(Color.primary.opacity(0.1))
-            Text(highlight.barberDisplayName.prefix(1).uppercased())
-                .font(OnCutsFont.title3(weight: .bold))
-                .foregroundStyle(Color.lavaShellCream.opacity(0.85))
-        }
-        .frame(width: avatarSize, height: avatarSize)
-    }
-}

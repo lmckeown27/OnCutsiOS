@@ -670,10 +670,10 @@ private struct UserProfileSettingsDrawerOverlay: View {
 
     /// Shown in the Account → Apple Pay & payments sheet (numbered checklist for reviewers and users).
     private static let applePayInstructionSteps: [String] = [
-        "Your service provider marks the service Completed in the \(AppBranding.companyName) provider platform (their provider-facing \(AppBranding.companyName) app).",
-        "\(AppBranding.displayName) may open the payment screen automatically; you can tap Pay later to return to the app, then go to Bookings → open that booking → Pay for this service.",
-        "On the payment screen, use the Apple Pay button (or Card / Cash). Apple Pay appears when Wallet has a card and merchant configuration is active.",
-        "If checkout never appeared, open Bookings, select the completed booking, and tap Pay for this service.",
+        "When your provider accepts a request, \(AppBranding.displayName) may open Pay to Confirm Booking so you can lock the appointment with Apple Pay, card, or cash (when enabled). You can tap Pay later, then open Bookings → that booking → Pay now to confirm.",
+        "After the visit, your provider marks the booking Completed. \(AppBranding.displayName) may open Consider a Tip (including $0). You can Pay later, then open Bookings → that booking → Choose Tip.",
+        "On the payment screen, use the Apple Pay button or Card. Apple Pay appears when Wallet has a card and merchant configuration is active. Cash is only offered for confirming the booking when the platform enables it — not for tips.",
+        "If checkout never appeared, open Bookings, select the booking that shows Payment required or Tip required, and use the pay / tip button there.",
     ]
 
     private enum ProfileNameField: Hashable {
@@ -865,7 +865,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Pay with Apple Pay")
                             .font(OnCutsFont.title3(weight: .bold))
-                        Text("Typical flow after your provider completes the service:")
+                        Text("How payments work in \(AppBranding.displayName):")
                             .font(OnCutsFont.subheadline)
                             .foregroundStyle(.secondary)
                             .padding(.bottom, 8)

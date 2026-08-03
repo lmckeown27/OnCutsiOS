@@ -19,10 +19,10 @@ final class MessagingSocketController {
     /// `conversationId` + decoded message DTO from the server payload.
     var onNewMessage: ((String, MessagingMessageDTO) -> Void)?
 
-    /// Emitted to the consumer's personal room when a provider marks a booking complete (`PUT …/bookings-simple/:id/complete`).
+    /// Emitted when a provider marks a booking complete (`booking-completed`) — consumer tip decision flow.
     var onBookingPaymentRequested: ((BookingPaymentRequestPayload) -> Void)?
 
-    /// Emitted when a booking leaves the **COMPLETED (awaiting payment)** state — e.g. `PUT …/undo-complete` (`booking-status-changed`).
+    /// Emitted on `booking-status-changed` (accept → unpaid service pay, undo-complete, tip settled, cancel, etc.).
     var onBookingStatusChanged: ((String, String) -> Void)?
 
     func connect(bearerToken: String?, personalRoomUserId: String?) {

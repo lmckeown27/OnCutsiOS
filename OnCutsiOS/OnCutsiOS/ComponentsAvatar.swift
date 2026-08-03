@@ -174,7 +174,13 @@ struct AvatarView: View {
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                    case .failure, .empty:
+                    case .empty:
+                        ZStack {
+                            Color.oliveGreen.opacity(0.08)
+                            ProgressView()
+                                .tint(Color.oliveGreen)
+                        }
+                    case .failure:
                         placeholderGlyph
                     @unknown default:
                         placeholderGlyph
@@ -184,7 +190,7 @@ struct AvatarView: View {
                 placeholderGlyph
             }
         }
-        .id(imageUrl ?? "")
+        .id(resolvedImageURL?.absoluteString ?? imageUrl ?? "")
         .frame(width: size, height: size)
         .modifier(AvatarClipModifier(style: clipStyle))
         .accessibilityLabel(accessibilityLabel)

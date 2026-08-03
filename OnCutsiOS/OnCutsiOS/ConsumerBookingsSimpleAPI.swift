@@ -82,7 +82,7 @@ enum ConsumerBookingsSimpleAPI {
         return ConsumerBookingSimpleRow(fromSingleBooking: b)
     }
 
-    /// Best-effort barber profile image: `GET /bookings-simple/:id` nested barber, then `GET /barbers/:id` when `barberId` is known (matches browse cards).
+    /// Best-effort barber profile image: prefer `GET /barbers/:id` (same as browse cards), else booking detail nested barber / list avatar.
     static func resolveBarberAvatarURL(bookingId: String, bearerToken: String?) async -> String? {
         let token = bearerToken?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !token.isEmpty else { return nil }
@@ -99,16 +99,14 @@ enum ConsumerBookingsSimpleAPI {
                         bearerToken: token
                     )
                     if let u = provider.profileImageUrl?.trimmingCharacters(in: .whitespacesAndNewlines), !u.isEmpty {
+                        // Barber detail is the same source the home provider cards use.
                         chosen = u
                     }
                 } catch {
                     // Keep booking-row URL if barber detail fails.
                 }
             }
-            if let c = chosen?.trimmingCharacters(in: .whitespacesAndNewlines), !c.isEmpty {
-                return c
-            }
-            return nil
+            return ProfileImageURLResolver.normalizedStorageString(from: chosen)
         } catch {
             return nil
         }
@@ -149,7 +147,7 @@ enum ConsumerBookingsSimpleAPI {
         return try decodePendingRescheduleRequest(from: respData)
     }
 
-    /// `PUT /api/v1/bookings-simple/:id` — metadata only (service name). Consumers must not send `scheduledTime` (server returns 403).
+    /// `PUT /api/v1/bookings-simple/:id` — metadata (service name / location). Prefer ``rescheduleBooking`` when changing time.
     static func updateConsumerBookingMetadata(
         bookingId: String,
         location: String?,
@@ -168,6 +166,40 @@ enum ConsumerBookingsSimpleAPI {
             body["serviceName"] = serviceName.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         guard !body.isEmpty else { return }
+        let data = try JSONSerialization.data(withJSONObject: body, options: [])
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "PUT"
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = data
+        if let t = bearerToken, !t.isEmpty {
+            req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
+        }
+
+        let (respData, resp) = try await URLSession.shared.data(for: req)
+        try throwIfHTTPError(resp, data: respData)
+    }
+
+    /// `PUT /api/v1/bookings-simple/:id` — direct consumer reschedule (accepted / upcoming paid). No provider approval gate.
+    static func rescheduleBooking(
+        bookingId: String,
+        scheduledTimeISO: String,
+        location: String?,
+        notes: String?,
+        bearerToken: String?
+    ) async throws {
+        let enc = bookingId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? bookingId
+        guard let url = URL(string: AppConfiguration.messagingAPIRootTrimmed + "/bookings-simple/\(enc)") else {
+            throw URLError(.badURL)
+        }
+        var body: [String: Any] = ["scheduledTime": scheduledTimeISO]
+        if let location {
+            body["location"] = location
+        }
+        if let notes {
+            body["notes"] = notes
+        }
         let data = try JSONSerialization.data(withJSONObject: body, options: [])
 
         var req = URLRequest(url: url)
@@ -323,6 +355,11 @@ private struct BookingSingleDetail: Decodable, Sendable {
     let location: String?
     let notes: String?
     let priceUsdCents: Int?
+    let paidAt: String?
+    let completedAt: String?
+    let tipRequestedAt: String?
+    let tipDecidedAt: String?
+    let tipAmountCents: Int?
     let pendingRescheduleRequest: PendingRescheduleRequestDTO?
     let barber: BookingSingleBarber?
 }
@@ -374,6 +411,14 @@ struct ConsumerBookingSimpleRow: Decodable, Sendable, Identifiable, Hashable {
     let location: String?
     let notes: String?
     let priceUsdCents: Int?
+    /// ISO timestamp when the consumer paid for the service (locks appointment).
+    let paidAt: String?
+    /// ISO timestamp when the operator marked the visit complete.
+    let completedAt: String?
+    let tipRequestedAt: String?
+    /// ISO timestamp when the consumer chose a tip (including $0).
+    let tipDecidedAt: String?
+    let tipAmountCents: Int?
     /// When present and pending, the confirmed `scheduledTime` is unchanged until the provider approves.
     let pendingRescheduleRequest: PendingRescheduleRequestDTO?
 }
@@ -408,12 +453,51 @@ extension ConsumerBookingSimpleRow {
             location: b.location,
             notes: b.notes,
             priceUsdCents: b.priceUsdCents,
+            paidAt: b.paidAt,
+            completedAt: b.completedAt,
+            tipRequestedAt: b.tipRequestedAt,
+            tipDecidedAt: b.tipDecidedAt,
+            tipAmountCents: b.tipAmountCents,
             pendingRescheduleRequest: b.pendingRescheduleRequest
         )
     }
 
     var hasPendingRescheduleRequest: Bool {
         pendingRescheduleRequest?.isPending == true
+    }
+
+    private var statusUpper: String {
+        status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func hasTimestamp(_ raw: String?) -> Bool {
+        guard let t = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty else { return false }
+        return true
+    }
+
+    /// `ACCEPTED` and service not paid yet — open service checkout.
+    var needsServicePayment: Bool {
+        statusUpper == "ACCEPTED" && !Self.hasTimestamp(paidAt)
+    }
+
+    /// `COMPLETED` and tip not chosen yet (including $0).
+    var needsTipDecision: Bool {
+        statusUpper == "COMPLETED" && !Self.hasTimestamp(tipDecidedAt)
+    }
+
+    /// Old fully-settled rows that remain `PAID` with `completedAt` set.
+    var isLegacySettledPaid: Bool {
+        statusUpper == "PAID" && Self.hasTimestamp(completedAt)
+    }
+
+    /// Paid appointment still upcoming (service paid; not marked complete).
+    var isUpcomingPaidAppointment: Bool {
+        statusUpper == "PAID" && !Self.hasTimestamp(completedAt) && !Self.hasTimestamp(tipDecidedAt)
+    }
+
+    /// Any consumer action that should open the payment takeover.
+    var needsPaymentAction: Bool {
+        needsServicePayment || needsTipDecision
     }
 }
 
@@ -425,15 +509,29 @@ extension ConsumerBookingSimpleRow {
         now: Date = Date(),
         calendar: Calendar = BookingPacificSchedule.pacificCalendar
     ) -> ConsumerBookingScheduleSegment {
-        let s = status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let s = statusUpper
 
-        // Provider marked the visit complete but the consumer still owes payment: keep the row under **Today**
-        // (action item). **PAID** and other terminal states stay in Past — that is when "Book again" is appropriate.
-        if s == "COMPLETED", BookingPaymentRequestPayload.from(bookingRow: self) != nil {
+        // Tip still required after complete — keep under Today as an action item.
+        if needsTipDecision {
             return .today
         }
 
+        // Unpaid accepted — keep on calendar by schedule (payment required).
+        if needsServicePayment {
+            guard let t = Self.parseScheduledISO(scheduledTime) else { return .past }
+            if calendar.isDate(t, inSameDayAs: now) { return .today }
+            if t > now { return .upcoming }
+            return .past
+        }
+
         guard let t = Self.parseScheduledISO(scheduledTime) else {
+            return .past
+        }
+
+        // Upcoming paid appointments stay on Today/Upcoming (not Past).
+        if isUpcomingPaidAppointment {
+            if calendar.isDate(t, inSameDayAs: now) { return .today }
+            if t > now { return .upcoming }
             return .past
         }
 
@@ -522,11 +620,15 @@ extension ConsumerBookingSimpleRow {
     }
 
     var displayStatus: String {
-        let u = status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if needsServicePayment { return "Payment required" }
+        if needsTipDecision { return "Tip required" }
+        if isUpcomingPaidAppointment { return "Confirmed" }
+        if isLegacySettledPaid { return "Paid" }
+        let u = statusUpper
         switch u {
         case "PENDING": return "Pending"
         case "ACCEPTED": return "Confirmed"
-        case "COMPLETED": return "Awaiting payment"
+        case "COMPLETED": return "Completed"
         case "PAID": return "Paid"
         case "CANCELLED": return "Cancelled"
         case "REJECTED": return "Declined"
@@ -566,21 +668,8 @@ extension ConsumerBookingSimpleRow {
             serviceName: displayServiceName,
             providerName: barber,
             scheduledAt: at,
-            statusNote: Self.displayStatusForProfile(status)
+            statusNote: displayStatus
         )
-    }
-
-    private static func displayStatusForProfile(_ raw: String) -> String? {
-        let u = raw.uppercased()
-        switch u {
-        case "PENDING": return "Pending"
-        case "ACCEPTED": return "Confirmed"
-        case "COMPLETED": return "Awaiting payment"
-        case "PAID": return "Paid"
-        case "CANCELLED": return "Cancelled"
-        case "REJECTED": return "Declined"
-        default: return raw.capitalized
-        }
     }
 }
 

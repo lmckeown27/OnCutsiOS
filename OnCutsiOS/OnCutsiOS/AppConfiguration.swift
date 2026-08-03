@@ -56,8 +56,7 @@ enum AppConfiguration: Sendable {
             || host == "www.campuscut.com"
     }
 
-    /// OnCuts web checkout for a booking after the provider marks the service complete (`COMPLETED` → consumer pays).
-    /// Matches `booking-simple` complete handler: `{FRONTEND_URL}/web/payment/:bookingId`.
+    /// OnCuts web checkout fallback URL for a booking (service confirm or tip). Path matches `{FRONTEND_URL}/web/payment/:bookingId`.
     static func urlConsumerBookingPaymentWeb(bookingId: String) -> URL? {
         let trimmed = bookingId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }

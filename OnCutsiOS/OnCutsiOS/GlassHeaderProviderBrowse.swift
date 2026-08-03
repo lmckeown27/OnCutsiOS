@@ -481,8 +481,6 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     @ViewBuilder let emptyContent: () -> EmptyContent
     /// Today’s in-progress / upcoming appointment pill + mesh accent (consumer home).
     var todayBookingActivity: HomeTodayBookingHighlight? = nil
-    /// Provider marked **COMPLETED** — consumer owes payment (`Pay later` / deferred takeover friendly).
-    var pendingPaymentBooking: HomePendingPaymentHighlight? = nil
     /// iOS: opens maximum-distance sheet (`ConsumerBrowseDistanceSheet`). Omitted on macOS where browse geo uses no `lat`/`lng`.
     var onMaxDistanceTap: (() -> Void)? = nil
     /// Called after the inline MI radius slider commits a new preference (parent should reload providers).
@@ -495,8 +493,6 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     var utilityPillSuppressesHubPaging: Binding<Bool>? = nil
     /// Parent presents **booking detail** for this row (e.g. push on home `NavigationStack`, or Bookings tab + `pendingOpenBookingDetailId`).
     var onTodayBookingReminderTap: ((ConsumerBookingSimpleRow) -> Void)? = nil
-    /// Parent presents **consumer payment takeover** (`ChatViewModel.presentPaymentTakeover`).
-    var onPendingPaymentReminderTap: ((ConsumerBookingSimpleRow) -> Void)? = nil
     var sessionManager: AppSessionManager?
     var mainCoordinator: MainCoordinator?
     /// Rebook / active-booking gating inside `ConsumerBookingDetailView`.
@@ -674,7 +670,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     private var showsHomePinnedBookingStripes: Bool {
         sessionManager != nil
             && mainCoordinator != nil
-            && ((todayBookingActivity != nil) || (pendingPaymentBooking != nil))
+            && todayBookingActivity != nil
     }
 
     /// How far the utility pill travels off-screen — matched to booking clearance for a 1:1 handoff.
@@ -698,14 +694,6 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                         highlight: activity,
                         onTap: {
                             onTodayBookingReminderTap?(activity.sourceRow)
-                        }
-                    )
-                }
-                if let pending = pendingPaymentBooking {
-                    HomePendingPaymentReminderGlassCard(
-                        highlight: pending,
-                        onTap: {
-                            onPendingPaymentReminderTap?(pending.sourceRow)
                         }
                     )
                 }

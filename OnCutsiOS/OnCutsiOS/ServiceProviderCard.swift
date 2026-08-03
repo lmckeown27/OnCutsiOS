@@ -148,25 +148,27 @@ struct ServiceProviderCard: View {
                         )
                     }
                     
-                    // Provider kind (Barber, Makeup, Nails, …) — not individual services / haircut names
-                    Text(provider.providerKindDisplayName)
-                        .font(OnCutsFont.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(kindPillForegroundColor)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(kindPillBackgroundColor)
-                        .clipShape(Capsule())
-                    
-                    // Instagram handle (visible only; open profile from detail sheet to visit)
-                    if !provider.instagramDisplayHandle.isEmpty {
-                        Text(provider.instagramDisplayHandle)
-                            .font(OnCutsFont.bodySmall)
-                            .foregroundStyle(cardSecondaryTextColor)
-                            .multilineTextAlignment(.leading)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .lineLimit(nil)
-                            .accessibilityLabel("Instagram \(provider.instagramDisplayHandle), open provider to visit")
+                    // Provider kind + Instagram handle on one row (handle wraps fully — no ellipsis)
+                    HStack(alignment: .center, spacing: 8) {
+                        Text(provider.providerKindDisplayName)
+                            .font(OnCutsFont.caption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(kindPillForegroundColor)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(kindPillBackgroundColor)
+                            .clipShape(Capsule())
+                            .fixedSize(horizontal: true, vertical: false)
+
+                        if !provider.instagramDisplayHandle.isEmpty {
+                            Text(provider.instagramDisplayHandle)
+                                .font(OnCutsFont.bodySmall)
+                                .foregroundStyle(cardSecondaryTextColor)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: true, vertical: true)
+                                .accessibilityLabel("Instagram \(provider.instagramDisplayHandle), open provider to visit")
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

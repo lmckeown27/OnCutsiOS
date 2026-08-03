@@ -61,15 +61,22 @@ private enum CreatePaymentIntentAPI {
         }
     }
 
+    /// `create-payment-intent` (service) or `create-tip-intent` (tip-only after COMPLETED).
+    enum IntentEndpoint: String, Sendable {
+        case servicePayment = "create-payment-intent"
+        case tipPayment = "create-tip-intent"
+    }
+
     static func fetchConfig(
         bookingID: String,
         stripeAccountID: String?,
         tipAmountCents: Int,
         bearerToken: String?,
-        apiBaseURLTrimmed: String
+        apiBaseURLTrimmed: String,
+        intentEndpoint: IntentEndpoint = .servicePayment
     ) async throws -> PaymentConfig {
         let enc = bookingID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? bookingID
-        guard let url = URL(string: apiBaseURLTrimmed + "/bookings-simple/\(enc)/create-payment-intent") else {
+        guard let url = URL(string: apiBaseURLTrimmed + "/bookings-simple/\(enc)/\(intentEndpoint.rawValue)") else {
             throw URLError(.badURL)
         }
         #if DEBUG
@@ -81,12 +88,15 @@ private enum CreatePaymentIntentAPI {
             return s
         }
         print(
-            "Stripe checkout: create-payment-intent \(url.absoluteString) defaultKey=\(clip(pkSnap)) sharedClientKey=\(clip(sharedSnap)) stripeAccount=\(STPAPIClient.shared.stripeAccount ?? "nil")"
+            "Stripe checkout: \(intentEndpoint.rawValue) \(url.absoluteString) defaultKey=\(clip(pkSnap)) sharedClientKey=\(clip(sharedSnap)) stripeAccount=\(STPAPIClient.shared.stripeAccount ?? "nil")"
         )
         #endif
         var body: [String: Any] = [:]
-        if tipAmountCents > 0 {
+        if intentEndpoint == .tipPayment {
             body["tipAmountCents"] = tipAmountCents
+        } else {
+            // Service-confirm phase always charges tip 0 (tip is a separate post-complete flow).
+            body["tipAmountCents"] = 0
         }
         if let sid = stripeAccountID?.trimmingCharacters(in: .whitespacesAndNewlines), !sid.isEmpty {
             body["stripeAccountId"] = sid
@@ -240,7 +250,8 @@ public final class CheckoutViewModel: ObservableObject {
         bearerToken: String?,
         apiBaseURLTrimmed: String,
         publishableKeyValidatedByHost: String? = nil,
-        paymentSheetIncludesApplePay: Bool = false
+        paymentSheetIncludesApplePay: Bool = false,
+        usesTipIntent: Bool = false
     ) async throws -> PaymentConfig {
         destination = .idle
         lastCompletedPaymentIntentId = nil
@@ -254,7 +265,8 @@ public final class CheckoutViewModel: ObservableObject {
             stripeAccountID: stripeAccountID,
             tipAmountCents: tipAmountCents,
             bearerToken: bearerToken,
-            apiBaseURLTrimmed: apiBaseURLTrimmed
+            apiBaseURLTrimmed: apiBaseURLTrimmed,
+            intentEndpoint: usesTipIntent ? .tipPayment : .servicePayment
         )
         let pk = resolvedPublishableKeyTrimmed()
         guard pk.hasPrefix("pk_"), !pk.contains("$(") else {
@@ -385,7 +397,8 @@ public final class CheckoutViewModel: ObservableObject {
         bearerToken: String?,
         apiBaseURLTrimmed: String,
         publishableKeyValidatedByHost: String? = nil,
-        paymentSheetIncludesApplePay: Bool = false
+        paymentSheetIncludesApplePay: Bool = false,
+        usesTipIntent: Bool = false
     ) async throws -> PaymentConfig {
         throw NSError(
             domain: "CheckoutViewModel",

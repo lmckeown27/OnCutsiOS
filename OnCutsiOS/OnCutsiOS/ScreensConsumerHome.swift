@@ -144,11 +144,6 @@ struct ConsumerHomeScreen: View {
         return HomeTodayBookingHighlight.pickTodayHighlight(from: consumerBookingRows)
     }
 
-    private var homePendingPaymentHighlight: HomePendingPaymentHighlight? {
-        guard sessionManager.isAuthenticated else { return nil }
-        return HomePendingPaymentHighlight.pickAwaitingPayment(from: consumerBookingRows)
-    }
-
     /// Hub dot + aligns with app icon: **ACCEPTED** upcoming/today only (not your own outgoing PENDING request).
     private var upcomingBookingIndicatorCount: Int {
         guard sessionManager.isAuthenticated else { return 0 }
@@ -666,7 +661,6 @@ struct ConsumerHomeScreen: View {
             },
             emptyContent: { emptyBrowseState },
             todayBookingActivity: homeTodayBookingHighlight,
-            pendingPaymentBooking: homePendingPaymentHighlight,
             onMaxDistanceTap: consumerBrowseOnMaxDistanceTap,
             onBrowseRadiusCommitted: {
                 Task { await loadProviders() }
@@ -678,13 +672,6 @@ struct ConsumerHomeScreen: View {
                 } else {
                     showOAuthSignInSheet = true
                 }
-            },
-            onPendingPaymentReminderTap: { (row: ConsumerBookingSimpleRow) in
-                guard sessionManager.isAuthenticated else {
-                    showOAuthSignInSheet = true
-                    return
-                }
-                chatViewModel.presentPaymentTakeover(forBookingRow: row)
             },
             sessionManager: sessionManager,
             mainCoordinator: coordinator,
@@ -2446,11 +2433,6 @@ struct UnifiedProviderHomeScreen: View {
         return HomeTodayBookingHighlight.pickTodayHighlight(from: consumerBookingRows)
     }
 
-    private var homePendingPaymentHighlight: HomePendingPaymentHighlight? {
-        guard sessionManager.isAuthenticated else { return nil }
-        return HomePendingPaymentHighlight.pickAwaitingPayment(from: consumerBookingRows)
-    }
-
     private var upcomingBookingIndicatorCount: Int {
         guard sessionManager.isAuthenticated else { return 0 }
         return consumerBookingRows.upcomingBookingNotificationBadgeCount
@@ -3574,7 +3556,6 @@ struct UnifiedProviderHomeScreen: View {
             },
             emptyContent: { emptyState },
             todayBookingActivity: homeTodayBookingHighlight,
-            pendingPaymentBooking: homePendingPaymentHighlight,
             onMaxDistanceTap: unifiedBrowseOnMaxDistanceTap,
             onBrowseRadiusCommitted: {
                 Task { await loadProviders() }
@@ -3590,9 +3571,6 @@ struct UnifiedProviderHomeScreen: View {
                 navigateHubPage(0, animated: false)
                 navigationPath = NavigationPath()
                 navigationPath.append(ConsumerHomeBookingStackRoute.bookingsTabDetailPush(for: row))
-            },
-            onPendingPaymentReminderTap: { (row: ConsumerBookingSimpleRow) in
-                chatViewModel.presentPaymentTakeover(forBookingRow: row)
             },
             sessionManager: sessionManager,
             mainCoordinator: coordinator,

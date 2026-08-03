@@ -45,10 +45,8 @@ enum BookingSimplePaymentAPI {
         guard let url = URL(string: base + "/bookings-simple/\(enc)/create-payment-intent") else {
             throw URLError(.badURL)
         }
-        var body: [String: Any] = [:]
-        if tipAmountCents > 0 {
-            body["tipAmountCents"] = tipAmountCents
-        }
+        // Service-confirm phase always charges tip 0 (tip is a separate post-complete flow).
+        var body: [String: Any] = ["tipAmountCents": 0]
         if let sid = stripeAccountId?.trimmingCharacters(in: .whitespacesAndNewlines), !sid.isEmpty {
             body["stripeAccountId"] = sid
         }
@@ -90,7 +88,8 @@ enum BookingSimplePaymentAPI {
     }
 
     /// `POST /api/v1/bookings-simple/:id/pay` with `paymentMethod: cash` — marks booking `PAID` when the consumer paid in person (see `booking-simple.routes.ts`).
-    static func payWithCash(bookingId: String, tipAmountCents: Int, bearerToken: String?) async throws {
+    /// Service-confirm phase always sends `tipAmountCents: 0`.
+    static func payWithCash(bookingId: String, tipAmountCents: Int = 0, bearerToken: String?) async throws {
         let enc = bookingId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? bookingId
         let base = AppConfiguration.messagingAPIRootTrimmed
         guard let url = URL(string: base + "/bookings-simple/\(enc)/pay") else {
@@ -100,6 +99,61 @@ enum BookingSimplePaymentAPI {
             "tipAmountCents": tipAmountCents,
             "paymentMethod": "cash",
         ]
+        let data = try JSONSerialization.data(withJSONObject: body)
+        _ = try await authorizedJSON(url: url, method: "POST", bearerToken: bearerToken, body: data)
+    }
+
+    /// `POST /api/v1/bookings-simple/:id/create-tip-intent` — tip-only PaymentIntent after service is paid.
+    static func createTipIntent(
+        bookingId: String,
+        tipAmountCents: Int,
+        stripeAccountId: String? = nil,
+        bearerToken: String?
+    ) async throws -> (clientSecret: String, paymentIntentId: String) {
+        let enc = bookingId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? bookingId
+        let base = AppConfiguration.messagingAPIRootTrimmed
+        guard let url = URL(string: base + "/bookings-simple/\(enc)/create-tip-intent") else {
+            throw URLError(.badURL)
+        }
+        var body: [String: Any] = ["tipAmountCents": tipAmountCents]
+        if let sid = stripeAccountId?.trimmingCharacters(in: .whitespacesAndNewlines), !sid.isEmpty {
+            body["stripeAccountId"] = sid
+        }
+        let data = try JSONSerialization.data(withJSONObject: body)
+        let responseData = try await authorizedJSON(url: url, method: "POST", bearerToken: bearerToken, body: data)
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let decoded = try decoder.decode(CreatePIEnvelope.self, from: responseData)
+        guard let d = decoded.data,
+              let secret = d.clientSecret?.trimmingCharacters(in: .whitespacesAndNewlines), !secret.isEmpty,
+              let pi = d.paymentIntentId?.trimmingCharacters(in: .whitespacesAndNewlines), !pi.isEmpty else {
+            throw NSError(
+                domain: "BookingSimplePaymentAPI",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Missing tip payment intent data."]
+            )
+        }
+        return (secret, pi)
+    }
+
+    /// `POST /api/v1/bookings-simple/:id/confirm-tip` — records tip (including $0 with no Stripe PI).
+    static func confirmTip(
+        bookingId: String,
+        tipAmountCents: Int,
+        paymentIntentId: String? = nil,
+        bearerToken: String?
+    ) async throws {
+        let enc = bookingId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? bookingId
+        let base = AppConfiguration.messagingAPIRootTrimmed
+        guard let url = URL(string: base + "/bookings-simple/\(enc)/confirm-tip") else {
+            throw URLError(.badURL)
+        }
+        var body: [String: Any] = ["tipAmountCents": tipAmountCents]
+        if tipAmountCents > 0,
+           let pi = paymentIntentId?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !pi.isEmpty {
+            body["paymentIntentId"] = pi
+        }
         let data = try JSONSerialization.data(withJSONObject: body)
         _ = try await authorizedJSON(url: url, method: "POST", bearerToken: bearerToken, body: data)
     }

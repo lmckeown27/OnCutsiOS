@@ -2,8 +2,7 @@
 //  ConsumerPaymentTakeoverView.swift
 //  OnCuts
 //
-//  Full-screen payment when the provider marks the booking complete (COMPLETED).
-//  Stripe PaymentSheet + `bookings-simple` create/confirm endpoints (same pipeline as the web app).
+//  Full-screen payment: service confirm (ACCEPTED) or tip decision (COMPLETED).
 //
 
 import SwiftUI
@@ -19,9 +18,9 @@ private let paymentServiceTitleKerning: CGFloat = 2.2 * 1.15
 
 /// Service price on the payment summary card.
 private let paymentServicePriceFont = OnCutsFont.system(size: 48, weight: .bold, design: .default)
+private let paymentModeTitleFont = OnCutsFont.system(size: 28, weight: .bold, design: .default)
 
 /// Tip section typography (title + preset pills).
-private let paymentTipSectionTitleFont = OnCutsFont.system(size: 17, weight: .semibold, design: .default)
 private let paymentTipPillFont = OnCutsFont.system(size: 17, weight: .semibold, design: .default)
 private let paymentTipPillFontSelected = OnCutsFont.system(size: 17, weight: .bold, design: .default)
 
@@ -44,26 +43,18 @@ private enum PaymentMethodButtonMetrics {
     static let cashVerticalPadding: CGFloat = 11
 }
 
-/// Percentage tip options; none selected until the user taps (tap again to clear).
-private enum TipPreset: Int, CaseIterable {
-    case fifteen
-    case twenty
-    case twentyFive
+/// Fixed tip presets for tip-decide mode ($0 with custom, then $4/$5/$6).
+private enum TipDollarPreset: Int, CaseIterable, Identifiable {
+    case zero = 0
+    case four = 400
+    case five = 500
+    case six = 600
+
+    var id: Int { rawValue }
 
     var label: String {
-        switch self {
-        case .fifteen: return "15%"
-        case .twenty: return "20%"
-        case .twentyFive: return "25%"
-        }
-    }
-
-    func tipCents(priceCents: Int) -> Int {
-        switch self {
-        case .fifteen: return Int((Double(priceCents) * 0.15).rounded())
-        case .twenty: return Int((Double(priceCents) * 0.20).rounded())
-        case .twentyFive: return Int((Double(priceCents) * 0.25).rounded())
-        }
+        if rawValue == 0 { return "$0" }
+        return "$\(rawValue / 100)"
     }
 }
 
@@ -117,18 +108,19 @@ struct ConsumerPaymentTakeoverView: View {
 
     @State private var phase: PaymentPhase = .loading
     @State private var tipAmountCents: Int
-    @State private var selectedTipPreset: TipPreset?
+    @State private var selectedTipPreset: TipDollarPreset?
+    @State private var customTipText: String = ""
     @State private var bannerError: String?
     @State private var isPaying = false
     @State private var isStartingApplePay = false
     @State private var isConfirmingCash = false
-    /// When Admin enables cash (`cashPaymentEnabled`), user can select Cash — tips forced to $0.
+    @State private var isConfirmingZeroTip = false
+    /// When Admin enables cash (`cashPaymentEnabled`), user can select Cash — service pay only.
     @State private var prefersCashPayment = false
     @State private var frontendConfigStore = PlatformFrontendConfigStore.shared
-    /// Filled via `GET /bookings-simple/:id` when the socket payload omitted `barberAvatar` (e.g. older servers).
     @State private var enrichedBarberAvatarURL: String?
-    /// Publishable key chosen in `configureStripeIfPossible` (server client-config or plist); reapplied at pay time so the SDK cannot drift from a stale value.
     @State private var validatedPublishableKeyForCheckout: String = ""
+    @FocusState private var isCustomTipFocused: Bool
 
     private enum PaymentPhase: Equatable {
         case loading
@@ -136,11 +128,14 @@ struct ConsumerPaymentTakeoverView: View {
         case misconfigured(String)
     }
 
+    private var isTipMode: Bool { payload.mode == .tipDecide }
+    private var isServiceMode: Bool { payload.mode == .serviceConfirm }
+
     init(payload: BookingPaymentRequestPayload, sessionManager: AppSessionManager) {
         self.payload = payload
         self.sessionManager = sessionManager
         _tipAmountCents = State(initialValue: 0)
-        _selectedTipPreset = State(initialValue: nil)
+        _selectedTipPreset = State(initialValue: payload.mode == .tipDecide ? .zero : nil)
         _checkout = StateObject(
             wrappedValue: CheckoutViewModel(
                 merchantDisplayName: "OnCuts",
@@ -170,6 +165,15 @@ struct ConsumerPaymentTakeoverView: View {
                     .padding(.horizontal, 20)
                     .padding(.vertical, 28)
                 }
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+                .simultaneousGesture(TapGesture().onEnded {
+                    guard isCustomTipFocused else { return }
+                    dismissCustomTipKeyboard()
+                })
+                #if os(iOS)
+                .scrollDismissesKeyboard(isCustomTipFocused ? .immediately : .interactively)
+                #endif
             }
             .navigationTitle("")
             #if os(iOS)
@@ -180,6 +184,7 @@ struct ConsumerPaymentTakeoverView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Pay later") {
+                        dismissCustomTipKeyboard()
                         chatViewModel.dismissPaymentTakeoverForLater()
                     }
                     .font(OnCutsFont.body(weight: .semibold))
@@ -189,15 +194,16 @@ struct ConsumerPaymentTakeoverView: View {
         }
         .task {
             await frontendConfigStore.refresh()
-            if !frontendConfigStore.cashPaymentEnabled {
+            if !frontendConfigStore.cashPaymentEnabled || isTipMode {
                 prefersCashPayment = false
             }
+            // Pull operator photo in parallel with Stripe setup — tip/service pages need the
+            // barber-detail avatar (socket / booking-row URLs are often missing or not loadable).
+            async let avatarEnrichment: Void = enrichBookingMetadataIfNeeded()
             await configureStripeIfPossible()
-            await enrichBookingMetadataIfNeeded()
+            await avatarEnrichment
         }
         .onChange(of: checkout.destination) { _, new in
-            // Defer mutations: Stripe’s sheet can publish `CheckoutDestination` during SwiftUI’s update pass;
-            // assigning `@State` / `ObservableObject` here synchronously triggers “Modifying state during view update”.
             Task { @MainActor in
                 switch new {
                 case .success:
@@ -214,12 +220,22 @@ struct ConsumerPaymentTakeoverView: View {
             if cash {
                 selectedTipPreset = nil
                 tipAmountCents = 0
+                customTipText = ""
             }
         }
         .onChange(of: frontendConfigStore.cashPaymentEnabled) { _, enabled in
             if !enabled {
                 prefersCashPayment = false
             }
+        }
+        .onChange(of: isCustomTipFocused) { _, focused in
+            if focused {
+                selectedTipPreset = nil
+            }
+        }
+        .onChange(of: customTipText) { _, text in
+            guard isTipMode, isCustomTipFocused || selectedTipPreset == nil else { return }
+            tipAmountCents = Self.parseCustomTipCents(text)
         }
     }
 
@@ -246,10 +262,13 @@ struct ConsumerPaymentTakeoverView: View {
         }
     }
 
-    /// Normalizes app-relative or absolute avatar strings so `AsyncImage` loads reliably.
+    /// Prefer enriched (barber-detail) URL; fall back to payload. Pass the raw stored string so
+    /// `AvatarView` / `ProfileImageURLResolver.urlForAsyncImage` can resolve relative + S3 keys.
     private var resolvedBarberAvatarURLString: String? {
-        let raw = enrichedBarberAvatarURL ?? payload.barberAvatarURL
-        return ProfileImageURLResolver.url(from: raw)?.absoluteString
+        let enriched = enrichedBarberAvatarURL?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !enriched.isEmpty { return enriched }
+        let fromPayload = payload.barberAvatarURL?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return fromPayload.isEmpty ? nil : fromPayload
     }
 
     private var displayBarberName: String {
@@ -263,7 +282,7 @@ struct ConsumerPaymentTakeoverView: View {
     }
 
     private var showsCashPaymentOption: Bool {
-        frontendConfigStore.cashPaymentEnabled
+        isServiceMode && frontendConfigStore.cashPaymentEnabled
     }
 
     private var cashConfirmButtonTitle: String {
@@ -272,7 +291,6 @@ struct ConsumerPaymentTakeoverView: View {
 
     private static let paymentAvatarCorner: CGFloat = 12
 
-    /// `StripeApplePayMerchantId` in Info.plist — when missing, only Card is offered.
     private var isApplePayConfigured: Bool {
         guard let mid = Bundle.StripeConfig.applePayMerchantId?.trimmingCharacters(in: .whitespacesAndNewlines),
               !mid.isEmpty,
@@ -284,7 +302,13 @@ struct ConsumerPaymentTakeoverView: View {
     private var readyBlock: some View {
         VStack(spacing: 0) {
             paymentGlassCard {
-                VStack(spacing: 40) {
+                VStack(spacing: 32) {
+                    Text(isTipMode ? "Consider a Tip" : "Pay to Confirm Booking")
+                        .font(paymentModeTitleFont)
+                        .foregroundStyle(Color.lavaShellCream)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+
                     VStack(spacing: 12) {
                         AvatarView(
                             imageUrl: resolvedBarberAvatarURLString,
@@ -315,26 +339,19 @@ struct ConsumerPaymentTakeoverView: View {
                             .frame(maxWidth: 280)
                     }
 
-                    Text(payload.priceFormatted)
-                        .font(paymentServicePriceFont)
-                        .foregroundStyle(Color.lavaShellCream)
-                        .multilineTextAlignment(.center)
+                    if isServiceMode {
+                        Text(payload.priceFormatted)
+                            .font(paymentServicePriceFont)
+                            .foregroundStyle(Color.lavaShellCream)
+                            .multilineTextAlignment(.center)
+                    }
 
-                    if !prefersCashPayment {
-                        VStack(alignment: .center, spacing: 16) {
-                            Text("Tip")
-                                .font(paymentTipSectionTitleFont)
-                                .foregroundStyle(Color.lavaShellCreamSecondary)
-                                .textCase(.uppercase)
-                                .tracking(1.4)
-
-                            tipPillRow
-                        }
-                        .frame(maxWidth: .infinity)
+                    if isTipMode {
+                        tipDecideSection
                     }
 
                     VStack(spacing: 20) {
-                        if prefersCashPayment {
+                        if isServiceMode, prefersCashPayment {
                             Text("Please give cash directly to \(barberFirstName)")
                                 .font(OnCutsFont.subheadline)
                                 .foregroundStyle(Color.lavaShellCreamTertiary)
@@ -351,26 +368,30 @@ struct ConsumerPaymentTakeoverView: View {
                                 .foregroundStyle(Color.lavaShellCreamSecondary)
                                 .disabled(isConfirmingCash)
                             }
+                        } else if isTipMode, tipAmountCents == 0, selectedTipPreset == .zero, !isCustomTipFocused {
+                            zeroTipConfirmButton
                         } else {
-                            Text(isApplePayConfigured ? "Pay with Apple Pay or Manually input card" : "Manually input card")
-                                .font(OnCutsFont.subheadline)
-                                .foregroundStyle(Color.lavaShellCreamTertiary)
-                                .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true)
+                            Text(
+                                isApplePayConfigured
+                                    ? "Pay with Apple Pay or Manually input card"
+                                    : "Manually input card"
+                            )
+                            .font(OnCutsFont.subheadline)
+                            .foregroundStyle(Color.lavaShellCreamTertiary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
 
                             VStack(spacing: 10) {
                                 if isApplePayConfigured {
                                     applePayPrimaryButton
                                     paymentMethodOrDivider
                                 }
-
                                 cardPrimaryButton
                             }
 
                             if showsCashPaymentOption {
                                 paymentCashPreferenceHint
                                     .padding(.top, 4)
-
                                 cashSecondaryButton
                             }
                         }
@@ -385,6 +406,61 @@ struct ConsumerPaymentTakeoverView: View {
                 }
             }
         }
+    }
+
+    private var tipDecideSection: some View {
+        VStack(alignment: .center, spacing: 16) {
+            Text("Consider leaving a tip that best represents the quality of service")
+                .font(OnCutsFont.subheadline)
+                .foregroundStyle(Color.lavaShellCreamSecondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Top row: $0 + custom
+            HStack(spacing: PaymentTipButtonMetrics.pillSpacing) {
+                tipPill(.zero)
+                customTipField
+            }
+
+            HStack(spacing: PaymentTipButtonMetrics.pillSpacing) {
+                tipPill(.four)
+                tipPill(.five)
+                tipPill(.six)
+            }
+
+            if tipAmountCents > 0 {
+                Text(Self.formatUSD(cents: tipAmountCents))
+                    .font(OnCutsFont.title2(weight: .bold))
+                    .foregroundStyle(Color.lavaShellCream)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var customTipField: some View {
+        HStack(spacing: 2) {
+            Text("$")
+                .font(paymentTipPillFont)
+                .foregroundStyle(Color.lavaShellCream)
+                .accessibilityHidden(true)
+            TextField("Custom", text: $customTipText)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.leading)
+                .font(paymentTipPillFont)
+                .foregroundStyle(Color.lavaShellCream)
+                .focused($isCustomTipFocused)
+                .accessibilityLabel("Custom tip amount in dollars")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, PaymentTipButtonMetrics.pillVerticalPadding)
+        .frame(minWidth: 96)
+        .background(
+            Capsule(style: .continuous)
+                .stroke(
+                    isCustomTipFocused ? Color.oliveGreen : Color.paymentTipUnselectedStroke,
+                    lineWidth: isCustomTipFocused ? 2 : 1.5
+                )
+        )
     }
 
     private var paymentMethodOrDivider: some View {
@@ -420,7 +496,7 @@ struct ConsumerPaymentTakeoverView: View {
                     .tint(Color.lavaShellCream)
             } else {
                 PaymentApplePayButton(
-                    isEnabled: !isPaying && !isConfirmingCash,
+                    isEnabled: !isPaying && !isConfirmingCash && !isConfirmingZeroTip && canChargeCard,
                     action: { presentStandaloneApplePayCheckout() }
                 )
                 .frame(maxWidth: .infinity)
@@ -428,6 +504,11 @@ struct ConsumerPaymentTakeoverView: View {
                 .clipShape(RoundedRectangle(cornerRadius: PaymentMethodButtonMetrics.primaryCornerRadius, style: .continuous))
             }
         }
+    }
+
+    private var canChargeCard: Bool {
+        if isTipMode { return tipAmountCents > 0 }
+        return true
     }
 
     private var cardPrimaryButton: some View {
@@ -454,7 +535,33 @@ struct ConsumerPaymentTakeoverView: View {
             .background(Color.paymentFilledButtonFill)
             .clipShape(RoundedRectangle(cornerRadius: PaymentMethodButtonMetrics.primaryCornerRadius, style: .continuous))
         }
-        .disabled(isPaying || isConfirmingCash || isStartingApplePay)
+        .disabled(isPaying || isConfirmingCash || isStartingApplePay || isConfirmingZeroTip || !canChargeCard)
+        .buttonStyle(BookButtonStyle())
+    }
+
+    private var zeroTipConfirmButton: some View {
+        Button {
+            Task { await completeZeroTip() }
+        } label: {
+            HStack(spacing: 12) {
+                if isConfirmingZeroTip {
+                    ProgressView()
+                        .tint(Color.lavaShellCream)
+                }
+                Text(isConfirmingZeroTip ? "Confirming…" : "Confirm $0 tip")
+                    .font(paymentPrimaryActionLabelFont)
+                    .foregroundStyle(Color.lavaShellCream)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: PaymentMethodButtonMetrics.primaryHeight)
+            .background(Color.white.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: PaymentMethodButtonMetrics.primaryCornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: PaymentMethodButtonMetrics.primaryCornerRadius, style: .continuous)
+                    .stroke(Color.lavaShellCream.opacity(0.55), lineWidth: 1.5)
+            )
+        }
+        .disabled(isConfirmingZeroTip || isPaying || isStartingApplePay)
         .buttonStyle(BookButtonStyle())
     }
 
@@ -517,48 +624,44 @@ struct ConsumerPaymentTakeoverView: View {
         .buttonStyle(BookButtonStyle())
     }
 
-    private var tipPillRow: some View {
-        HStack {
-            Spacer(minLength: 0)
-            HStack(spacing: PaymentTipButtonMetrics.pillSpacing) {
-                ForEach(TipPreset.allCases, id: \.self) { preset in
-                    tipPill(preset)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, 4)
+    private func dismissCustomTipKeyboard() {
+        isCustomTipFocused = false
+        #if canImport(UIKit)
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        #endif
     }
 
-    private func tipPill(_ preset: TipPreset) -> some View {
-        let selected = selectedTipPreset == preset
+    private func tipPill(_ preset: TipDollarPreset) -> some View {
+        let selected = selectedTipPreset == preset && !isCustomTipFocused
         return Button {
+            dismissCustomTipKeyboard()
+            customTipText = ""
             if selected {
-                selectedTipPreset = nil
+                selectedTipPreset = .zero
                 tipAmountCents = 0
             } else {
                 BookingSelectorTheme.triggerSelectionChangedIfNewSelection(wasSelected: false)
                 selectedTipPreset = preset
-                tipAmountCents = preset.tipCents(priceCents: payload.priceCents)
+                tipAmountCents = preset.rawValue
             }
         } label: {
             Text(preset.label)
                 .font(selected ? paymentTipPillFontSelected : paymentTipPillFont)
-                .foregroundStyle(selected ? Color.paymentTipSelectedLabel : Color.paymentOutlineButtonLabel)
+                .foregroundStyle(selected ? Color.lavaShellCream : Color.paymentOutlineButtonLabel)
                 .padding(.horizontal, selected ? PaymentTipButtonMetrics.pillHorizontalPaddingSelected : PaymentTipButtonMetrics.pillHorizontalPadding)
                 .padding(.vertical, selected ? PaymentTipButtonMetrics.pillVerticalPaddingSelected : PaymentTipButtonMetrics.pillVerticalPadding)
                 .background(
                     Capsule(style: .continuous)
-                        .fill(selected ? Color.paymentTipSelectedFill : Color.clear)
+                        .fill(selected ? Color.oliveGreen : Color.clear)
                 )
                 .overlay(
                     Capsule(style: .continuous)
                         .stroke(
-                            selected ? Color.paymentTipSelectedFill : Color.paymentTipUnselectedStroke,
+                            selected ? Color.oliveGreen : Color.paymentTipUnselectedStroke,
                             lineWidth: selected ? 2.5 : 1.5
                         )
                 )
-                .shadow(color: selected ? Color.paymentTipSelectedFill.opacity(0.45) : .clear, radius: 10, y: 3)
+                .shadow(color: selected ? Color.oliveGreen.opacity(0.35) : .clear, radius: 10, y: 3)
                 .scaleEffect(selected ? 1.06 : 1.0)
         }
         .buttonStyle(.plain)
@@ -566,7 +669,6 @@ struct ConsumerPaymentTakeoverView: View {
         .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 
-    /// Frosted panel: strong material blur + 15% white wash (service summary and actions).
     private func paymentGlassCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
             .padding(24)
@@ -588,10 +690,10 @@ struct ConsumerPaymentTakeoverView: View {
     @MainActor
     private func enrichBookingMetadataIfNeeded() async {
         guard enrichedBarberAvatarURL == nil else { return }
-        let trimmed = payload.barberAvatarURL?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard trimmed.isEmpty else { return }
         guard let token = sessionManager.currentSession?.token.trimmingCharacters(in: .whitespacesAndNewlines),
               !token.isEmpty else { return }
+        // Always resolve via booking + barber detail (same source as browse cards). Do not skip when
+        // the socket/list payload already has a string — those are often null, relative, or stale.
         if let url = await ConsumerBookingsSimpleAPI.resolveBarberAvatarURL(
             bookingId: payload.bookingId,
             bearerToken: token
@@ -609,14 +711,9 @@ struct ConsumerPaymentTakeoverView: View {
             apiBaseURLTrimmed: AppConfiguration.messagingAPIRootTrimmed
         )
         let serverTrimmed = fetchedServer?.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Production API + live PaymentIntents must not use a test publishable key. If client-config
-        // is mis-set to pk_test while the bundle has pk_live, preferring server would cause 404/400 on PI + Elements.
         let fromServer: String? = {
             guard let s = serverTrimmed, s.hasPrefix("pk_") else { return nil }
             if Self.hostsProductionOnCutsAPI, s.hasPrefix("pk_test") {
-                #if DEBUG
-                print("Stripe: ignoring pk_test from client-config on production API host; using Info.plist if present.")
-                #endif
                 return nil
             }
             return s
@@ -633,18 +730,15 @@ struct ConsumerPaymentTakeoverView: View {
             )
             return
         }
-        // Do not call `configureFromAppBundle()` here: it would briefly apply Info.plist and can disagree with `pk` from client-config.
         StripeService.setPublishableKey(pk)
         validatedPublishableKeyForCheckout = pk
         phase = .ready
     }
 
-    /// `true` when API root is production — Stripe mode must match live server PaymentIntents.
     private static var hostsProductionOnCutsAPI: Bool {
         AppConfiguration.hostsProductionAPI
     }
 
-    /// Explains common xcconfig / Info.plist mistakes (key must be `STRIPE_PUBLISHABLE_KEY` in a local xcconfig, then clean build).
     private func stripeMisconfiguredHint(actualValue: String) -> String {
         if actualValue.isEmpty {
             return "No Stripe publishable key in the app Info.plist and none from GET /api/v1/stripe/client-config. Set STRIPE_PUBLISHABLE_KEY in `Config/StripeKeys.xcconfig` (and on the API host’s environment for client-config), then Product → Clean Build Folder and run again."
@@ -652,9 +746,12 @@ struct ConsumerPaymentTakeoverView: View {
         return "The app still has a placeholder Stripe key (or invalid value). For production payments set STRIPE_PUBLISHABLE_KEY = pk_live_… in `Config/StripeKeys.xcconfig` and on the server so client-config matches your Stripe secret mode, then Clean Build Folder."
     }
 
-    /// Loads PaymentIntent params (including optional Connect `stripeAccountId`), configures PaymentSheet with 3DS return URL, and presents the sheet.
     private func presentStripePaymentSheet() {
         bannerError = nil
+        guard canChargeCard else {
+            bannerError = "Choose a tip amount greater than $0, or confirm $0 tip."
+            return
+        }
         isPaying = true
         checkout.resetNavigation()
         Task { @MainActor in
@@ -662,13 +759,14 @@ struct ConsumerPaymentTakeoverView: View {
                 let config = try await checkout.fetchPaymentParams(
                     bookingID: payload.bookingId,
                     stripeAccountID: payload.barberStripeAccountId,
-                    tipAmountCents: tipAmountCents,
+                    tipAmountCents: isTipMode ? tipAmountCents : 0,
                     bearerToken: sessionManager.currentSession?.token,
                     apiBaseURLTrimmed: AppConfiguration.messagingAPIRootTrimmed,
                     publishableKeyValidatedByHost: validatedPublishableKeyForCheckout.isEmpty
                         ? nil
                         : validatedPublishableKeyForCheckout,
-                    paymentSheetIncludesApplePay: false
+                    paymentSheetIncludesApplePay: false,
+                    usesTipIntent: isTipMode
                 )
                 guard let presenter = UIApplication.shared.onCutsPresentationRootViewController else {
                     isPaying = false
@@ -686,6 +784,10 @@ struct ConsumerPaymentTakeoverView: View {
 
     private func presentStandaloneApplePayCheckout() {
         bannerError = nil
+        guard canChargeCard else {
+            bannerError = "Choose a tip amount greater than $0, or confirm $0 tip."
+            return
+        }
         isStartingApplePay = true
         checkout.resetNavigation()
         Task { @MainActor in
@@ -693,20 +795,21 @@ struct ConsumerPaymentTakeoverView: View {
                 let config = try await checkout.fetchPaymentParams(
                     bookingID: payload.bookingId,
                     stripeAccountID: payload.barberStripeAccountId,
-                    tipAmountCents: tipAmountCents,
+                    tipAmountCents: isTipMode ? tipAmountCents : 0,
                     bearerToken: sessionManager.currentSession?.token,
                     apiBaseURLTrimmed: AppConfiguration.messagingAPIRootTrimmed,
                     publishableKeyValidatedByHost: validatedPublishableKeyForCheckout.isEmpty
                         ? nil
                         : validatedPublishableKeyForCheckout,
-                    paymentSheetIncludesApplePay: false
+                    paymentSheetIncludesApplePay: false,
+                    usesTipIntent: isTipMode
                 )
                 let window = UIApplication.shared.onCutsKeyWindow
                 let started = checkout.presentStandaloneApplePay(
                     from: window,
                     paymentConfig: config,
-                    serviceCents: payload.priceCents,
-                    tipCents: tipAmountCents
+                    serviceCents: isTipMode ? 0 : payload.priceCents,
+                    tipCents: isTipMode ? tipAmountCents : 0
                 )
                 isStartingApplePay = false
                 if !started {
@@ -726,38 +829,24 @@ struct ConsumerPaymentTakeoverView: View {
             checkout.resetNavigation()
             return
         }
-        await confirmAndRefresh(paymentIntentId: pi)
+        if isTipMode {
+            await confirmTipAndFinish(paymentIntentId: pi)
+        } else {
+            await confirmServiceAndFinish(paymentIntentId: pi)
+        }
         checkout.resetNavigation()
     }
 
     @MainActor
-    private func confirmAndRefresh(paymentIntentId: String) async {
+    private func confirmServiceAndFinish(paymentIntentId: String) async {
         do {
             try await BookingSimplePaymentAPI.confirmPayment(
                 bookingId: payload.bookingId,
                 paymentIntentId: paymentIntentId,
-                tipAmountCents: tipAmountCents,
+                tipAmountCents: 0,
                 bearerToken: sessionManager.currentSession?.token
             )
-            await Task.yield()
-            // Home + cleared stacks under the modals so dismiss/review never reveals Bookings/detail (stale paid state).
-            NotificationCenter.default.post(name: .onCutsNavigateToConsumerHomeAfterPayment, object: nil)
-            await Task.yield()
-            // Snapshot before `clearPaymentTakeover()` — dismissing the cover can tear down this view and reset `@State`,
-            // so `enrichedBarberAvatarURL` would be lost and review would only get `payload.barberAvatarURL` (often nil).
-            let barberAvatarForReview = enrichedBarberAvatarURL ?? payload.barberAvatarURL
-            chatViewModel.clearPaymentTakeover()
-            await Task.yield()
-            // Backend archives + deletes the booking conversation on PAID — drop the inbox row before review.
-            await chatViewModel.pruneInboxAfterBookingConversationDeleted(
-                bookingId: payload.bookingId,
-                sessionManager: sessionManager
-            )
-            // Refresh *before* presenting review so `@Published` booking updates don’t cancel the review view’s `.task`
-            // mid-flight (which prevented avatar `resolveBarberAvatarURL` from completing).
-            await chatViewModel.refreshConsumerBookingsAndSyncPayment(sessionManager: sessionManager)
-            await Task.yield()
-            chatViewModel.beginPostPaymentReview(from: payload, barberAvatarURLOverride: barberAvatarForReview)
+            await finishServicePaymentSuccess()
         } catch {
             bannerError = "Payment went through, but confirmation failed: \(error.localizedDescription)"
             await chatViewModel.refreshConsumerBookingsAndSyncPayment(sessionManager: sessionManager)
@@ -765,8 +854,65 @@ struct ConsumerPaymentTakeoverView: View {
     }
 
     @MainActor
+    private func confirmTipAndFinish(paymentIntentId: String?) async {
+        do {
+            try await BookingSimplePaymentAPI.confirmTip(
+                bookingId: payload.bookingId,
+                tipAmountCents: tipAmountCents,
+                paymentIntentId: paymentIntentId,
+                bearerToken: sessionManager.currentSession?.token
+            )
+            await finishTipPaymentSuccess()
+        } catch {
+            bannerError = "Tip went through, but confirmation failed: \(error.localizedDescription)"
+            await chatViewModel.refreshConsumerBookingsAndSyncPayment(sessionManager: sessionManager)
+        }
+    }
+
+    @MainActor
+    private func completeZeroTip() async {
+        bannerError = nil
+        isConfirmingZeroTip = true
+        defer { isConfirmingZeroTip = false }
+        tipAmountCents = 0
+        await confirmTipAndFinish(paymentIntentId: nil)
+    }
+
+    @MainActor
+    private func finishServicePaymentSuccess() async {
+        await Task.yield()
+        NotificationCenter.default.post(name: .onCutsNavigateToConsumerHomeAfterPayment, object: nil)
+        await Task.yield()
+        chatViewModel.clearPaymentTakeover()
+        await Task.yield()
+        await chatViewModel.pruneInboxAfterBookingConversationDeleted(
+            bookingId: payload.bookingId,
+            sessionManager: sessionManager
+        )
+        await chatViewModel.refreshConsumerBookingsAndSyncPayment(sessionManager: sessionManager)
+    }
+
+    @MainActor
+    private func finishTipPaymentSuccess() async {
+        await Task.yield()
+        NotificationCenter.default.post(name: .onCutsNavigateToConsumerHomeAfterPayment, object: nil)
+        await Task.yield()
+        let barberAvatarForReview = enrichedBarberAvatarURL ?? payload.barberAvatarURL
+        chatViewModel.clearPaymentTakeover()
+        await Task.yield()
+        await chatViewModel.pruneInboxAfterBookingConversationDeleted(
+            bookingId: payload.bookingId,
+            sessionManager: sessionManager
+        )
+        await chatViewModel.refreshConsumerBookingsAndSyncPayment(sessionManager: sessionManager)
+        await Task.yield()
+        chatViewModel.beginPostPaymentReview(from: payload, barberAvatarURLOverride: barberAvatarForReview)
+    }
+
+    @MainActor
     private func completeCashPayment() async {
         bannerError = nil
+        guard isServiceMode else { return }
         guard frontendConfigStore.cashPaymentEnabled else {
             prefersCashPayment = false
             bannerError = "Cash payments are currently disabled"
@@ -782,20 +928,7 @@ struct ConsumerPaymentTakeoverView: View {
                 bearerToken: sessionManager.currentSession?.token
             )
             isConfirmingCash = false
-            // Dismiss the fullScreenCover on the next run loop tick so SwiftUI isn’t updating the presented view and toggling `activePaymentRequest` in the same frame (avoids black flash / broken dismissal).
-            await Task.yield()
-            NotificationCenter.default.post(name: .onCutsNavigateToConsumerHomeAfterPayment, object: nil)
-            await Task.yield()
-            let barberAvatarForReview = enrichedBarberAvatarURL ?? payload.barberAvatarURL
-            chatViewModel.clearPaymentTakeover()
-            await Task.yield()
-            await chatViewModel.pruneInboxAfterBookingConversationDeleted(
-                bookingId: payload.bookingId,
-                sessionManager: sessionManager
-            )
-            await chatViewModel.refreshConsumerBookingsAndSyncPayment(sessionManager: sessionManager)
-            await Task.yield()
-            chatViewModel.beginPostPaymentReview(from: payload, barberAvatarURLOverride: barberAvatarForReview)
+            await finishServicePaymentSuccess()
         } catch {
             isConfirmingCash = false
             if BookingSimplePaymentAPI.isUnauthorizedHTTPError(error) {
@@ -811,6 +944,21 @@ struct ConsumerPaymentTakeoverView: View {
             bannerError = error.localizedDescription
         }
     }
+
+    private static func parseCustomTipCents(_ text: String) -> Int {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "$", with: "")
+        guard !trimmed.isEmpty, let dollars = Double(trimmed), dollars >= 0 else { return 0 }
+        return Int((dollars * 100).rounded())
+    }
+
+    private static func formatUSD(cents: Int) -> String {
+        let d = Decimal(cents) / 100
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = "USD"
+        return f.string(from: NSDecimalNumber(decimal: d)) ?? String(format: "$%.2f", Double(cents) / 100.0)
+    }
 }
 
 private extension UIApplication {
@@ -825,7 +973,6 @@ private extension UIApplication {
         return foreground.flatMap(\.windows).last ?? scenes.flatMap(\.windows).last
     }
 
-    /// Topmost `UIViewController` suitable for presenting PaymentSheet (SwiftUI `fullScreenCover` may not be the key window’s root).
     var onCutsPresentationRootViewController: UIViewController? {
         if let root = onCutsKeyWindow?.rootViewController {
             return root.onCutsTopPresented

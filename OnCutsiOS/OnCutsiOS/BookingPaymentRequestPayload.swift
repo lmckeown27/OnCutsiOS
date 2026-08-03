@@ -2,12 +2,19 @@
 //  BookingPaymentRequestPayload.swift
 //  OnCuts
 //
-//  Socket `booking-completed` + in-app payment takeover when the provider marks the service complete.
+//  In-app payment takeover: service confirm (ACCEPTED) or tip decision (COMPLETED).
 //
 
 import Foundation
 
 struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
+    enum Mode: String, Hashable, Sendable {
+        /// `ACCEPTED` with no `paidAt` — charge service only to lock the appointment.
+        case serviceConfirm
+        /// `COMPLETED` with no `tipDecidedAt` — tip only (including $0).
+        case tipDecide
+    }
+
     var id: String { bookingId }
     let bookingId: String
     let paymentUrl: URL
@@ -19,6 +26,7 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
     let barberStripeAccountId: String?
     /// Profile image URL string (absolute or app-relative), when known from the socket or bookings list.
     let barberAvatarURL: String?
+    let mode: Mode
 
     /// Human-readable service label (matches consumer booking row / web), not raw enum strings like `HAIRCUT`.
     var displayServiceName: String {
@@ -30,9 +38,9 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
         return t
     }
 
-    /// Decode Socket.IO payload from `PUT /bookings-simple/:id/complete` (see backend `booking-completed` emit).
+    /// Decode Socket.IO payload from provider mark-complete (`booking-completed`) — tip decision flow.
     static func decode(socketData: [Any]) -> BookingPaymentRequestPayload? {
-        guard         let raw = socketData.first else { return nil }
+        guard let raw = socketData.first else { return nil }
         guard let dict = raw as? [String: Any] else { return nil }
 
         let bid = stringValue(dict["bookingId"] ?? dict["booking_id"]) ?? ""
@@ -81,13 +89,20 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
             priceCents: cents,
             priceFormatted: formatted,
             barberStripeAccountId: stripeAcct,
-            barberAvatarURL: avatar
+            barberAvatarURL: avatar,
+            mode: .tipDecide
         )
     }
 
     static func from(bookingRow: ConsumerBookingSimpleRow) -> BookingPaymentRequestPayload? {
-        let u = bookingRow.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        guard u == "COMPLETED" else { return nil }
+        let mode: Mode
+        if bookingRow.needsServicePayment {
+            mode = .serviceConfirm
+        } else if bookingRow.needsTipDecision {
+            mode = .tipDecide
+        } else {
+            return nil
+        }
         guard let url = AppConfiguration.urlConsumerBookingPaymentWeb(bookingId: bookingRow.id) else { return nil }
         let name = bookingRow.barberName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? "Your provider"
         let cents = bookingRow.priceUsdCents ?? 0
@@ -106,7 +121,8 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
             priceCents: cents,
             priceFormatted: formatted,
             barberStripeAccountId: nil,
-            barberAvatarURL: bookingRow.barberAvatar
+            barberAvatarURL: bookingRow.barberAvatar,
+            mode: mode
         )
     }
 
