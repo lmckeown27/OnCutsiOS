@@ -1224,7 +1224,7 @@ struct ConsumerBookingDetailView: View {
 
     private var payForServiceSubtitle: String {
         if bookingRow.needsTipDecision {
-            return "Thanks for your visit. Choose a tip to finish — you can also tip $0."
+            return "Please consider leaving a tip based on the quality of service received"
         }
         return "\(bookingRow.barberDisplayName) accepted. Please pay now to confirm the booking"
     }

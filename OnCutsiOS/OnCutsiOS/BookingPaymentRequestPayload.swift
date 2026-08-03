@@ -26,6 +26,8 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
     let barberStripeAccountId: String?
     /// Profile image URL string (absolute or app-relative), when known from the socket or bookings list.
     let barberAvatarURL: String?
+    /// ISO / API `scheduledTime` for the appointment (service-confirm screen shows date + time).
+    let scheduledTime: String?
     let mode: Mode
 
     /// Human-readable service label (matches consumer booking row / web), not raw enum strings like `HAIRCUT`.
@@ -81,6 +83,13 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
                 ?? dict["provider_avatar"]
         )?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
 
+        let scheduled = stringValue(
+            dict["scheduledTime"]
+                ?? dict["scheduled_time"]
+                ?? dict["requestedAt"]
+                ?? dict["requested_at"]
+        )?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+
         return BookingPaymentRequestPayload(
             bookingId: trimmedBid,
             paymentUrl: paymentUrl,
@@ -90,6 +99,7 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
             priceFormatted: formatted,
             barberStripeAccountId: stripeAcct,
             barberAvatarURL: avatar,
+            scheduledTime: scheduled,
             mode: .tipDecide
         )
     }
@@ -122,6 +132,7 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
             priceFormatted: formatted,
             barberStripeAccountId: nil,
             barberAvatarURL: bookingRow.barberAvatar,
+            scheduledTime: bookingRow.scheduledTime,
             mode: mode
         )
     }

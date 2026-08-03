@@ -1757,7 +1757,7 @@ struct MessagingConversationView: View {
         MessagingProviderRoleLine.occupationAndServicePresentable(booking: threadHeaderBookingSnapshot)
     }
 
-    /// Align dimming with `ConversationListTimelineRow.shouldDimTextColumn` (terminal booking lane).
+    /// Dim header copy for cancelled/rejected-style bookings only (not COMPLETED tip-pending or PAID upcoming).
     private var threadHeaderDimTextColumn: Bool {
         threadHeaderBookingSnapshot?.inboxRowIsTerminalPastContinuum == true
     }

@@ -119,6 +119,7 @@ struct ConsumerPaymentTakeoverView: View {
     @State private var prefersCashPayment = false
     @State private var frontendConfigStore = PlatformFrontendConfigStore.shared
     @State private var enrichedBarberAvatarURL: String?
+    @State private var enrichedScheduledTime: String?
     @State private var validatedPublishableKeyForCheckout: String = ""
     @FocusState private var isCustomTipFocused: Bool
 
@@ -271,6 +272,19 @@ struct ConsumerPaymentTakeoverView: View {
         return fromPayload.isEmpty ? nil : fromPayload
     }
 
+    private var resolvedScheduledTimeISO: String? {
+        let enriched = enrichedScheduledTime?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !enriched.isEmpty { return enriched }
+        let fromPayload = payload.scheduledTime?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return fromPayload.isEmpty ? nil : fromPayload
+    }
+
+    /// Date + time line shown above the service price on Pay to Confirm.
+    private var serviceConfirmScheduleLine: String? {
+        guard let raw = resolvedScheduledTimeISO else { return nil }
+        return BookingPacificSchedule.formattedDisplayScheduledTime(raw, fullMonthName: true)
+    }
+
     private var displayBarberName: String {
         let t = payload.barberName.trimmingCharacters(in: .whitespacesAndNewlines)
         return t.isEmpty ? "Your provider" : t
@@ -340,10 +354,19 @@ struct ConsumerPaymentTakeoverView: View {
                     }
 
                     if isServiceMode {
-                        Text(payload.priceFormatted)
-                            .font(paymentServicePriceFont)
-                            .foregroundStyle(Color.lavaShellCream)
-                            .multilineTextAlignment(.center)
+                        VStack(spacing: 10) {
+                            if let scheduleLine = serviceConfirmScheduleLine {
+                                Text(scheduleLine)
+                                    .font(OnCutsFont.subheadline(weight: .semibold))
+                                    .foregroundStyle(Color.lavaShellCreamSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Text(payload.priceFormatted)
+                                .font(paymentServicePriceFont)
+                                .foregroundStyle(Color.lavaShellCream)
+                                .multilineTextAlignment(.center)
+                        }
                     }
 
                     if isTipMode {
@@ -431,7 +454,7 @@ struct ConsumerPaymentTakeoverView: View {
             if tipAmountCents > 0 {
                 Text(Self.formatUSD(cents: tipAmountCents))
                     .font(OnCutsFont.title2(weight: .bold))
-                    .foregroundStyle(Color.lavaShellCream)
+                    .foregroundStyle(Color.onCutsShellForeground)
             }
         }
         .frame(maxWidth: .infinity)
@@ -441,13 +464,14 @@ struct ConsumerPaymentTakeoverView: View {
         HStack(spacing: 2) {
             Text("$")
                 .font(paymentTipPillFont)
-                .foregroundStyle(Color.lavaShellCream)
+                .foregroundStyle(Color.paymentFieldForeground)
                 .accessibilityHidden(true)
             TextField("Custom", text: $customTipText)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.leading)
                 .font(paymentTipPillFont)
-                .foregroundStyle(Color.lavaShellCream)
+                .foregroundStyle(Color.paymentFieldForeground)
+                .tint(Color.oliveGreen)
                 .focused($isCustomTipFocused)
                 .accessibilityLabel("Custom tip amount in dollars")
         }
@@ -455,6 +479,10 @@ struct ConsumerPaymentTakeoverView: View {
         .padding(.vertical, PaymentTipButtonMetrics.pillVerticalPadding)
         .frame(minWidth: 96)
         .background(
+            Capsule(style: .continuous)
+                .fill(Color.paymentFieldBackground.opacity(0.55))
+        )
+        .overlay(
             Capsule(style: .continuous)
                 .stroke(
                     isCustomTipFocused ? Color.oliveGreen : Color.paymentTipUnselectedStroke,
@@ -546,20 +574,21 @@ struct ConsumerPaymentTakeoverView: View {
             HStack(spacing: 12) {
                 if isConfirmingZeroTip {
                     ProgressView()
-                        .tint(Color.lavaShellCream)
+                        .tint(Color.paymentFilledButtonLabel)
                 }
                 Text(isConfirmingZeroTip ? "Confirming…" : "Confirm $0 tip")
                     .font(paymentPrimaryActionLabelFont)
-                    .foregroundStyle(Color.lavaShellCream)
+                    .foregroundStyle(Color.paymentFilledButtonLabel)
             }
             .frame(maxWidth: .infinity)
             .frame(minHeight: PaymentMethodButtonMetrics.primaryHeight)
-            .background(Color.white.opacity(0.12))
+            .background(Color.paymentFilledButtonFill)
             .clipShape(RoundedRectangle(cornerRadius: PaymentMethodButtonMetrics.primaryCornerRadius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: PaymentMethodButtonMetrics.primaryCornerRadius, style: .continuous)
-                    .stroke(Color.lavaShellCream.opacity(0.55), lineWidth: 1.5)
+                    .stroke(Color.onCutsShellGlassStroke, lineWidth: 1)
             )
+            .shadow(color: Color.primary.opacity(0.08), radius: 8, y: 2)
         }
         .disabled(isConfirmingZeroTip || isPaying || isStartingApplePay)
         .buttonStyle(BookButtonStyle())
@@ -647,17 +676,17 @@ struct ConsumerPaymentTakeoverView: View {
         } label: {
             Text(preset.label)
                 .font(selected ? paymentTipPillFontSelected : paymentTipPillFont)
-                .foregroundStyle(selected ? Color.lavaShellCream : Color.paymentOutlineButtonLabel)
+                .foregroundStyle(selected ? Color.paymentTipSelectedLabel : Color.paymentOutlineButtonLabel)
                 .padding(.horizontal, selected ? PaymentTipButtonMetrics.pillHorizontalPaddingSelected : PaymentTipButtonMetrics.pillHorizontalPadding)
                 .padding(.vertical, selected ? PaymentTipButtonMetrics.pillVerticalPaddingSelected : PaymentTipButtonMetrics.pillVerticalPadding)
                 .background(
                     Capsule(style: .continuous)
-                        .fill(selected ? Color.oliveGreen : Color.clear)
+                        .fill(selected ? Color.paymentTipSelectedFill : Color.paymentFieldBackground.opacity(0.45))
                 )
                 .overlay(
                     Capsule(style: .continuous)
                         .stroke(
-                            selected ? Color.oliveGreen : Color.paymentTipUnselectedStroke,
+                            selected ? Color.paymentTipSelectedFill : Color.paymentTipUnselectedStroke,
                             lineWidth: selected ? 2.5 : 1.5
                         )
                 )
@@ -689,15 +718,34 @@ struct ConsumerPaymentTakeoverView: View {
 
     @MainActor
     private func enrichBookingMetadataIfNeeded() async {
-        guard enrichedBarberAvatarURL == nil else { return }
         guard let token = sessionManager.currentSession?.token.trimmingCharacters(in: .whitespacesAndNewlines),
               !token.isEmpty else { return }
-        // Always resolve via booking + barber detail (same source as browse cards). Do not skip when
-        // the socket/list payload already has a string — those are often null, relative, or stale.
-        if let url = await ConsumerBookingsSimpleAPI.resolveBarberAvatarURL(
+
+        let needsSchedule =
+            isServiceMode
+            && (resolvedScheduledTimeISO == nil)
+
+        if needsSchedule {
+            do {
+                let row = try await ConsumerBookingsSimpleAPI.fetchConsumerBookingById(
+                    bookingId: payload.bookingId,
+                    bearerToken: token
+                )
+                let scheduled = row.scheduledTime.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !scheduled.isEmpty {
+                    enrichedScheduledTime = scheduled
+                }
+            } catch {
+                // Schedule line stays hidden if fetch fails.
+            }
+        }
+
+        // Always resolve via booking + barber detail (same source as browse cards).
+        if enrichedBarberAvatarURL == nil,
+           let url = await ConsumerBookingsSimpleAPI.resolveBarberAvatarURL(
             bookingId: payload.bookingId,
             bearerToken: token
-        ) {
+           ) {
             enrichedBarberAvatarURL = url
         }
     }

@@ -886,12 +886,13 @@ extension MessagingConversationRowDTO {
 }
 
 extension MessagingBookingDTO {
-    /// Terminal / past-continuum booking statuses (aligns with bookings timeline “Past” lane).
+    /// Terminal / cancelled-style statuses used to dim inbox + thread header chrome.
+    /// Does **not** include `COMPLETED` (tip still open) or `PAID` (upcoming confirmed appointment).
     var inboxRowIsTerminalPastContinuum: Bool {
         let s = (status ?? "").uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !s.isEmpty else { return false }
         return [
-            "COMPLETED", "PAID", "CANCELLED", "REJECTED", "DECLINED", "REFUNDED", "NO_SHOW",
+            "CANCELLED", "REJECTED", "DECLINED", "REFUNDED", "NO_SHOW",
         ].contains(s)
     }
 
