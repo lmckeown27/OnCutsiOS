@@ -344,7 +344,7 @@ struct ConsumerBookingDetailView: View {
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
-            .navigationBarBackButtonHidden(isRequestChangeEditing)
+            .navigationBarBackButtonHidden(isRequestChangeEditing || isConfirmingCancelBooking)
             #endif
             .tint(BookingSelectorTheme.cream)
     }
@@ -354,6 +354,7 @@ struct ConsumerBookingDetailView: View {
             bookingDetailScrollContent
         }
         .refreshable {
+            guard !isConfirmingCancelBooking else { return }
             await refreshBookingDetailFromServer()
         }
         #if os(iOS)
@@ -363,6 +364,7 @@ struct ConsumerBookingDetailView: View {
         .background {
             bookingDetailScrollBackground
         }
+        .allowsHitTesting(!isConfirmingCancelBooking)
     }
 
     @ViewBuilder
@@ -393,6 +395,8 @@ struct ConsumerBookingDetailView: View {
                     )
                 }
                 .buttonStyle(.borderless)
+                .disabled(isConfirmingCancelBooking)
+                .opacity(isConfirmingCancelBooking ? 0.55 : 1)
             }
         } else if allowsBookingEdit && isEditing {
             ToolbarItem(placement: .topBarTrailing) {
@@ -403,6 +407,8 @@ struct ConsumerBookingDetailView: View {
                     )
                 }
                 .buttonStyle(.borderless)
+                .disabled(isConfirmingCancelBooking)
+                .opacity(isConfirmingCancelBooking ? 0.55 : 1)
             }
         }
     }
@@ -493,6 +499,8 @@ struct ConsumerBookingDetailView: View {
             }
             .buttonStyle(BookButtonStyle())
             .shadow(color: Color.oliveGreen.opacity(0.28), radius: 7, y: 2)
+            .disabled(isConfirmingCancelBooking)
+            .opacity(isConfirmingCancelBooking ? 0.55 : 1)
 
             if bookingRow.needsServicePayment {
                 Text("Full refund if booking is cancelled")
@@ -525,10 +533,10 @@ struct ConsumerBookingDetailView: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(BookingSelectorTheme.cream)
             }
-            .opacity(isLoadingRebook ? 0.55 : 1)
+            .opacity((isLoadingRebook || isConfirmingCancelBooking) ? 0.55 : 1)
         }
         .buttonStyle(BookButtonStyle())
-        .disabled(isLoadingRebook)
+        .disabled(isLoadingRebook || isConfirmingCancelBooking)
         .shadow(color: Color.oliveGreen.opacity(0.28), radius: 7, y: 2)
         .padding(.top, 4)
     }
@@ -599,15 +607,13 @@ struct ConsumerBookingDetailView: View {
         }
         .buttonStyle(.plain)
         .disabled(isOpeningMessaging || isConfirmingCancelBooking)
-        .opacity(isOpeningMessaging ? 0.55 : 1)
+        .opacity((isOpeningMessaging || isConfirmingCancelBooking) ? 0.55 : 1)
         .accessibilityHint("Opens your conversation with this provider about this booking.")
     }
 
     private var cancelBookingFooterButton: some View {
         Button {
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) {
-                isConfirmingCancelBooking = true
-            }
+            beginCancelBookingConfirmation()
         } label: {
             Text("Cancel Booking")
                 .font(OnCutsFont.body(weight: .semibold))
@@ -621,8 +627,8 @@ struct ConsumerBookingDetailView: View {
                 }
         }
         .buttonStyle(BookButtonStyle())
-        .disabled(isCancellingBooking || isOpeningMessaging)
-        .opacity((isCancellingBooking || isOpeningMessaging) ? 0.55 : 1)
+        .disabled(isCancellingBooking || isOpeningMessaging || isConfirmingCancelBooking)
+        .opacity((isCancellingBooking || isOpeningMessaging || isConfirmingCancelBooking) ? 0.55 : 1)
         .accessibilityLabel("Cancel booking")
     }
 
@@ -1046,6 +1052,7 @@ struct ConsumerBookingDetailView: View {
                 .foregroundStyle(BookingSelectorTheme.cream)
                 .textFieldStyle(.plain)
                 .focused($isRequestChangeNotesFocused)
+                .disabled(isConfirmingCancelBooking)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
@@ -1056,8 +1063,11 @@ struct ConsumerBookingDetailView: View {
                 .stroke(BookingSelectorTheme.cream, lineWidth: 1)
         }
         .onTapGesture {
+            guard !isConfirmingCancelBooking else { return }
             isRequestChangeNotesFocused = true
         }
+        .disabled(isConfirmingCancelBooking)
+        .opacity(isConfirmingCancelBooking ? 0.55 : 1)
         .padding(.bottom, isLast ? 0 : 0)
     }
 
@@ -1144,6 +1154,8 @@ struct ConsumerBookingDetailView: View {
             .editableScheduleFieldChrome()
         }
         .buttonStyle(.plain)
+        .disabled(isConfirmingCancelBooking)
+        .opacity(isConfirmingCancelBooking ? 0.55 : 1)
         .accessibilityHint(accessibilityHint)
     }
 
@@ -1230,10 +1242,11 @@ struct ConsumerBookingDetailView: View {
     }
 
     private var cancelBookingConfirmMessage: String {
+        let operatorName = bookingRow.barberDisplayName
         if bookingRow.isUpcomingPaidAppointment {
-            return "Your \(bookingRow.providerKindTag) will be notified. Cancelling may refund the card payment for this service. This can’t be undone."
+            return "Cancelling will refund the paid amount.\n\(operatorName) will be notified of this cancellation"
         }
-        return "Your \(bookingRow.providerKindTag) will be notified. This can’t be undone."
+        return "\(operatorName) will be notified of this cancellation"
     }
 
     // MARK: - Edit mode actions
@@ -1643,10 +1656,7 @@ struct ConsumerBookingDetailView: View {
             .frame(maxWidth: .infinity)
 
             Button {
-                dismissRequestChangeNotesKeyboard()
-                withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) {
-                    isConfirmingCancelBooking = true
-                }
+                beginCancelBookingConfirmation()
             } label: {
                 Text("Cancel Booking")
                     .font(Self.editBottomBarButtonFont)
@@ -1664,6 +1674,14 @@ struct ConsumerBookingDetailView: View {
             .opacity((isConfirmingEdits || isCancellingBooking) ? 0.55 : 1)
             .accessibilityLabel("Cancel booking")
             .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func beginCancelBookingConfirmation() {
+        dismissRequestChangeNotesKeyboard()
+        showScheduleEditSheet = false
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) {
+            isConfirmingCancelBooking = true
         }
     }
 
