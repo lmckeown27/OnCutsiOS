@@ -11,6 +11,15 @@ struct ReviewBookingView: View {
     let booking: BookingState
     let onSubmit: (BookingState) -> Void
 
+    @State private var frontendConfigStore = PlatformFrontendConfigStore.shared
+
+    private var serviceFeeQuote: ClientServiceAmounts {
+        ClientServiceFeeQuoting.quote(
+            listedServiceCents: max(0, booking.finalServicePriceUsd) * 100,
+            config: frontendConfigStore.config
+        )
+    }
+
     var body: some View {
         ZStack {
             OnCutsShellBackground()
@@ -32,6 +41,9 @@ struct ReviewBookingView: View {
         #endif
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .tint(Color.oliveGreen)
+        .task {
+            await frontendConfigStore.refresh()
+        }
     }
 
     private var mainGlassPanel: some View {
@@ -45,19 +57,14 @@ struct ReviewBookingView: View {
             reviewInfoRow(title: "Service", value: booking.serviceName)
             reviewInfoRow(title: "When", value: formattedScheduledAt)
 
-            VStack(spacing: 8) {
-                Text("$\(booking.finalServicePriceUsd)")
-                    .font(OnCutsLiquidGlassTypography.title(34, weight: .bold))
-                    .foregroundStyle(.primary)
-                    .frame(maxWidth: .infinity, alignment: .center)
+            confirmAmountBlock
 
-                if !booking.location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Text(booking.location)
-                        .font(OnCutsFont.body)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
+            if !booking.location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(booking.location)
+                    .font(OnCutsFont.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
 
             HStack {
@@ -114,6 +121,47 @@ struct ReviewBookingView: View {
             .foregroundStyleOliveGreen()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.brand.opacity(0.15))
+    }
+
+    @ViewBuilder
+    private var confirmAmountBlock: some View {
+        let quote = serviceFeeQuote
+        if quote.showsServiceFeeRow {
+            VStack(spacing: 10) {
+                confirmAmountLine(title: "Service price", cents: quote.listedServiceCents)
+                confirmAmountLine(title: "Service Fee", cents: quote.serviceFeeCents)
+                Rectangle()
+                    .fill(Color.white.opacity(0.15))
+                    .frame(height: 1)
+                VStack(spacing: 4) {
+                    Text("Amount Due")
+                        .font(OnCutsLiquidGlassTypography.title(12, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Text(USDCurrencyFormatting.string(cents: quote.chargeAmountCents))
+                        .font(OnCutsLiquidGlassTypography.title(34, weight: .bold))
+                        .foregroundStyle(.primary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        } else {
+            Text("$\(booking.finalServicePriceUsd)")
+                .font(OnCutsLiquidGlassTypography.title(34, weight: .bold))
+                .foregroundStyle(.primary)
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    private func confirmAmountLine(title: String, cents: Int) -> some View {
+        HStack {
+            Text(title)
+                .font(OnCutsFont.body)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            Text(USDCurrencyFormatting.string(cents: cents))
+                .font(OnCutsFont.body(weight: .semibold))
+                .foregroundStyle(.primary)
+                .monospacedDigit()
+        }
     }
 
     private func reviewInfoRow(title: String, value: String) -> some View {

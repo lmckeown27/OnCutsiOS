@@ -36,6 +36,10 @@ private enum CreatePaymentIntentAPI {
         let livemode: Bool?
         /// First 20 chars of server `STRIPE_PUBLISHABLE_KEY`; compared to the app key so wrong-dashboard keys fail before PaymentSheet.
         let stripePublishableKeyPrefix: String?
+        let amountCents: Int?
+        let serviceAmountCents: Int?
+        let serviceFeeCents: Int?
+        let feeBurden: String?
 
         enum CodingKeys: String, CodingKey {
             case clientSecret
@@ -46,6 +50,10 @@ private enum CreatePaymentIntentAPI {
             case ephemeralKeySecret
             case livemode
             case stripePublishableKeyPrefix
+            case amountCents
+            case serviceAmountCents
+            case serviceFeeCents
+            case feeBurden
         }
 
         init(from decoder: Decoder) throws {
@@ -58,6 +66,10 @@ private enum CreatePaymentIntentAPI {
             ephemeralKeySecret = try c.decodeIfPresent(String.self, forKey: .ephemeralKeySecret)
             livemode = try c.decodeIfPresent(Bool.self, forKey: .livemode)
             stripePublishableKeyPrefix = try c.decodeIfPresent(String.self, forKey: .stripePublishableKeyPrefix)
+            amountCents = try c.decodeIfPresent(Int.self, forKey: .amountCents)
+            serviceAmountCents = try c.decodeIfPresent(Int.self, forKey: .serviceAmountCents)
+            serviceFeeCents = try c.decodeIfPresent(Int.self, forKey: .serviceFeeCents)
+            feeBurden = try c.decodeIfPresent(String.self, forKey: .feeBurden)
         }
     }
 
@@ -165,7 +177,11 @@ private enum CreatePaymentIntentAPI {
             customerEphemeralKeySecret: ek?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
             customerId: cust,
             paymentIntentId: pi,
-            paymentIntentLivemode: d.livemode
+            paymentIntentLivemode: d.livemode,
+            amountCents: d.amountCents,
+            serviceAmountCents: d.serviceAmountCents,
+            serviceFeeCents: d.serviceFeeCents,
+            feeBurden: d.feeBurden
         )
     }
 
@@ -345,6 +361,7 @@ public final class CheckoutViewModel: ObservableObject {
         from window: UIWindow?,
         paymentConfig: PaymentConfig,
         serviceCents: Int,
+        serviceFeeCents: Int = 0,
         tipCents: Int,
         currencyCode: String = "USD"
     ) -> Bool {
@@ -360,6 +377,7 @@ public final class CheckoutViewModel: ObservableObject {
             clientSecret: paymentConfig.paymentIntentClientSecret,
             merchantDisplayName: merchantDisplayName,
             serviceCents: serviceCents,
+            serviceFeeCents: serviceFeeCents,
             tipCents: tipCents,
             currencyCode: currencyCode.uppercased(),
             applePayMerchantId: merchantId,

@@ -99,14 +99,6 @@ struct ConsumerBookingDetailView: View {
         return f
     }()
 
-    private static let currencyFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.currencyCode = "USD"
-        f.maximumFractionDigits = 2
-        return f
-    }()
-
     private var allowsBookingEdit: Bool {
         let segmentOk = bookingRow.scheduleSegment() == .today || bookingRow.scheduleSegment() == .upcoming
         let u = bookingRow.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -223,8 +215,11 @@ struct ConsumerBookingDetailView: View {
 
     private var paymentCTAButtonTitle: String {
         if bookingRow.needsTipDecision { return "Choose Tip" }
-        if let cents = bookingRow.priceUsdCents, cents > 0 {
-            let formatted = Self.currencyFormatter.string(from: NSNumber(value: Double(cents) / 100.0)) ?? ""
+        let cents = bookingRow.resolvedClientServiceAmounts(
+            quotingWith: PlatformFrontendConfigStore.shared.config
+        ).chargeAmountCents
+        if cents > 0 {
+            let formatted = USDCurrencyFormatting.string(cents: cents)
             return formatted.isEmpty ? "Pay now to confirm" : "Pay \(formatted) to confirm"
         }
         return "Pay now to confirm"
@@ -316,6 +311,9 @@ struct ConsumerBookingDetailView: View {
             .onAppear {
                 if localScheduledAt == nil { localScheduledAt = bookingRow.scheduledAtDate }
                 if localServiceName == nil { localServiceName = bookingRow.displayServiceName }
+            }
+            .task {
+                await PlatformFrontendConfigStore.shared.refresh()
             }
             .toolbar { bookingDetailToolbarContent }
             .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -1229,9 +1227,11 @@ struct ConsumerBookingDetailView: View {
     }
 
     private var formattedPrice: String? {
-        guard let cents = bookingRow.priceUsdCents, cents > 0 else { return nil }
-        let dollars = Decimal(cents) / 100
-        return Self.currencyFormatter.string(from: NSDecimalNumber(decimal: dollars))
+        let cents = bookingRow.resolvedClientServiceAmounts(
+            quotingWith: PlatformFrontendConfigStore.shared.config
+        ).chargeAmountCents
+        guard cents > 0 else { return nil }
+        return USDCurrencyFormatting.string(cents: cents)
     }
 
     private var payForServiceSubtitle: String {
@@ -1997,6 +1997,9 @@ private struct ConsumerBookingDetailPreviewHost: View {
                     location: "Dorm quad",
                     notes: "Please bring clippers",
                     priceUsdCents: 3500,
+                    serviceFeeCents: nil,
+                    chargeAmountCents: nil,
+                    feeBurden: nil,
                     paidAt: nil,
                     completedAt: nil,
                     tipRequestedAt: nil,

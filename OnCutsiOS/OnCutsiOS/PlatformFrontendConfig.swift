@@ -3,7 +3,7 @@
 //  OnCuts
 //
 //  Public `GET /api/v1/platform/frontend-config` — admin switch for consumer Home
-//  (`providers` nearby list vs `waitlist` user count) plus cash checkout flag.
+//  (`providers` nearby list vs `waitlist` user count), cash checkout, and Service Fee quote.
 //
 
 import Foundation
@@ -18,12 +18,71 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
     var cashPaymentEnabled: Bool
     var consumerHomeMode: ConsumerHomeMode
     var consumerUserCount: Int
+    /// Who pays the platform Service Fee. Missing / unknown → operator (no client fee).
+    var feeBurden: PlatformFeeBurden
+    /// Missing → `true` (same as web). Combined with operator burden, quote stays $0.
+    var platformCommissionEnabled: Bool
+    /// 0–100. Invalid or missing → 15.
+    var platformFeePercent: Double
 
     static let fallbackProviders = PlatformFrontendConfig(
         cashPaymentEnabled: false,
         consumerHomeMode: .providers,
-        consumerUserCount: 0
+        consumerUserCount: 0,
+        feeBurden: .operatorBurden,
+        platformCommissionEnabled: true,
+        platformFeePercent: 15
     )
+
+    static func sanitizedPercent(_ raw: Double?) -> Double {
+        guard let raw, raw.isFinite, raw >= 0, raw <= 100 else { return 15 }
+        return raw
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case cashPaymentEnabled
+        case consumerHomeMode
+        case consumerUserCount
+        case feeBurden
+        case platformCommissionEnabled
+        case platformFeePercent
+    }
+
+    init(
+        cashPaymentEnabled: Bool,
+        consumerHomeMode: ConsumerHomeMode,
+        consumerUserCount: Int,
+        feeBurden: PlatformFeeBurden,
+        platformCommissionEnabled: Bool,
+        platformFeePercent: Double
+    ) {
+        self.cashPaymentEnabled = cashPaymentEnabled
+        self.consumerHomeMode = consumerHomeMode
+        self.consumerUserCount = consumerUserCount
+        self.feeBurden = feeBurden
+        self.platformCommissionEnabled = platformCommissionEnabled
+        self.platformFeePercent = platformFeePercent
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        cashPaymentEnabled = try c.decodeIfPresent(Bool.self, forKey: .cashPaymentEnabled) ?? false
+        consumerHomeMode = try c.decodeIfPresent(ConsumerHomeMode.self, forKey: .consumerHomeMode) ?? .providers
+        consumerUserCount = try c.decodeIfPresent(Int.self, forKey: .consumerUserCount) ?? 0
+        feeBurden = PlatformFeeBurden.parse(try c.decodeIfPresent(String.self, forKey: .feeBurden))
+        platformCommissionEnabled = try c.decodeIfPresent(Bool.self, forKey: .platformCommissionEnabled) ?? true
+        platformFeePercent = Self.sanitizedPercent(try c.decodeIfPresent(Double.self, forKey: .platformFeePercent))
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(cashPaymentEnabled, forKey: .cashPaymentEnabled)
+        try c.encode(consumerHomeMode, forKey: .consumerHomeMode)
+        try c.encode(consumerUserCount, forKey: .consumerUserCount)
+        try c.encode(feeBurden.rawValue, forKey: .feeBurden)
+        try c.encode(platformCommissionEnabled, forKey: .platformCommissionEnabled)
+        try c.encode(platformFeePercent, forKey: .platformFeePercent)
+    }
 }
 
 enum PlatformFrontendConfigAPI {
@@ -36,6 +95,37 @@ enum PlatformFrontendConfigAPI {
         let cashPaymentEnabled: Bool?
         let consumerHomeMode: String?
         let consumerUserCount: Int?
+        let feeBurden: String?
+        let platformCommissionEnabled: Bool?
+        let platformFeePercent: Double?
+
+        private enum CodingKeys: String, CodingKey {
+            case cashPaymentEnabled
+            case consumerHomeMode
+            case consumerUserCount
+            case feeBurden
+            case platformCommissionEnabled
+            case platformFeePercent
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            cashPaymentEnabled = try c.decodeIfPresent(Bool.self, forKey: .cashPaymentEnabled)
+            consumerHomeMode = try c.decodeIfPresent(String.self, forKey: .consumerHomeMode)
+            consumerUserCount = try c.decodeIfPresent(Int.self, forKey: .consumerUserCount)
+            feeBurden = try c.decodeIfPresent(String.self, forKey: .feeBurden)
+            platformCommissionEnabled = try c.decodeIfPresent(Bool.self, forKey: .platformCommissionEnabled)
+            if let d = try c.decodeIfPresent(Double.self, forKey: .platformFeePercent) {
+                platformFeePercent = d
+            } else if let i = try c.decodeIfPresent(Int.self, forKey: .platformFeePercent) {
+                platformFeePercent = Double(i)
+            } else if let s = try c.decodeIfPresent(String.self, forKey: .platformFeePercent),
+                      let d = Double(s.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                platformFeePercent = d
+            } else {
+                platformFeePercent = nil
+            }
+        }
     }
 
     enum FetchError: LocalizedError {
@@ -84,7 +174,10 @@ enum PlatformFrontendConfigAPI {
         return PlatformFrontendConfig(
             cashPaymentEnabled: payload.cashPaymentEnabled ?? false,
             consumerHomeMode: mode,
-            consumerUserCount: max(0, payload.consumerUserCount ?? 0)
+            consumerUserCount: max(0, payload.consumerUserCount ?? 0),
+            feeBurden: PlatformFeeBurden.parse(payload.feeBurden),
+            platformCommissionEnabled: payload.platformCommissionEnabled ?? true,
+            platformFeePercent: PlatformFrontendConfig.sanitizedPercent(payload.platformFeePercent)
         )
     }
 }
@@ -95,7 +188,7 @@ enum PlatformFrontendConfigAPI {
 final class PlatformFrontendConfigStore {
     static let shared = PlatformFrontendConfigStore()
 
-    private static let cacheKey = "oncuts.platformFrontendConfig.v1"
+    private static let cacheKey = "oncuts.platformFrontendConfig.v2"
 
     private(set) var config: PlatformFrontendConfig
     private(set) var isLoading = false
@@ -133,11 +226,14 @@ final class PlatformFrontendConfigStore {
             lastErrorMessage = nil
             Self.saveCache(fresh)
         } catch {
-            // Fail closed for cash: never keep a stale `true` when the config request fails.
+            // Fail closed for cash and client Service Fee: never invent a fee when config is unknown.
             config = PlatformFrontendConfig(
                 cashPaymentEnabled: false,
                 consumerHomeMode: config.consumerHomeMode,
-                consumerUserCount: config.consumerUserCount
+                consumerUserCount: config.consumerUserCount,
+                feeBurden: .operatorBurden,
+                platformCommissionEnabled: config.platformCommissionEnabled,
+                platformFeePercent: config.platformFeePercent
             )
             Self.saveCache(config)
             lastErrorMessage = error.localizedDescription

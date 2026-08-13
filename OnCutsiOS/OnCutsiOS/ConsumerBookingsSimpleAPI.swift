@@ -355,6 +355,9 @@ private struct BookingSingleDetail: Decodable, Sendable {
     let location: String?
     let notes: String?
     let priceUsdCents: Int?
+    let serviceFeeCents: Int?
+    let chargeAmountCents: Int?
+    let feeBurden: String?
     let paidAt: String?
     let completedAt: String?
     let tipRequestedAt: String?
@@ -411,6 +414,11 @@ struct ConsumerBookingSimpleRow: Decodable, Sendable, Identifiable, Hashable {
     let location: String?
     let notes: String?
     let priceUsdCents: Int?
+    /// Extra the client pays when Admin Client Burden + Service Fee are on. `0` on operator burden.
+    let serviceFeeCents: Int?
+    /// What the client owes for the service (`priceUsdCents + serviceFeeCents`).
+    let chargeAmountCents: Int?
+    let feeBurden: String?
     /// ISO timestamp when the consumer paid for the service (locks appointment).
     let paidAt: String?
     /// ISO timestamp when the operator marked the visit complete.
@@ -453,6 +461,9 @@ extension ConsumerBookingSimpleRow {
             location: b.location,
             notes: b.notes,
             priceUsdCents: b.priceUsdCents,
+            serviceFeeCents: b.serviceFeeCents,
+            chargeAmountCents: b.chargeAmountCents,
+            feeBurden: b.feeBurden,
             paidAt: b.paidAt,
             completedAt: b.completedAt,
             tipRequestedAt: b.tipRequestedAt,
@@ -498,6 +509,16 @@ extension ConsumerBookingSimpleRow {
     /// Any consumer action that should open the payment takeover.
     var needsPaymentAction: Bool {
         needsServicePayment || needsTipDecision
+    }
+
+    /// Prefer booking payload fields; quote from frontend-config when the server omitted them.
+    func resolvedClientServiceAmounts(quotingWith config: PlatformFrontendConfig) -> ClientServiceAmounts {
+        ClientServiceFeeQuoting.resolve(
+            listedServiceCents: priceUsdCents,
+            serviceFeeCents: serviceFeeCents,
+            chargeAmountCents: chargeAmountCents,
+            config: config
+        )
     }
 }
 

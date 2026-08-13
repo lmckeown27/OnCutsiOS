@@ -10,6 +10,7 @@ final class StandaloneBookingApplePayCoordinator: NSObject, ApplePayContextDeleg
     private let clientSecret: String
     private let merchantDisplayName: String
     private let serviceCents: Int
+    private let serviceFeeCents: Int
     private let tipCents: Int
     private let currencyCode: String
     private let applePayMerchantId: String
@@ -22,6 +23,7 @@ final class StandaloneBookingApplePayCoordinator: NSObject, ApplePayContextDeleg
         clientSecret: String,
         merchantDisplayName: String,
         serviceCents: Int,
+        serviceFeeCents: Int = 0,
         tipCents: Int,
         currencyCode: String,
         applePayMerchantId: String,
@@ -31,6 +33,7 @@ final class StandaloneBookingApplePayCoordinator: NSObject, ApplePayContextDeleg
         self.clientSecret = clientSecret
         self.merchantDisplayName = merchantDisplayName
         self.serviceCents = serviceCents
+        self.serviceFeeCents = serviceFeeCents
         self.tipCents = tipCents
         self.currencyCode = currencyCode
         self.applePayMerchantId = applePayMerchantId
@@ -49,6 +52,7 @@ final class StandaloneBookingApplePayCoordinator: NSObject, ApplePayContextDeleg
         request.paymentSummaryItems = Self.summaryItems(
             merchantLabel: merchantDisplayName,
             serviceCents: serviceCents,
+            serviceFeeCents: serviceFeeCents,
             tipCents: tipCents
         )
         guard let context = STPApplePayContext(paymentRequest: request, delegate: self) else {
@@ -80,17 +84,23 @@ final class StandaloneBookingApplePayCoordinator: NSObject, ApplePayContextDeleg
     private static func summaryItems(
         merchantLabel: String,
         serviceCents: Int,
+        serviceFeeCents: Int,
         tipCents: Int
     ) -> [PKPaymentSummaryItem] {
         func amount(_ cents: Int) -> NSDecimalNumber {
             NSDecimalNumber(value: Double(cents) / 100.0)
         }
         var items: [PKPaymentSummaryItem] = []
-        items.append(PKPaymentSummaryItem(label: "Service", amount: amount(serviceCents), type: .final))
+        if serviceCents > 0 {
+            items.append(PKPaymentSummaryItem(label: "Service", amount: amount(serviceCents), type: .final))
+        }
+        if serviceFeeCents > 0 {
+            items.append(PKPaymentSummaryItem(label: "Service Fee", amount: amount(serviceFeeCents), type: .final))
+        }
         if tipCents > 0 {
             items.append(PKPaymentSummaryItem(label: "Tip", amount: amount(tipCents), type: .final))
         }
-        let total = serviceCents + tipCents
+        let total = serviceCents + serviceFeeCents + tipCents
         items.append(PKPaymentSummaryItem(label: merchantLabel, amount: amount(total), type: .final))
         return items
     }

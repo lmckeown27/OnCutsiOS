@@ -20,6 +20,13 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
     let paymentUrl: URL
     let barberName: String
     let serviceName: String
+    /// Listed service only (`priceUsdCents`). Never includes Service Fee or tip.
+    let listedServiceCents: Int
+    /// Extra the client pays to the platform. `0` when burden is operator or the fee is off.
+    let serviceFeeCents: Int
+    /// What the client owes for the service (`listed + serviceFee`). Tip is separate.
+    let chargeAmountCents: Int
+    /// Same as `chargeAmountCents` for service pay; listed/tip amount for tip-decide.
     let priceCents: Int
     let priceFormatted: String
     /// Barber’s Stripe Connect account (`acct_…`) when the server includes it (e.g. `booking-completed` socket).
@@ -95,6 +102,9 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
             paymentUrl: paymentUrl,
             barberName: barber,
             serviceName: service,
+            listedServiceCents: cents,
+            serviceFeeCents: 0,
+            chargeAmountCents: cents,
             priceCents: cents,
             priceFormatted: formatted,
             barberStripeAccountId: stripeAcct,
@@ -104,7 +114,15 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
         )
     }
 
+    @MainActor
     static func from(bookingRow: ConsumerBookingSimpleRow) -> BookingPaymentRequestPayload? {
+        from(bookingRow: bookingRow, frontendConfig: PlatformFrontendConfigStore.shared.config)
+    }
+
+    static func from(
+        bookingRow: ConsumerBookingSimpleRow,
+        frontendConfig: PlatformFrontendConfig
+    ) -> BookingPaymentRequestPayload? {
         let mode: Mode
         if bookingRow.needsServicePayment {
             mode = .serviceConfirm
@@ -115,21 +133,18 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
         }
         guard let url = AppConfiguration.urlConsumerBookingPaymentWeb(bookingId: bookingRow.id) else { return nil }
         let name = bookingRow.barberName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? "Your provider"
-        let cents = bookingRow.priceUsdCents ?? 0
-        let formatted: String = {
-            let d = Decimal(cents) / 100
-            let f = NumberFormatter()
-            f.numberStyle = .currency
-            f.currencyCode = "USD"
-            return f.string(from: NSDecimalNumber(decimal: d)) ?? String(format: "$%.2f", Double(cents) / 100.0)
-        }()
+        let amounts = bookingRow.resolvedClientServiceAmounts(quotingWith: frontendConfig)
+        let displayCents = mode == .serviceConfirm ? amounts.chargeAmountCents : amounts.listedServiceCents
         return BookingPaymentRequestPayload(
             bookingId: bookingRow.id,
             paymentUrl: url,
             barberName: name,
             serviceName: bookingRow.displayServiceName,
-            priceCents: cents,
-            priceFormatted: formatted,
+            listedServiceCents: amounts.listedServiceCents,
+            serviceFeeCents: mode == .serviceConfirm ? amounts.serviceFeeCents : 0,
+            chargeAmountCents: amounts.chargeAmountCents,
+            priceCents: displayCents,
+            priceFormatted: USDCurrencyFormatting.string(cents: displayCents),
             barberStripeAccountId: nil,
             barberAvatarURL: bookingRow.barberAvatar,
             scheduledTime: bookingRow.scheduledTime,

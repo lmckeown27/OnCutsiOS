@@ -25,14 +25,7 @@ extension UpcomingBooking {
         return f
     }()
 
-    private static let priceFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.currencyCode = "USD"
-        f.maximumFractionDigits = 2
-        return f
-    }()
-
+    @MainActor
     init(row: ConsumerBookingSimpleRow) {
         serviceName = row.displayServiceName
         barberName = row.barberName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? "Provider"
@@ -46,9 +39,11 @@ extension UpcomingBooking {
             appointmentDate = "—"
         }
 
-        if let cents = row.priceUsdCents, cents > 0 {
-            let dollars = Decimal(cents) / 100
-            price = Self.priceFormatter.string(from: NSDecimalNumber(decimal: dollars)) ?? "—"
+        let chargeCents = row.resolvedClientServiceAmounts(
+            quotingWith: PlatformFrontendConfigStore.shared.config
+        ).chargeAmountCents
+        if chargeCents > 0 {
+            price = USDCurrencyFormatting.string(cents: chargeCents)
         } else {
             price = "—"
         }

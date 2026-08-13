@@ -196,7 +196,9 @@ struct ConsumerBookingsHubView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         #endif
         .task {
+            async let configRefresh: Void = PlatformFrontendConfigStore.shared.refresh()
             await reloadBookingsList()
+            await configRefresh
         }
         .onReceive(NotificationCenter.default.publisher(for: .onCutsNavigateToBookingsAfterBookingRequest)) { notification in
             if (notification.userInfo?[OnCutsBookingsUserInfoKeys.focusUpcomingSection] as? Bool) == true {

@@ -120,6 +120,8 @@ struct ConsumerPaymentTakeoverView: View {
     @State private var frontendConfigStore = PlatformFrontendConfigStore.shared
     @State private var enrichedBarberAvatarURL: String?
     @State private var enrichedScheduledTime: String?
+    /// Prefer `create-payment-intent` amounts, then a refreshed booking row, then the payload quote.
+    @State private var serverServiceAmounts: ClientServiceAmounts?
     @State private var validatedPublishableKeyForCheckout: String = ""
     @FocusState private var isCustomTipFocused: Bool
 
@@ -299,8 +301,17 @@ struct ConsumerPaymentTakeoverView: View {
         isServiceMode && frontendConfigStore.cashPaymentEnabled
     }
 
+    private var displayedServiceAmounts: ClientServiceAmounts {
+        if let serverServiceAmounts { return serverServiceAmounts }
+        return ClientServiceAmounts(
+            listedServiceCents: payload.listedServiceCents,
+            serviceFeeCents: payload.serviceFeeCents,
+            chargeAmountCents: payload.chargeAmountCents
+        )
+    }
+
     private var cashConfirmButtonTitle: String {
-        "Confirm Cash Payment \(payload.priceFormatted)"
+        "Confirm Cash Payment \(USDCurrencyFormatting.string(cents: displayedServiceAmounts.chargeAmountCents))"
     }
 
     private static let paymentAvatarCorner: CGFloat = 12
@@ -362,10 +373,7 @@ struct ConsumerPaymentTakeoverView: View {
                                     .multilineTextAlignment(.center)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
-                            Text(payload.priceFormatted)
-                                .font(paymentServicePriceFont)
-                                .foregroundStyle(Color.lavaShellCream)
-                                .multilineTextAlignment(.center)
+                            serviceChargeAmountBlock
                         }
                     }
 
@@ -428,6 +436,51 @@ struct ConsumerPaymentTakeoverView: View {
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var serviceChargeAmountBlock: some View {
+        let amounts = displayedServiceAmounts
+        if amounts.showsServiceFeeRow {
+            VStack(spacing: 8) {
+                serviceChargeLine(title: "Service price", cents: amounts.listedServiceCents)
+                serviceChargeLine(title: "Service Fee", cents: amounts.serviceFeeCents)
+                Rectangle()
+                    .fill(Color.lavaShellCream.opacity(0.18))
+                    .frame(height: 1)
+                    .padding(.vertical, 2)
+                VStack(spacing: 4) {
+                    Text("Total due")
+                        .font(OnCutsFont.subheadline(weight: .semibold))
+                        .foregroundStyle(Color.lavaShellCreamSecondary)
+                    Text(USDCurrencyFormatting.string(cents: amounts.chargeAmountCents))
+                        .font(paymentServicePriceFont)
+                        .foregroundStyle(Color.lavaShellCream)
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        } else {
+            Text(USDCurrencyFormatting.string(cents: amounts.chargeAmountCents))
+                .font(paymentServicePriceFont)
+                .foregroundStyle(Color.lavaShellCream)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private func serviceChargeLine(title: String, cents: Int) -> some View {
+        HStack {
+            Text(title)
+                .font(OnCutsFont.subheadline)
+                .foregroundStyle(Color.lavaShellCreamSecondary)
+            Spacer(minLength: 8)
+            Text(USDCurrencyFormatting.string(cents: cents))
+                .font(OnCutsFont.subheadline(weight: .semibold))
+                .foregroundStyle(Color.lavaShellCream)
+                .monospacedDigit()
         }
     }
 
@@ -725,19 +778,22 @@ struct ConsumerPaymentTakeoverView: View {
             isServiceMode
             && (resolvedScheduledTimeISO == nil)
 
-        if needsSchedule {
-            do {
-                let row = try await ConsumerBookingsSimpleAPI.fetchConsumerBookingById(
-                    bookingId: payload.bookingId,
-                    bearerToken: token
-                )
+        do {
+            let row = try await ConsumerBookingsSimpleAPI.fetchConsumerBookingById(
+                bookingId: payload.bookingId,
+                bearerToken: token
+            )
+            if needsSchedule {
                 let scheduled = row.scheduledTime.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !scheduled.isEmpty {
                     enrichedScheduledTime = scheduled
                 }
-            } catch {
-                // Schedule line stays hidden if fetch fails.
             }
+            if isServiceMode, serverServiceAmounts == nil {
+                serverServiceAmounts = row.resolvedClientServiceAmounts(quotingWith: frontendConfigStore.config)
+            }
+        } catch {
+            // Schedule / fee lines stay on payload values if fetch fails.
         }
 
         // Always resolve via booking + barber detail (same source as browse cards).
@@ -821,6 +877,7 @@ struct ConsumerPaymentTakeoverView: View {
                     bannerError = "Couldn’t open the payment sheet. Close this screen and try again."
                     return
                 }
+                applyPaymentIntentAmounts(config)
                 checkout.presentPaymentSheet(from: presenter, paymentConfig: config)
                 isPaying = false
             } catch {
@@ -852,11 +909,14 @@ struct ConsumerPaymentTakeoverView: View {
                     paymentSheetIncludesApplePay: false,
                     usesTipIntent: isTipMode
                 )
+                applyPaymentIntentAmounts(config)
+                let applePayAmounts = applePaySummaryAmounts(from: config)
                 let window = UIApplication.shared.onCutsKeyWindow
                 let started = checkout.presentStandaloneApplePay(
                     from: window,
                     paymentConfig: config,
-                    serviceCents: isTipMode ? 0 : payload.priceCents,
+                    serviceCents: applePayAmounts.service,
+                    serviceFeeCents: applePayAmounts.fee,
                     tipCents: isTipMode ? tipAmountCents : 0
                 )
                 isStartingApplePay = false
@@ -868,6 +928,28 @@ struct ConsumerPaymentTakeoverView: View {
                 bannerError = error.localizedDescription
             }
         }
+    }
+
+    private func applyPaymentIntentAmounts(_ config: PaymentConfig) {
+        guard isServiceMode else { return }
+        let listed = config.serviceAmountCents ?? displayedServiceAmounts.listedServiceCents
+        let fee = config.serviceFeeCents
+            ?? (config.amountCents.map { max(0, $0 - listed) } ?? displayedServiceAmounts.serviceFeeCents)
+        let charge = config.amountCents ?? (listed + fee)
+        serverServiceAmounts = ClientServiceAmounts(
+            listedServiceCents: listed,
+            serviceFeeCents: fee,
+            chargeAmountCents: charge
+        )
+    }
+
+    private func applePaySummaryAmounts(from config: PaymentConfig) -> (service: Int, fee: Int) {
+        if isTipMode { return (0, 0) }
+        let amounts = serverServiceAmounts ?? displayedServiceAmounts
+        let listed = config.serviceAmountCents ?? amounts.listedServiceCents
+        let fee = config.serviceFeeCents
+            ?? (config.amountCents.map { max(0, $0 - listed) } ?? amounts.serviceFeeCents)
+        return (listed, fee)
     }
 
     @MainActor
