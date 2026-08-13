@@ -111,6 +111,18 @@ struct ConsumerBookingsHubView: View {
                 }
             }
         }
+        .navigationTitle("")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // Replace the detail screen’s principal service title so it cannot linger after pop.
+            ToolbarItem(placement: .principal) {
+                Color.clear
+                    .frame(width: 1, height: 1)
+                    .accessibilityHidden(true)
+            }
+        }
+        #endif
     }
 
     @ViewBuilder

@@ -245,6 +245,15 @@ enum BookingPacificSchedule {
     static func reconcileAppointmentTime(_ selected: inout Date, calendarDay: Date, availableKeys: Set<String>) {
         guard !availableKeys.isEmpty else { return }
         if availableKeys.contains(pacificHHmmKey(from: selected)) { return }
+        selectEarliestOpenAppointmentTime(&selected, calendarDay: calendarDay, availableKeys: availableKeys)
+    }
+
+    /// New booking “Choose a Time”: always start the wheel at the earliest open slot (not device clock).
+    static func selectEarliestOpenAppointmentTime(
+        _ selected: inout Date,
+        calendarDay: Date,
+        availableKeys: Set<String>
+    ) {
         guard let first = availableKeys.sorted().first,
               let instant = pacificInstant(
                   selectedDay: pacificStartOfDay(for: calendarDay),

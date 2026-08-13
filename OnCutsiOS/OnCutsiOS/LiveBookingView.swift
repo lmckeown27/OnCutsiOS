@@ -563,7 +563,7 @@ struct LiveBookingView: View {
     }
 
     private func reconcileSelectedTimeAfterLoad() {
-        BookingPacificSchedule.reconcileAppointmentTime(
+        BookingPacificSchedule.selectEarliestOpenAppointmentTime(
             &selectedAppointmentTime,
             calendarDay: BookingPacificSchedule.pacificStartOfDay(for: selectedDate),
             availableKeys: availableTimeKeys

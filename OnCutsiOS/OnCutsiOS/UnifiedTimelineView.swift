@@ -30,6 +30,8 @@ struct UnifiedTimelineView: View {
     /// True after the user scrolls the timeline down; layout-only reflows (disclosure expand) stay near y≈0 and must not drive chrome.
     @State private var hasTimelineUserScrolled = false
     @State private var timelineHeaderMinYs: [String: CGFloat] = [:]
+    /// Auto-scroll to Today/Upcoming/Past only on first load — not when popping back from booking detail.
+    @State private var hasCompletedInitialAnchor = false
     @Environment(\.onCutsHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
 
     var body: some View {
@@ -56,10 +58,15 @@ struct UnifiedTimelineView: View {
                 updateJumpFABFromTodayHeader(dict[ConsumerBookingsTimelineProjection.todayHeaderID])
             }
             .onAppear {
-                scrollToPreferredAnchor(proxy)
+                attemptInitialAnchorIfNeeded(proxy)
             }
             .onChange(of: scrollEpoch) { _, _ in
-                scrollToPreferredAnchor(proxy)
+                let override = scrollAnchorOverride.wrappedValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                if !override.isEmpty {
+                    scrollToPreferredAnchor(proxy)
+                    return
+                }
+                attemptInitialAnchorIfNeeded(proxy)
             }
         }
     }
@@ -243,6 +250,17 @@ struct UnifiedTimelineView: View {
     }
 
     // MARK: - Scroll + FAB
+
+    private func attemptInitialAnchorIfNeeded(_ proxy: ScrollViewProxy) {
+        guard !hasCompletedInitialAnchor else { return }
+        let hasAny =
+            !projection.past.isEmpty
+            || !projection.today.isEmpty
+            || !projection.upcoming.isEmpty
+        guard hasAny else { return }
+        hasCompletedInitialAnchor = true
+        scrollToPreferredAnchor(proxy)
+    }
 
     private func scrollToPreferredAnchor(_ proxy: ScrollViewProxy) {
         let override = scrollAnchorOverride.wrappedValue?.trimmingCharacters(in: .whitespacesAndNewlines)

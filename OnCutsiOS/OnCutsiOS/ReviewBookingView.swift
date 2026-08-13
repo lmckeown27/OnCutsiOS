@@ -128,15 +128,16 @@ struct ReviewBookingView: View {
         let quote = serviceFeeQuote
         if quote.showsServiceFeeRow {
             VStack(spacing: 10) {
-                confirmAmountLine(title: "Service price", cents: quote.listedServiceCents)
+                confirmAmountLine(title: "Service Price", cents: quote.listedServiceCents)
                 confirmAmountLine(title: "Service Fee", cents: quote.serviceFeeCents)
                 Rectangle()
                     .fill(Color.white.opacity(0.15))
                     .frame(height: 1)
                 VStack(spacing: 4) {
-                    Text("Amount Due")
+                    Text("Amount Due upon Booking Acceptance")
                         .font(OnCutsLiquidGlassTypography.title(12, weight: .semibold))
                         .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                     Text(USDCurrencyFormatting.string(cents: quote.chargeAmountCents))
                         .font(OnCutsLiquidGlassTypography.title(34, weight: .bold))
                         .foregroundStyle(.primary)

@@ -379,7 +379,7 @@ struct ConsumerBookingDetailView: View {
     private var bookingDetailToolbarContent: some ToolbarContent {
         ToolbarItem(placement: .principal) {
             Text(displayableServiceLine)
-                .font(Self.heroServiceDisplayFont)
+                .font(bookingDetailPrincipalServiceFont)
                 .foregroundStyle(BookingSelectorTheme.cream.opacity(0.92))
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
@@ -584,6 +584,13 @@ struct ConsumerBookingDetailView: View {
     }
 
     private static let heroServiceDisplayFont = OnCutsFont.subheadline(weight: .semibold)
+    private static let pastBookingPrincipalServiceFont = OnCutsFont.title3(weight: .semibold)
+
+    private var bookingDetailPrincipalServiceFont: Font {
+        bookingRow.scheduleSegment() == .past
+            ? Self.pastBookingPrincipalServiceFont
+            : Self.heroServiceDisplayFont
+    }
     private static let editBottomBarButtonFont = OnCutsFont.body(weight: .semibold)
     private static let bookingDetailCircularActionButtonSize: CGFloat = 44
 

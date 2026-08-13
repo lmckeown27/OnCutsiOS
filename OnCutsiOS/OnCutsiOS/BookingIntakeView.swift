@@ -459,7 +459,7 @@ struct BookingIntakeView: View {
                 bearerToken: sessionManager.currentSession?.token
             )
             slots = rows
-            BookingPacificSchedule.reconcileAppointmentTime(
+            BookingPacificSchedule.selectEarliestOpenAppointmentTime(
                 &selectedAppointmentTime,
                 calendarDay: BookingPacificSchedule.pacificStartOfDay(for: selectedDate),
                 availableKeys: availableTimeKeys
