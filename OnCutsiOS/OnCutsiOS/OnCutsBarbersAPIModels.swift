@@ -57,6 +57,8 @@ private struct OnCutsBarberDTO: Decodable, Sendable {
     let instagramHandle: String?
     /// Postgres `provider_type` (`barber`, `beauty`) — drives Home Tags filtering.
     let providerType: String?
+    /// Published weekly hours from `weekly_schedule`.
+    let weeklySchedule: OnCutsWeeklySchedulePayload?
 }
 
 private struct OnCutsPricingDTO: Decodable, Sendable {
@@ -251,6 +253,14 @@ private extension OnCutsBarberDTO {
             }
         }()
 
+        let mappedAvailability: [ServiceProvider.DayAvailability]? = {
+            let days = OnCutsWeeklyScheduleMapping.browseDays(from: weeklySchedule)
+            guard !days.isEmpty else { return nil }
+            return days.map {
+                ServiceProvider.DayAvailability(id: $0.id, dayOfWeek: $0.dayOfWeek, timeSlots: $0.timeSlots)
+            }
+        }()
+
         return ServiceProvider(
             id: pid,
             userId: uid,
@@ -271,7 +281,7 @@ private extension OnCutsBarberDTO {
             specialty: specialtyString,
             providerType: resolvedProviderType,
             services: services,
-            availability: nil,
+            availability: mappedAvailability,
             locations: locations,
             distanceMilesFromUser: distanceMiles,
             customerReviews: embeddedReviews

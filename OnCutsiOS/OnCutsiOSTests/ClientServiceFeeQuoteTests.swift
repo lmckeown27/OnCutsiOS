@@ -9,7 +9,8 @@ struct ClientServiceFeeQuoteTests {
             consumerUserCount: 0,
             feeBurden: .client,
             platformCommissionEnabled: enabled,
-            platformFeePercent: percent
+            platformFeePercent: percent,
+            consumerHomeReviewsEnabled: true
         )
     }
 

@@ -3,7 +3,7 @@
 //  OnCuts
 //
 //  Public `GET /api/v1/platform/frontend-config` — admin switch for consumer Home
-//  (`providers` nearby list vs `waitlist` user count), cash checkout, and Service Fee quote.
+//  (`providers` nearby list vs `waitlist` user count), cash checkout, Service Fee quote, and home reviews.
 //
 
 import Foundation
@@ -24,6 +24,8 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
     var platformCommissionEnabled: Bool
     /// 0–100. Invalid or missing → 15.
     var platformFeePercent: Double
+    /// Consumer Home provider cards / profile sheet. Missing → `true` (same as web `!== false`).
+    var consumerHomeReviewsEnabled: Bool
 
     static let fallbackProviders = PlatformFrontendConfig(
         cashPaymentEnabled: false,
@@ -31,7 +33,8 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
         consumerUserCount: 0,
         feeBurden: .operatorBurden,
         platformCommissionEnabled: true,
-        platformFeePercent: 15
+        platformFeePercent: 15,
+        consumerHomeReviewsEnabled: true
     )
 
     static func sanitizedPercent(_ raw: Double?) -> Double {
@@ -46,6 +49,7 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
         case feeBurden
         case platformCommissionEnabled
         case platformFeePercent
+        case consumerHomeReviewsEnabled
     }
 
     init(
@@ -54,7 +58,8 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
         consumerUserCount: Int,
         feeBurden: PlatformFeeBurden,
         platformCommissionEnabled: Bool,
-        platformFeePercent: Double
+        platformFeePercent: Double,
+        consumerHomeReviewsEnabled: Bool
     ) {
         self.cashPaymentEnabled = cashPaymentEnabled
         self.consumerHomeMode = consumerHomeMode
@@ -62,6 +67,7 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
         self.feeBurden = feeBurden
         self.platformCommissionEnabled = platformCommissionEnabled
         self.platformFeePercent = platformFeePercent
+        self.consumerHomeReviewsEnabled = consumerHomeReviewsEnabled
     }
 
     init(from decoder: Decoder) throws {
@@ -72,6 +78,7 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
         feeBurden = PlatformFeeBurden.parse(try c.decodeIfPresent(String.self, forKey: .feeBurden))
         platformCommissionEnabled = try c.decodeIfPresent(Bool.self, forKey: .platformCommissionEnabled) ?? true
         platformFeePercent = Self.sanitizedPercent(try c.decodeIfPresent(Double.self, forKey: .platformFeePercent))
+        consumerHomeReviewsEnabled = try c.decodeIfPresent(Bool.self, forKey: .consumerHomeReviewsEnabled) ?? true
     }
 
     func encode(to encoder: Encoder) throws {
@@ -82,6 +89,7 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
         try c.encode(feeBurden.rawValue, forKey: .feeBurden)
         try c.encode(platformCommissionEnabled, forKey: .platformCommissionEnabled)
         try c.encode(platformFeePercent, forKey: .platformFeePercent)
+        try c.encode(consumerHomeReviewsEnabled, forKey: .consumerHomeReviewsEnabled)
     }
 }
 
@@ -98,6 +106,7 @@ enum PlatformFrontendConfigAPI {
         let feeBurden: String?
         let platformCommissionEnabled: Bool?
         let platformFeePercent: Double?
+        let consumerHomeReviewsEnabled: Bool?
 
         private enum CodingKeys: String, CodingKey {
             case cashPaymentEnabled
@@ -106,6 +115,7 @@ enum PlatformFrontendConfigAPI {
             case feeBurden
             case platformCommissionEnabled
             case platformFeePercent
+            case consumerHomeReviewsEnabled
         }
 
         init(from decoder: Decoder) throws {
@@ -125,6 +135,7 @@ enum PlatformFrontendConfigAPI {
             } else {
                 platformFeePercent = nil
             }
+            consumerHomeReviewsEnabled = try c.decodeIfPresent(Bool.self, forKey: .consumerHomeReviewsEnabled)
         }
     }
 
@@ -177,7 +188,8 @@ enum PlatformFrontendConfigAPI {
             consumerUserCount: max(0, payload.consumerUserCount ?? 0),
             feeBurden: PlatformFeeBurden.parse(payload.feeBurden),
             platformCommissionEnabled: payload.platformCommissionEnabled ?? true,
-            platformFeePercent: PlatformFrontendConfig.sanitizedPercent(payload.platformFeePercent)
+            platformFeePercent: PlatformFrontendConfig.sanitizedPercent(payload.platformFeePercent),
+            consumerHomeReviewsEnabled: payload.consumerHomeReviewsEnabled ?? true
         )
     }
 }
@@ -214,6 +226,11 @@ final class PlatformFrontendConfigStore {
         config.cashPaymentEnabled == true
     }
 
+    /// Consumer Home ratings/reviews. Missing config treats as on; a failed fetch also falls back to on (same as web).
+    var consumerHomeReviewsEnabled: Bool {
+        config.consumerHomeReviewsEnabled
+    }
+
     func refresh() async {
         isLoading = true
         defer {
@@ -233,7 +250,8 @@ final class PlatformFrontendConfigStore {
                 consumerUserCount: config.consumerUserCount,
                 feeBurden: .operatorBurden,
                 platformCommissionEnabled: config.platformCommissionEnabled,
-                platformFeePercent: config.platformFeePercent
+                platformFeePercent: config.platformFeePercent,
+                consumerHomeReviewsEnabled: true
             )
             Self.saveCache(config)
             lastErrorMessage = error.localizedDescription

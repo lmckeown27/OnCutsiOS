@@ -53,6 +53,8 @@ struct ServiceProviderCard: View {
     var matchedGeometryNamespace: Namespace.ID? = nil
     /// When `false`, the card does not accept taps (e.g. another provider detail overlay is open).
     var allowsInteraction: Bool = true
+    /// Consumer Home: hide star + count when Admin `consumerHomeReviewsEnabled` is false. Default on.
+    var showsStarRating: Bool = true
     
     private var cardCornerRadius: CGFloat { .radiusXL }
     
@@ -127,7 +129,7 @@ struct ServiceProviderCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .lineLimit(nil)
 
-                    if shouldShowStarRatingOnCard, let rating = provider.rating {
+                    if showsStarRating, shouldShowStarRatingOnCard, let rating = provider.rating {
                         HStack(spacing: 5) {
                             Image(systemName: "star.fill")
                                 .font(OnCutsFont.subheadline(weight: .semibold))
@@ -169,6 +171,16 @@ struct ServiceProviderCard: View {
                                 .fixedSize(horizontal: true, vertical: true)
                                 .accessibilityLabel("Instagram \(provider.instagramDisplayHandle), open provider to visit")
                         }
+                    }
+
+                    if let availableDays = provider.weeklyAvailabilityCardLine {
+                        Text(availableDays)
+                            .font(OnCutsFont.caption)
+                            .foregroundStyle(cardSecondaryTextColor)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityLabel("Available \(availableDays)")
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -471,6 +483,14 @@ struct ServiceProvider: Identifiable, Codable {
         var isAvailable: Bool {
             !timeSlots.isEmpty
         }
+    }
+
+    /// Open weekdays only for the browse card (`Mon, Wed, Fri`). Times belong on the opened detail sheet.
+    var weeklyAvailabilityCardLine: String? {
+        guard let availability, !availability.isEmpty else { return nil }
+        let days = availability.filter(\.isAvailable).map(\.dayOfWeek)
+        guard !days.isEmpty else { return nil }
+        return days.joined(separator: ", ")
     }
     
     /// Service categories for organizing providers

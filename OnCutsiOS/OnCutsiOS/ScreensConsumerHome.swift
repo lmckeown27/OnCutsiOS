@@ -93,6 +93,7 @@ struct ConsumerHomeScreen: View {
     @State private var providerListShuffleSeed: UInt64 = UInt64.random(in: 1 ... UInt64.max)
     /// Measured height of the sticky search + category header (for scroll underlap).
     @State private var stickyBrowseHeaderHeight: CGFloat = 0
+    @State private var frontendConfigStore = PlatformFrontendConfigStore.shared
     
     private var providers: [ServiceProvider] { providerVM.providersForDisplay }
     
@@ -787,7 +788,8 @@ struct ConsumerHomeScreen: View {
                                 provider: provider,
                                 onTap: { handleProviderTap(provider) },
                                 glassMorphNamespace: morphNS,
-                                liquidGlassInteractiveWithoutMorph: interactiveOnly
+                                liquidGlassInteractiveWithoutMorph: interactiveOnly,
+                                showsStarRating: frontendConfigStore.consumerHomeReviewsEnabled
                             )
                         }
                     }
@@ -1423,6 +1425,7 @@ struct ServiceProviderDetailSheet: View {
     /// After a successful booking request: close booking UI + run this (e.g. dismiss provider detail and open Bookings).
     var onBookingRequestCompleted: (() -> Void)? = nil
 
+    @State private var frontendConfigStore = PlatformFrontendConfigStore.shared
     @State private var showingBookingFlow = false
     @State private var showBookingLimitAlert = false
     @State private var showLiveDataStripeTestAlert = false
@@ -1538,6 +1541,7 @@ struct ServiceProviderDetailSheet: View {
             barberReviewsState = .idle
         }
         .task(id: provider.id) {
+            guard frontendConfigStore.consumerHomeReviewsEnabled else { return }
             await fetchBarberReviewsForDetail()
         }
     }
@@ -1604,51 +1608,13 @@ struct ServiceProviderDetailSheet: View {
                     )
 
                     // Average stars only after at least one completed booking; hidden when preview rows exist below.
-                    if displayReviews.isEmpty, providerHasCompletedBookings, let rating = provider.rating {
+                    if frontendConfigStore.consumerHomeReviewsEnabled,
+                       displayReviews.isEmpty, providerHasCompletedBookings, let rating = provider.rating {
                         ProviderDetailRatingSummaryRow(
                             averageRating: rating,
                             detailHeadlineColor: detailHeadlineColor,
                             useVibrantLiquidGlassStyling: useVibrantLiquidGlassStyling
                         )
-                    }
-                    
-                    // Instagram (opens in Instagram or Safari)
-                    if let instagramURL = provider.instagramProfileURL {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Social")
-                                .font(OnCutsFont.headlineSmall)
-                                .foregroundStyle(detailHeadlineColor)
-                            
-                            Link(destination: instagramURL) {
-                                HStack(spacing: 14) {
-                                    Image("Instagram")
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 36, height: 36)
-                                        .accessibilityHidden(true)
-
-                                    Text(provider.instagramDisplayHandle)
-                                        .font(OnCutsFont.bodyMedium)
-                                        .foregroundStyle(detailHeadlineColor)
-                                    
-                                    Spacer(minLength: 8)
-                                    
-                                    Image(systemName: "arrow.up.right.circle.fill")
-                                        .font(OnCutsFont.title3)
-                                        .symbolRenderingMode(.hierarchical)
-                                        .foregroundStyle(detailBodyColor)
-                                        .accessibilityHidden(true)
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 14)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(useVibrantLiquidGlassStyling ? Color.primary.opacity(0.06) : Color.white.opacity(0.12))
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            }
-                            .modifier(InstagramLinkGlassButtonStyle(useVibrantLiquidGlassStyling: useVibrantLiquidGlassStyling))
-                            .accessibilityLabel("Instagram")
-                            .accessibilityValue(provider.instagramDisplayHandle)
-                        }
                     }
                     
                     // Stats (bookings only — omit zero; review counts are not shown on this sheet)
@@ -1755,6 +1721,45 @@ struct ServiceProviderDetailSheet: View {
                             }
                         }
                     }
+
+                    // Instagram (opens in Instagram or Safari)
+                    if let instagramURL = provider.instagramProfileURL {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Social")
+                                .font(OnCutsFont.headlineSmall)
+                                .foregroundStyle(detailHeadlineColor)
+
+                            Link(destination: instagramURL) {
+                                HStack(spacing: 14) {
+                                    Image("Instagram")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 36, height: 36)
+                                        .accessibilityHidden(true)
+
+                                    Text(provider.instagramDisplayHandle)
+                                        .font(OnCutsFont.bodyMedium)
+                                        .foregroundStyle(detailHeadlineColor)
+
+                                    Spacer(minLength: 8)
+
+                                    Image(systemName: "arrow.up.right.circle.fill")
+                                        .font(OnCutsFont.title3)
+                                        .symbolRenderingMode(.hierarchical)
+                                        .foregroundStyle(detailBodyColor)
+                                        .accessibilityHidden(true)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(useVibrantLiquidGlassStyling ? Color.primary.opacity(0.06) : Color.white.opacity(0.12))
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            }
+                            .modifier(InstagramLinkGlassButtonStyle(useVibrantLiquidGlassStyling: useVibrantLiquidGlassStyling))
+                            .accessibilityLabel("Instagram")
+                            .accessibilityValue(provider.instagramDisplayHandle)
+                        }
+                    }
                     
                     /*
                     // Locations (if available)
@@ -1775,21 +1780,22 @@ struct ServiceProviderDetailSheet: View {
                     }
                     */
                     
-                    // Reviews: preview rows from API (or list embed); tap to open full list
-                    ProviderDetailReviewsPreviewSection(
-                        reviews: displayReviews,
-                        isLoadingReviews: isLoadingBarberReviews,
-                        detailHeadlineColor: detailHeadlineColor,
-                        detailEmphasisColor: detailEmphasisColor,
-                        detailBodyColor: detailBodyColor,
-                        detailSubtleColor: detailSubtleColor,
-                        detailCaptionColor: detailCaptionColor,
-                        useVibrantLiquidGlassStyling: useVibrantLiquidGlassStyling,
-                        onShowAll: {
-                            guard !displayReviews.isEmpty else { return }
-                            showReviewsList = true
-                        }
-                    )
+                    if frontendConfigStore.consumerHomeReviewsEnabled {
+                        ProviderDetailReviewsPreviewSection(
+                            reviews: displayReviews,
+                            isLoadingReviews: isLoadingBarberReviews,
+                            detailHeadlineColor: detailHeadlineColor,
+                            detailEmphasisColor: detailEmphasisColor,
+                            detailBodyColor: detailBodyColor,
+                            detailSubtleColor: detailSubtleColor,
+                            detailCaptionColor: detailCaptionColor,
+                            useVibrantLiquidGlassStyling: useVibrantLiquidGlassStyling,
+                            onShowAll: {
+                                guard !displayReviews.isEmpty else { return }
+                                showReviewsList = true
+                            }
+                        )
+                    }
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 24)
@@ -3735,7 +3741,8 @@ struct UnifiedProviderHomeScreen: View {
                                 },
                                 glassMorphNamespace: morphNS,
                                 liquidGlassInteractiveWithoutMorph: interactiveOnly,
-                                allowsInteraction: !isProviderDetailCapturingTouches
+                                allowsInteraction: !isProviderDetailCapturingTouches,
+                                showsStarRating: frontendConfigStore.consumerHomeReviewsEnabled
                             )
                         }
                     }

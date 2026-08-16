@@ -132,6 +132,8 @@ internal struct BarberListRowDTO: Decodable {
     let pricing: [BarberPricingRowDTO]?
     /// Postgres `provider_type` (`barber`, `beauty`).
     let providerType: String?
+    /// Published weekly hours (`weekly_schedule` / `weeklySchedule`).
+    let weeklySchedule: OnCutsWeeklySchedulePayload?
 
     func asBarber() -> Barber {
         let business = name?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty

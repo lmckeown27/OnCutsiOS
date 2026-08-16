@@ -50,6 +50,8 @@ public struct OnCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
     public let instagramHandle: String?
     /// DB `provider_type` (`barber`, `beauty`).
     public let providerType: String?
+    /// Open days from `weekly_schedule` (empty when unpublished).
+    public let weeklyHours: [OnCutsBrowseWeeklyDay]?
 
     public init(
         id: String,
@@ -65,7 +67,8 @@ public struct OnCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
         services: [OnCutsBrowseServiceRow]? = nil,
         priceRange: OnCutsBrowsePriceRange? = nil,
         instagramHandle: String? = nil,
-        providerType: String? = nil
+        providerType: String? = nil,
+        weeklyHours: [OnCutsBrowseWeeklyDay]? = nil
     ) {
         self.id = id
         self.userId = userId
@@ -81,6 +84,7 @@ public struct OnCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
         self.priceRange = priceRange
         self.instagramHandle = instagramHandle
         self.providerType = providerType
+        self.weeklyHours = weeklyHours
     }
 }
 
@@ -115,6 +119,7 @@ private extension BarberListRowDTO {
         let services = mappedBrowseServices()
         let priceRange = browsePriceRange(from: services)
         let resolvedProviderType = trimmedNonEmpty(providerType)?.lowercased() ?? "barber"
+        let hours = OnCutsWeeklyScheduleMapping.browseDays(from: weeklySchedule)
         return OnCutsBrowseProviderRow(
             id: id.value,
             userId: userId?.value ?? id.value,
@@ -129,7 +134,8 @@ private extension BarberListRowDTO {
             services: services,
             priceRange: priceRange,
             instagramHandle: trimmedNonEmpty(instagramHandle),
-            providerType: resolvedProviderType
+            providerType: resolvedProviderType,
+            weeklyHours: hours.isEmpty ? nil : hours
         )
     }
 

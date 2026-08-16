@@ -504,6 +504,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     var isProviderDetailOverlayPresented: Bool = false
     /// Live hub page index — `@Binding` so TabView off-screen pages still see the current tab (plain `Int` went stale).
     @Binding var homeHubPageIndex: Int
+    @State private var frontendConfigStore = PlatformFrontendConfigStore.shared
 
     @FocusState private var isSearchFieldFocused: Bool
     /// `ScrollGeometry.contentOffset.y` — **0** at rest at top; increases when scrolling down (synced every frame, no snapping).
@@ -715,7 +716,8 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             glassMorphNamespace: nil,
             liquidGlassInteractiveWithoutMorph: true,
             matchedGeometryNamespace: isProviderDetailOverlayPresented ? nil : glassNamespace,
-            allowsInteraction: !isProviderDetailCapturingTouches
+            allowsInteraction: !isProviderDetailCapturingTouches,
+            showsStarRating: frontendConfigStore.consumerHomeReviewsEnabled
         )
     }
 
