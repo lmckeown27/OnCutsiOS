@@ -113,7 +113,11 @@ internal class ConsumerViewModel: ObservableObject {
         let dateString = formatDate(date)
         
         do {
-            let slots = try await apiService.fetchBarberAvailability(barberId: barber.id, date: dateString)
+            let slots = try await apiService.fetchBarberAvailability(
+                barberId: barber.id,
+                date: dateString,
+                durationMinutes: 60
+            )
             availableSlots = slots.compactMap { slot in
                 let start = slot.normalizedStartTime
                 guard !start.isEmpty else { return nil }

@@ -126,12 +126,17 @@ enum AppConfiguration: Sendable {
         return URL(string: base + "/reviews/barber/" + encoded)
     }
 
-    /// `GET …/api/v1/barbers/:id/availability?date=YYYY-MM-DD` — slot list for a calendar day (public).
-    static func urlBarberAvailability(barberId: String, dateYYYYMMDD: String) -> URL? {
+    /// `GET …/api/v1/barbers/:id/availability?date=YYYY-MM-DD&durationMinutes=N` — bookable starts for a calendar day.
+    static func urlBarberAvailability(barberId: String, dateYYYYMMDD: String, durationMinutes: Int? = nil) -> URL? {
         let base = onCutsAPIv1BaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let encoded = barberId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? barberId
         var components = URLComponents(string: base + "/barbers/" + encoded + "/availability")
-        components?.queryItems = [URLQueryItem(name: "date", value: dateYYYYMMDD)]
+        var queryItems = [URLQueryItem(name: "date", value: dateYYYYMMDD)]
+        if let durationMinutes {
+            let clamped = min(240, max(15, durationMinutes))
+            queryItems.append(URLQueryItem(name: "durationMinutes", value: String(clamped)))
+        }
+        components?.queryItems = queryItems
         return components?.url
     }
 

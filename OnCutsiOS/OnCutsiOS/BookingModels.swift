@@ -428,6 +428,17 @@ enum BookingWeekdaySchedule {
     }
 }
 
+enum BookingAvailabilityQuery {
+    static let defaultDurationMinutes = 30
+    static let slotIntervalMinutes = 15
+
+    /// Clamps service duration for `GET /barbers/:id/availability?durationMinutes=`.
+    static func clampedDurationMinutes(_ raw: Int?) -> Int {
+        let value = raw ?? defaultDurationMinutes
+        return min(240, max(15, value))
+    }
+}
+
 extension ServiceProvider {
     /// Weekly template days from profile availability, or `nil` when the provider has no schedule on file.
     func weeklyTemplateDayStarts(in range: ClosedRange<Date>) -> Set<Date>? {

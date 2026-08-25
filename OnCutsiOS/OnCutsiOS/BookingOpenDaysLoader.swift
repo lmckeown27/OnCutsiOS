@@ -15,7 +15,8 @@ enum BookingOpenDaysLoader {
         barberId: String,
         onCutsBarberId: String,
         bearerToken: String?,
-        onCutsClient: OnCutsClient
+        onCutsClient: OnCutsClient,
+        durationMinutes: Int
     ) async -> Set<Date> {
         guard !days.isEmpty else { return [] }
         let cal = Calendar.current
@@ -29,7 +30,8 @@ enum BookingOpenDaysLoader {
                         barberId: barberId,
                         onCutsBarberId: onCutsBarberId,
                         bearerToken: bearerToken,
-                        onCutsClient: onCutsClient
+                        onCutsClient: onCutsClient,
+                        durationMinutes: durationMinutes
                     )
                     return (start, hasOpen)
                 }
@@ -48,16 +50,19 @@ enum BookingOpenDaysLoader {
         barberId: String,
         onCutsBarberId: String,
         bearerToken: String?,
-        onCutsClient: OnCutsClient
+        onCutsClient: OnCutsClient,
+        durationMinutes: Int
     ) async -> Bool {
         let dayStr = BookingPacificSchedule.apiDateString(from: day)
         let trimmedPackageId = onCutsBarberId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let queryDuration = BookingAvailabilityQuery.clampedDurationMinutes(durationMinutes)
 
         if !trimmedPackageId.isEmpty {
             do {
                 let slots = try await onCutsClient.fetchBarberDayAvailability(
                     barberId: trimmedPackageId,
-                    dateYYYYMMDD: dayStr
+                    dateYYYYMMDD: dayStr,
+                    durationMinutes: queryDuration
                 )
                 if slots.contains(where: { $0.isAvailable }) {
                     return true
@@ -71,6 +76,7 @@ enum BookingOpenDaysLoader {
             let rows = try await BarberAvailabilityAPI.fetchDaySlots(
                 barberId: barberId,
                 dateYYYYMMDD: dayStr,
+                durationMinutes: queryDuration,
                 bearerToken: bearerToken
             )
             return rows.contains(where: \.available)

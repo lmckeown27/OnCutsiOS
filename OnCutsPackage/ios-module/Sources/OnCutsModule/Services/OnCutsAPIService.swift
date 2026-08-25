@@ -125,9 +125,10 @@ internal class OnCutsAPIService {
         return "barbers?" + parts.joined(separator: "&")
     }
 
-    func fetchBarberAvailability(barberId: String, date: String) async throws -> [AvailabilitySlotDTO] {
+    func fetchBarberAvailability(barberId: String, date: String, durationMinutes: Int) async throws -> [AvailabilitySlotDTO] {
         let encoded = barberId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? barberId
-        let endpoint = "barbers/\(encoded)/availability?date=\(date)"
+        let clamped = min(240, max(15, durationMinutes))
+        let endpoint = "barbers/\(encoded)/availability?date=\(date)&durationMinutes=\(clamped)"
         let payload: AvailabilityDayDTO = try await request(endpoint: endpoint)
         return payload.slots ?? []
     }

@@ -38,11 +38,19 @@ public struct OnCutsBarberServiceRow: Sendable, Hashable, Identifiable {
 
 extension OnCutsClient {
     /// Fetches availability for a calendar day (`date` = `yyyy-MM-dd`).
-    public func fetchBarberDayAvailability(barberId: String, dateYYYYMMDD: String) async throws -> [OnCutsDayAvailabilitySlot] {
+    public func fetchBarberDayAvailability(
+        barberId: String,
+        dateYYYYMMDD: String,
+        durationMinutes: Int
+    ) async throws -> [OnCutsDayAvailabilitySlot] {
         let trimmedId = barberId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedId.isEmpty else { return [] }
         let api = OnCutsAPIService(session: session, environment: environment)
-        let slots = try await api.fetchBarberAvailability(barberId: trimmedId, date: dateYYYYMMDD)
+        let slots = try await api.fetchBarberAvailability(
+            barberId: trimmedId,
+            date: dateYYYYMMDD,
+            durationMinutes: durationMinutes
+        )
         return slots.compactMap { slot in
             let start = slot.normalizedStartTime
             guard !start.isEmpty else { return nil }

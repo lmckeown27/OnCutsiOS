@@ -1456,7 +1456,8 @@ struct ConsumerBookingDetailView: View {
             barberId: barberId,
             onCutsBarberId: barberId,
             bearerToken: sessionManager.currentSession?.token,
-            onCutsClient: onCutsClient
+            onCutsClient: onCutsClient,
+            durationMinutes: BookingAvailabilityQuery.defaultDurationMinutes
         )
         scheduleEditOpenDaysByMonthKey[monthKey] = open
     }
@@ -1500,12 +1501,17 @@ struct ConsumerBookingDetailView: View {
 
     private func fetchRibbonSlotsForEditDay(_ day: Date) async -> [BookingRibbonSlot] {
         let dayStr = BookingPacificSchedule.apiDateString(from: day)
+        let queryDuration = BookingAvailabilityQuery.defaultDurationMinutes
         guard let bid = bookingRow.barberId?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty else {
             return []
         }
         if !bid.isEmpty {
             do {
-                let campus = try await onCutsClient.fetchBarberDayAvailability(barberId: bid, dateYYYYMMDD: dayStr)
+                let campus = try await onCutsClient.fetchBarberDayAvailability(
+                    barberId: bid,
+                    dateYYYYMMDD: dayStr,
+                    durationMinutes: queryDuration
+                )
                 let mapped = campus.map {
                     BookingRibbonSlot(
                         timeKey: normalizeEditSlotTimeKey($0.startTime),
@@ -1524,6 +1530,7 @@ struct ConsumerBookingDetailView: View {
             let rows = try await BarberAvailabilityAPI.fetchDaySlots(
                 barberId: bid,
                 dateYYYYMMDD: dayStr,
+                durationMinutes: queryDuration,
                 bearerToken: sessionManager.currentSession?.token
             )
             let mapped = rows.map {

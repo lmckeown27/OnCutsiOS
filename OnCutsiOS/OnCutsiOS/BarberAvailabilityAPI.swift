@@ -23,12 +23,21 @@ private struct BarberAvailabilityDayData: Decodable, Sendable {
 }
 
 enum BarberAvailabilityAPI {
-    /// Fetches 15-minute slots for a barber on a given calendar day (Pacific `date` string).
-    static func fetchDaySlots(barberId: String, dateYYYYMMDD: String, bearerToken: String?) async throws -> [BarberAvailabilitySlotDTO] {
+    /// Fetches bookable start times for a barber on a calendar day (Pacific `date` string).
+    static func fetchDaySlots(
+        barberId: String,
+        dateYYYYMMDD: String,
+        durationMinutes: Int,
+        bearerToken: String?
+    ) async throws -> [BarberAvailabilitySlotDTO] {
         let trimmedId = barberId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedId.isEmpty else { return [] }
 
-        guard let url = AppConfiguration.urlBarberAvailability(barberId: trimmedId, dateYYYYMMDD: dateYYYYMMDD) else {
+        guard let url = AppConfiguration.urlBarberAvailability(
+            barberId: trimmedId,
+            dateYYYYMMDD: dateYYYYMMDD,
+            durationMinutes: durationMinutes
+        ) else {
             throw URLError(.badURL)
         }
 

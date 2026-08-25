@@ -108,6 +108,15 @@ struct BookingIntakeView: View {
         Set(slots.filter(\.available).map(\.time))
     }
 
+    private var availabilityQueryDurationMinutes: Int {
+        if let sid = selectedServiceId,
+           let svc = services.first(where: { $0.id == sid }),
+           let duration = svc.duration {
+            return BookingAvailabilityQuery.clampedDurationMinutes(duration)
+        }
+        return BookingAvailabilityQuery.clampedDurationMinutes(nil)
+    }
+
     private var bookingDateRange: ClosedRange<Date> {
         let end = Calendar.current.date(byAdding: .day, value: 90, to: Date()) ?? Date()
         return Date() ... end
@@ -151,6 +160,7 @@ struct BookingIntakeView: View {
                                                 #if os(iOS)
                                                 OnCutsLiquidGlassHaptics.selectionChanged()
                                                 #endif
+                                                Task { await loadSlots() }
                                             }
                                         }
                                     }
@@ -456,6 +466,7 @@ struct BookingIntakeView: View {
             let rows = try await BarberAvailabilityAPI.fetchDaySlots(
                 barberId: provider.id,
                 dateYYYYMMDD: day,
+                durationMinutes: availabilityQueryDurationMinutes,
                 bearerToken: sessionManager.currentSession?.token
             )
             slots = rows
@@ -547,7 +558,7 @@ struct BookingIntakeView: View {
             location: loc,
             scheduledAtPacificISO: iso,
             resolvedPriceUsd: sp.price,
-            durationMinutes: 30,
+            durationMinutes: availabilityQueryDurationMinutes,
             profileImageUrl: provider.profileImageUrl,
             instagramHandle: provider.instagramHandle,
             pricingBaselineUsd: pricingBaseline

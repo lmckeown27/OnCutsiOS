@@ -377,6 +377,7 @@ struct LiveBookingView: View {
             action: {
                 selectedChipId = chip.id
                 serviceError = nil
+                Task { await loadSlots() }
             }
         )
     }
@@ -400,6 +401,17 @@ struct LiveBookingView: View {
 
     private var availableTimeKeys: Set<String> {
         Set(ribbonSlots.map(\.timeKey))
+    }
+
+    private var availabilityQueryDurationMinutes: Int {
+        if let chipId = selectedChipId,
+           let chip = serviceChips.first(where: { $0.id == chipId }) {
+            return BookingAvailabilityQuery.clampedDurationMinutes(chip.durationMinutes)
+        }
+        if let minDuration = serviceChips.map(\.durationMinutes).min() {
+            return BookingAvailabilityQuery.clampedDurationMinutes(minDuration)
+        }
+        return BookingAvailabilityQuery.clampedDurationMinutes(nil)
     }
 
     private func scheduleSlotReloadForPickedDay() {
@@ -507,7 +519,8 @@ struct LiveBookingView: View {
             barberId: provider.id,
             onCutsBarberId: onCutsBarberId,
             bearerToken: sessionManager.currentSession?.token,
-            onCutsClient: onCutsClient
+            onCutsClient: onCutsClient,
+            durationMinutes: availabilityQueryDurationMinutes
         )
         openDaysByMonthKey[monthKey] = open
     }
@@ -521,35 +534,41 @@ struct LiveBookingView: View {
         }
 
         let day = BookingPacificSchedule.apiDateString(from: selectedDate)
+        let queryDuration = availabilityQueryDurationMinutes
 
         if !onCutsBarberId.isEmpty {
             do {
-                let slots = try await onCutsClient.fetchBarberDayAvailability(barberId: onCutsBarberId, dateYYYYMMDD: day)
+                let slots = try await onCutsClient.fetchBarberDayAvailability(
+                    barberId: onCutsBarberId,
+                    dateYYYYMMDD: day,
+                    durationMinutes: queryDuration
+                )
                 let mapped = slots.map { s in
                     let key = normalizeSlotTimeKey(s.startTime)
                     return BookingRibbonSlot(timeKey: key, label: displayTimeLabel(key), available: s.isAvailable)
                 }
                 ribbonSlots = dedupeRibbonSlotsKeepingOrder(mapped).availableOnly
                 if ribbonSlots.isEmpty {
-                    await loadSlotsViaShellAPI(day: day)
+                    await loadSlotsViaShellAPI(day: day, durationMinutes: queryDuration)
                 } else {
                     slotsLoadError = nil
                 }
                 return
             } catch {
                 if OnCutsRefreshCancellation.isBenignCancellation(error) { return }
-                await loadSlotsViaShellAPI(day: day)
+                await loadSlotsViaShellAPI(day: day, durationMinutes: queryDuration)
                 return
             }
         }
-        await loadSlotsViaShellAPI(day: day)
+        await loadSlotsViaShellAPI(day: day, durationMinutes: queryDuration)
     }
 
-    private func loadSlotsViaShellAPI(day: String) async {
+    private func loadSlotsViaShellAPI(day: String, durationMinutes: Int) async {
         do {
             let rows = try await BarberAvailabilityAPI.fetchDaySlots(
                 barberId: provider.id,
                 dateYYYYMMDD: day,
+                durationMinutes: durationMinutes,
                 bearerToken: sessionManager.currentSession?.token
             )
             let mapped = rows.map { BookingRibbonSlot(timeKey: $0.time, label: displayTimeLabel($0.time), available: $0.available) }
