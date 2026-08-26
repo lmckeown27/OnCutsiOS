@@ -486,14 +486,45 @@ extension ConsumerBookingSimpleRow {
         return true
     }
 
-    /// `ACCEPTED` and service not paid yet — open service checkout.
-    var needsServicePayment: Bool {
-        statusUpper == "ACCEPTED" && !Self.hasTimestamp(paidAt)
+    /// Service charge still owed — timing-mode aware (mirror web).
+    func needsServicePayment(timingMode: PaymentTimingMode) -> Bool {
+        switch timingMode {
+        case .onAccept:
+            return statusUpper == "ACCEPTED" && !Self.hasTimestamp(paidAt)
+        case .afterComplete:
+            return statusUpper == "COMPLETED" && !Self.hasTimestamp(paidAt)
+        }
     }
 
-    /// `COMPLETED` and tip not chosen yet (including $0).
+    /// Tip-only step (on_accept after complete). Never used for after_complete (tip rides on service PI).
+    func needsTipDecision(timingMode: PaymentTimingMode) -> Bool {
+        switch timingMode {
+        case .onAccept:
+            return statusUpper == "COMPLETED" && !Self.hasTimestamp(tipDecidedAt)
+        case .afterComplete:
+            return false
+        }
+    }
+
+    /// Any consumer action that should open the payment takeover.
+    func needsPaymentAction(timingMode: PaymentTimingMode) -> Bool {
+        needsServicePayment(timingMode: timingMode) || needsTipDecision(timingMode: timingMode)
+    }
+
+    /// Convenience using shared frontend-config (MainActor UI).
+    @MainActor
+    var needsServicePayment: Bool {
+        needsServicePayment(timingMode: PlatformFrontendConfigStore.shared.paymentTimingMode)
+    }
+
+    @MainActor
     var needsTipDecision: Bool {
-        statusUpper == "COMPLETED" && !Self.hasTimestamp(tipDecidedAt)
+        needsTipDecision(timingMode: PlatformFrontendConfigStore.shared.paymentTimingMode)
+    }
+
+    @MainActor
+    var needsPaymentAction: Bool {
+        needsPaymentAction(timingMode: PlatformFrontendConfigStore.shared.paymentTimingMode)
     }
 
     /// Old fully-settled rows that remain `PAID` with `completedAt` set.
@@ -504,11 +535,6 @@ extension ConsumerBookingSimpleRow {
     /// Paid appointment still upcoming (service paid; not marked complete).
     var isUpcomingPaidAppointment: Bool {
         statusUpper == "PAID" && !Self.hasTimestamp(completedAt) && !Self.hasTimestamp(tipDecidedAt)
-    }
-
-    /// Any consumer action that should open the payment takeover.
-    var needsPaymentAction: Bool {
-        needsServicePayment || needsTipDecision
     }
 
     /// Prefer booking payload fields; quote from frontend-config when the server omitted them.
@@ -528,17 +554,18 @@ extension ConsumerBookingSimpleRow {
     /// Calendar segment for profile tabs — mirrors web **Today / Upcoming / Past** behavior and includes **PENDING** where consumers expect to see open requests.
     func scheduleSegment(
         now: Date = Date(),
-        calendar: Calendar = BookingPacificSchedule.pacificCalendar
+        calendar: Calendar = BookingPacificSchedule.pacificCalendar,
+        timingMode: PaymentTimingMode
     ) -> ConsumerBookingScheduleSegment {
         let s = statusUpper
 
         // Tip still required after complete — keep under Today as an action item.
-        if needsTipDecision {
+        if needsTipDecision(timingMode: timingMode) {
             return .today
         }
 
-        // Unpaid accepted — keep on calendar by schedule (payment required).
-        if needsServicePayment {
+        // Unpaid service charge — keep on calendar by schedule (payment required).
+        if needsServicePayment(timingMode: timingMode) {
             guard let t = Self.parseScheduledISO(scheduledTime) else { return .past }
             if calendar.isDate(t, inSameDayAs: now) { return .today }
             if t > now { return .upcoming }
@@ -576,6 +603,18 @@ extension ConsumerBookingSimpleRow {
         }
 
         return .past
+    }
+
+    @MainActor
+    func scheduleSegment(
+        now: Date = Date(),
+        calendar: Calendar = BookingPacificSchedule.pacificCalendar
+    ) -> ConsumerBookingScheduleSegment {
+        scheduleSegment(
+            now: now,
+            calendar: calendar,
+            timingMode: PlatformFrontendConfigStore.shared.paymentTimingMode
+        )
     }
 
     static func parseScheduledISO(_ raw: String) -> Date? {
@@ -640,9 +679,9 @@ extension ConsumerBookingSimpleRow {
         return raw.localizedLowercase.localizedCapitalized
     }
 
-    var displayStatus: String {
-        if needsServicePayment { return "Payment required" }
-        if needsTipDecision { return "Tip required" }
+    func displayStatus(timingMode: PaymentTimingMode) -> String {
+        if needsServicePayment(timingMode: timingMode) { return "Payment required" }
+        if needsTipDecision(timingMode: timingMode) { return "Tip required" }
         if isUpcomingPaidAppointment { return "Confirmed" }
         if isLegacySettledPaid { return "Paid" }
         let u = statusUpper
@@ -655,6 +694,11 @@ extension ConsumerBookingSimpleRow {
         case "REJECTED": return "Declined"
         default: return status.capitalized
         }
+    }
+
+    @MainActor
+    var displayStatus: String {
+        displayStatus(timingMode: PlatformFrontendConfigStore.shared.paymentTimingMode)
     }
 
     /// Short reference shown on consumer booking detail (matches web: first 8 chars of booking id, uppercased).
@@ -681,7 +725,7 @@ enum ConsumerBookingScheduleSegment: String, CaseIterable, Sendable {
 }
 
 extension ConsumerBookingSimpleRow {
-    func toUserProfileAppointment() -> UserProfileAppointment? {
+    func toUserProfileAppointment(timingMode: PaymentTimingMode = .onAccept) -> UserProfileAppointment? {
         guard let at = Self.parseScheduledISO(scheduledTime) else { return nil }
         let barber = barberName?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? "Provider"
         return UserProfileAppointment(
@@ -689,25 +733,32 @@ extension ConsumerBookingSimpleRow {
             serviceName: displayServiceName,
             providerName: barber,
             scheduledAt: at,
-            statusNote: displayStatus
+            statusNote: displayStatus(timingMode: timingMode)
         )
+    }
+
+    @MainActor
+    func toUserProfileAppointment() -> UserProfileAppointment? {
+        toUserProfileAppointment(timingMode: PlatformFrontendConfigStore.shared.paymentTimingMode)
     }
 }
 
 extension UserProfileAppointment {
     /// Splits **bookings-simple** rows into Past / Today / Upcoming lists (sorted like the web: ascending for today/upcoming, descending for past).
+    @MainActor
     static func listsFromBookingsSimple(rows: [ConsumerBookingSimpleRow]) -> (
         past: [UserProfileAppointment],
         today: [UserProfileAppointment],
         upcoming: [UserProfileAppointment]
     ) {
+        let timingMode = PlatformFrontendConfigStore.shared.paymentTimingMode
         var past: [UserProfileAppointment] = []
         var today: [UserProfileAppointment] = []
         var upcoming: [UserProfileAppointment] = []
 
         for row in rows {
-            guard let appt = row.toUserProfileAppointment() else { continue }
-            switch row.scheduleSegment() {
+            guard let appt = row.toUserProfileAppointment(timingMode: timingMode) else { continue }
+            switch row.scheduleSegment(timingMode: timingMode) {
             case .past:
                 past.append(appt)
             case .today:

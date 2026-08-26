@@ -2,16 +2,17 @@
 //  BookingPaymentRequestPayload.swift
 //  OnCuts
 //
-//  In-app payment takeover: service confirm (ACCEPTED) or tip decision (COMPLETED).
+//  In-app payment takeover: service confirm / tip decision (on_accept) or
+//  post-complete service (+ optional tip) when paymentTimingMode is after_complete.
 //
 
 import Foundation
 
 struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
     enum Mode: String, Hashable, Sendable {
-        /// `ACCEPTED` with no `paidAt` — charge service only to lock the appointment.
+        /// Charge service (on_accept: ACCEPTED unpaid; after_complete: COMPLETED unpaid).
         case serviceConfirm
-        /// `COMPLETED` with no `tipDecidedAt` — tip only (including $0).
+        /// Tip only after complete when `paymentTimingMode == on_accept`.
         case tipDecide
     }
 
@@ -36,6 +37,8 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
     /// ISO / API `scheduledTime` for the appointment (service-confirm screen shows date + time).
     let scheduledTime: String?
     let mode: Mode
+    /// Snapshot of admin payment structure when this payload was built.
+    let paymentTimingMode: PaymentTimingMode
 
     /// Human-readable service label (matches consumer booking row / web), not raw enum strings like `HAIRCUT`.
     var displayServiceName: String {
@@ -47,8 +50,24 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
         return t
     }
 
-    /// Decode Socket.IO payload from provider mark-complete (`booking-completed`) — tip decision flow.
+    /// Service PI may include an optional tip when paying after complete.
+    var allowsOptionalTipOnServiceCharge: Bool {
+        mode == .serviceConfirm && paymentTimingMode == .afterComplete
+    }
+
+    /// Decode Socket.IO payload from provider mark-complete (`booking-completed`).
+    @MainActor
     static func decode(socketData: [Any]) -> BookingPaymentRequestPayload? {
+        decode(
+            socketData: socketData,
+            timingMode: PlatformFrontendConfigStore.shared.paymentTimingMode
+        )
+    }
+
+    static func decode(
+        socketData: [Any],
+        timingMode: PaymentTimingMode
+    ) -> BookingPaymentRequestPayload? {
         guard let raw = socketData.first else { return nil }
         guard let dict = raw as? [String: Any] else { return nil }
 
@@ -97,6 +116,13 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
                 ?? dict["requested_at"]
         )?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
 
+        let phase = stringValue(dict["phase"])?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let mode: Mode = {
+            if timingMode == .afterComplete { return .serviceConfirm }
+            if phase == "service" { return .serviceConfirm }
+            return .tipDecide
+        }()
+
         return BookingPaymentRequestPayload(
             bookingId: trimmedBid,
             paymentUrl: paymentUrl,
@@ -110,7 +136,8 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
             barberStripeAccountId: stripeAcct,
             barberAvatarURL: avatar,
             scheduledTime: scheduled,
-            mode: .tipDecide
+            mode: mode,
+            paymentTimingMode: timingMode
         )
     }
 
@@ -123,10 +150,11 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
         bookingRow: ConsumerBookingSimpleRow,
         frontendConfig: PlatformFrontendConfig
     ) -> BookingPaymentRequestPayload? {
+        let timing = frontendConfig.paymentTimingMode
         let mode: Mode
-        if bookingRow.needsServicePayment {
+        if bookingRow.needsServicePayment(timingMode: timing) {
             mode = .serviceConfirm
-        } else if bookingRow.needsTipDecision {
+        } else if bookingRow.needsTipDecision(timingMode: timing) {
             mode = .tipDecide
         } else {
             return nil
@@ -148,7 +176,8 @@ struct BookingPaymentRequestPayload: Identifiable, Hashable, Sendable {
             barberStripeAccountId: nil,
             barberAvatarURL: bookingRow.barberAvatar,
             scheduledTime: bookingRow.scheduledTime,
-            mode: mode
+            mode: mode,
+            paymentTimingMode: timing
         )
     }
 

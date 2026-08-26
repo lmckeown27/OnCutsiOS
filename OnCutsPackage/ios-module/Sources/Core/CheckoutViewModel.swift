@@ -107,8 +107,8 @@ private enum CreatePaymentIntentAPI {
         if intentEndpoint == .tipPayment {
             body["tipAmountCents"] = tipAmountCents
         } else {
-            // Service-confirm phase always charges tip 0 (tip is a separate post-complete flow).
-            body["tipAmountCents"] = 0
+            // Service PI: tip is 0 for on_accept; after_complete may include tipAmountCents.
+            body["tipAmountCents"] = max(0, tipAmountCents)
         }
         if let sid = stripeAccountID?.trimmingCharacters(in: .whitespacesAndNewlines), !sid.isEmpty {
             body["stripeAccountId"] = sid

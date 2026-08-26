@@ -2,8 +2,9 @@
 //  PlatformFrontendConfig.swift
 //  OnCuts
 //
-//  Public `GET /api/v1/platform/frontend-config` — admin switch for consumer Home
-//  (`providers` nearby list vs `waitlist` user count), cash checkout, Service Fee quote, and home reviews.
+//  Public `GET /api/v1/platform/frontend-config` — admin switches for consumer Home
+//  (`providers` nearby list vs `waitlist` user count), cash checkout, Service Fee quote,
+//  home reviews, and payment timing (`on_accept` vs `after_complete`).
 //
 
 import Foundation
@@ -12,6 +13,20 @@ import Observation
 enum ConsumerHomeMode: String, Codable, Sendable, Equatable {
     case providers
     case waitlist
+}
+
+/// Admin **Payment Structure** — when the consumer pays for the service.
+enum PaymentTimingMode: String, Codable, Sendable, Equatable {
+    /// Pay after operator accepts (service). Tip after complete.
+    case onAccept = "on_accept"
+    /// Pay after operator marks complete (service + optional tip on same charge).
+    case afterComplete = "after_complete"
+
+    /// Missing / unknown → `on_accept` (legacy default).
+    static func parse(_ raw: String?) -> PaymentTimingMode {
+        let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+        return trimmed == Self.afterComplete.rawValue ? .afterComplete : .onAccept
+    }
 }
 
 struct PlatformFrontendConfig: Sendable, Equatable, Codable {
@@ -26,6 +41,8 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
     var platformFeePercent: Double
     /// Consumer Home provider cards / profile sheet. Missing → `true` (same as web `!== false`).
     var consumerHomeReviewsEnabled: Bool
+    /// When the consumer pays. Missing → `on_accept`.
+    var paymentTimingMode: PaymentTimingMode
 
     static let fallbackProviders = PlatformFrontendConfig(
         cashPaymentEnabled: false,
@@ -34,7 +51,8 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
         feeBurden: .operatorBurden,
         platformCommissionEnabled: true,
         platformFeePercent: 15,
-        consumerHomeReviewsEnabled: true
+        consumerHomeReviewsEnabled: true,
+        paymentTimingMode: .onAccept
     )
 
     static func sanitizedPercent(_ raw: Double?) -> Double {
@@ -50,6 +68,7 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
         case platformCommissionEnabled
         case platformFeePercent
         case consumerHomeReviewsEnabled
+        case paymentTimingMode
     }
 
     init(
@@ -59,7 +78,8 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
         feeBurden: PlatformFeeBurden,
         platformCommissionEnabled: Bool,
         platformFeePercent: Double,
-        consumerHomeReviewsEnabled: Bool
+        consumerHomeReviewsEnabled: Bool,
+        paymentTimingMode: PaymentTimingMode = .onAccept
     ) {
         self.cashPaymentEnabled = cashPaymentEnabled
         self.consumerHomeMode = consumerHomeMode
@@ -68,6 +88,7 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
         self.platformCommissionEnabled = platformCommissionEnabled
         self.platformFeePercent = platformFeePercent
         self.consumerHomeReviewsEnabled = consumerHomeReviewsEnabled
+        self.paymentTimingMode = paymentTimingMode
     }
 
     init(from decoder: Decoder) throws {
@@ -79,6 +100,7 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
         platformCommissionEnabled = try c.decodeIfPresent(Bool.self, forKey: .platformCommissionEnabled) ?? true
         platformFeePercent = Self.sanitizedPercent(try c.decodeIfPresent(Double.self, forKey: .platformFeePercent))
         consumerHomeReviewsEnabled = try c.decodeIfPresent(Bool.self, forKey: .consumerHomeReviewsEnabled) ?? true
+        paymentTimingMode = PaymentTimingMode.parse(try c.decodeIfPresent(String.self, forKey: .paymentTimingMode))
     }
 
     func encode(to encoder: Encoder) throws {
@@ -90,6 +112,7 @@ struct PlatformFrontendConfig: Sendable, Equatable, Codable {
         try c.encode(platformCommissionEnabled, forKey: .platformCommissionEnabled)
         try c.encode(platformFeePercent, forKey: .platformFeePercent)
         try c.encode(consumerHomeReviewsEnabled, forKey: .consumerHomeReviewsEnabled)
+        try c.encode(paymentTimingMode.rawValue, forKey: .paymentTimingMode)
     }
 }
 
@@ -107,6 +130,7 @@ enum PlatformFrontendConfigAPI {
         let platformCommissionEnabled: Bool?
         let platformFeePercent: Double?
         let consumerHomeReviewsEnabled: Bool?
+        let paymentTimingMode: String?
 
         private enum CodingKeys: String, CodingKey {
             case cashPaymentEnabled
@@ -116,6 +140,7 @@ enum PlatformFrontendConfigAPI {
             case platformCommissionEnabled
             case platformFeePercent
             case consumerHomeReviewsEnabled
+            case paymentTimingMode
         }
 
         init(from decoder: Decoder) throws {
@@ -136,6 +161,7 @@ enum PlatformFrontendConfigAPI {
                 platformFeePercent = nil
             }
             consumerHomeReviewsEnabled = try c.decodeIfPresent(Bool.self, forKey: .consumerHomeReviewsEnabled)
+            paymentTimingMode = try c.decodeIfPresent(String.self, forKey: .paymentTimingMode)
         }
     }
 
@@ -189,7 +215,8 @@ enum PlatformFrontendConfigAPI {
             feeBurden: PlatformFeeBurden.parse(payload.feeBurden),
             platformCommissionEnabled: payload.platformCommissionEnabled ?? true,
             platformFeePercent: PlatformFrontendConfig.sanitizedPercent(payload.platformFeePercent),
-            consumerHomeReviewsEnabled: payload.consumerHomeReviewsEnabled ?? true
+            consumerHomeReviewsEnabled: payload.consumerHomeReviewsEnabled ?? true,
+            paymentTimingMode: PaymentTimingMode.parse(payload.paymentTimingMode)
         )
     }
 }
@@ -200,7 +227,7 @@ enum PlatformFrontendConfigAPI {
 final class PlatformFrontendConfigStore {
     static let shared = PlatformFrontendConfigStore()
 
-    private static let cacheKey = "oncuts.platformFrontendConfig.v2"
+    private static let cacheKey = "oncuts.platformFrontendConfig.v3"
 
     private(set) var config: PlatformFrontendConfig
     private(set) var isLoading = false
@@ -231,6 +258,11 @@ final class PlatformFrontendConfigStore {
         config.consumerHomeReviewsEnabled
     }
 
+    /// When the consumer pays for the service. Missing / failed fetch → `on_accept`.
+    var paymentTimingMode: PaymentTimingMode {
+        config.paymentTimingMode
+    }
+
     func refresh() async {
         isLoading = true
         defer {
@@ -243,7 +275,7 @@ final class PlatformFrontendConfigStore {
             lastErrorMessage = nil
             Self.saveCache(fresh)
         } catch {
-            // Fail closed for cash and client Service Fee: never invent a fee when config is unknown.
+            // Fail closed for cash and client Service Fee; keep payment timing default to on_accept.
             config = PlatformFrontendConfig(
                 cashPaymentEnabled: false,
                 consumerHomeMode: config.consumerHomeMode,
@@ -251,7 +283,8 @@ final class PlatformFrontendConfigStore {
                 feeBurden: .operatorBurden,
                 platformCommissionEnabled: config.platformCommissionEnabled,
                 platformFeePercent: config.platformFeePercent,
-                consumerHomeReviewsEnabled: true
+                consumerHomeReviewsEnabled: true,
+                paymentTimingMode: .onAccept
             )
             Self.saveCache(config)
             lastErrorMessage = error.localizedDescription

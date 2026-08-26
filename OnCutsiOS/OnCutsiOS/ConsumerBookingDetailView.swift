@@ -218,11 +218,15 @@ struct ConsumerBookingDetailView: View {
         let cents = bookingRow.resolvedClientServiceAmounts(
             quotingWith: PlatformFrontendConfigStore.shared.config
         ).chargeAmountCents
+        let afterComplete = PlatformFrontendConfigStore.shared.paymentTimingMode == .afterComplete
         if cents > 0 {
             let formatted = USDCurrencyFormatting.string(cents: cents)
-            return formatted.isEmpty ? "Pay now to confirm" : "Pay \(formatted) to confirm"
+            if formatted.isEmpty {
+                return afterComplete ? "Pay now" : "Pay now to confirm"
+            }
+            return afterComplete ? "Pay \(formatted)" : "Pay \(formatted) to confirm"
         }
-        return "Pay now to confirm"
+        return afterComplete ? "Pay now" : "Pay now to confirm"
     }
 
     private var showsMessageProviderCTA: Bool {
@@ -500,7 +504,8 @@ struct ConsumerBookingDetailView: View {
             .disabled(isConfirmingCancelBooking)
             .opacity(isConfirmingCancelBooking ? 0.55 : 1)
 
-            if bookingRow.needsServicePayment {
+            if bookingRow.needsServicePayment,
+               PlatformFrontendConfigStore.shared.paymentTimingMode == .onAccept {
                 Text("Full refund if booking is cancelled")
                     .font(OnCutsFont.caption)
                     .foregroundStyle(BookingSelectorTheme.cream.opacity(0.72))
@@ -1244,6 +1249,9 @@ struct ConsumerBookingDetailView: View {
     private var payForServiceSubtitle: String {
         if bookingRow.needsTipDecision {
             return "Please consider leaving a tip based on the quality of service received"
+        }
+        if PlatformFrontendConfigStore.shared.paymentTimingMode == .afterComplete {
+            return "\(bookingRow.barberDisplayName) marked this appointment complete. Please pay for your service"
         }
         return "\(bookingRow.barberDisplayName) accepted. Please pay now to confirm the booking"
     }

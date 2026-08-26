@@ -1037,8 +1037,16 @@ final class ChatViewModel: ObservableObject {
             activePaymentRequest = nil
             if !bid.isEmpty { deferredPaymentTakeoverBookingIds.remove(bid) }
         case .serviceConfirm:
-            // Stay open while ACCEPTED unpaid; dismiss once paid or rejected/cancelled.
-            if s == "ACCEPTED" { return }
+            // on_accept: ACCEPTED unpaid; after_complete: COMPLETED unpaid.
+            let stayOpen: Bool = {
+                switch active.paymentTimingMode {
+                case .afterComplete:
+                    return s == "COMPLETED"
+                case .onAccept:
+                    return s == "ACCEPTED"
+                }
+            }()
+            if stayOpen { return }
             activePaymentRequest = nil
             if !bid.isEmpty { deferredPaymentTakeoverBookingIds.remove(bid) }
         }

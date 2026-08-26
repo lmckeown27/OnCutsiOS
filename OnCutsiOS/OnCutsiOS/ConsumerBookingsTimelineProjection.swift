@@ -64,12 +64,17 @@ struct ConsumerBookingsTimelineProjection: Equatable, Sendable {
         return Self.todayHeaderID
     }
 
-    static func build(from rows: [ConsumerBookingSimpleRow], now: Date = Date(), calendar: Calendar = .current) -> Self {
+    static func build(
+        from rows: [ConsumerBookingSimpleRow],
+        now: Date = Date(),
+        calendar: Calendar = .current,
+        timingMode: PaymentTimingMode
+    ) -> Self {
         var pastR: [ConsumerBookingSimpleRow] = []
         var todayR: [ConsumerBookingSimpleRow] = []
         var upR: [ConsumerBookingSimpleRow] = []
         for row in rows {
-            switch row.scheduleSegment(now: now, calendar: calendar) {
+            switch row.scheduleSegment(now: now, calendar: calendar, timingMode: timingMode) {
             case .past: pastR.append(row)
             case .today: todayR.append(row)
             case .upcoming: upR.append(row)
@@ -80,6 +85,20 @@ struct ConsumerBookingsTimelineProjection: Equatable, Sendable {
         upR.sort { ($0.scheduledAtDate ?? .distantFuture) < ($1.scheduledAtDate ?? .distantFuture) }
         let pastItems = Self.buildPastItems(from: pastR)
         return Self(past: pastR, pastItems: pastItems, today: todayR, upcoming: upR)
+    }
+
+    @MainActor
+    static func build(
+        from rows: [ConsumerBookingSimpleRow],
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Self {
+        build(
+            from: rows,
+            now: now,
+            calendar: calendar,
+            timingMode: PlatformFrontendConfigStore.shared.paymentTimingMode
+        )
     }
 
     /// Groups past bookings by provider; multiple with the same provider become one `.group`, singles stay `.single`.

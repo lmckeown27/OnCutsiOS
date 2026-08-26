@@ -44,8 +44,8 @@ struct HomeTodayBookingHighlight: Identifiable, Equatable, Sendable {
     let scheduledAt: Date
     let statusLabel: String
 
-    init?(row: ConsumerBookingSimpleRow) {
-        guard let appt = row.toUserProfileAppointment() else { return nil }
+    init?(row: ConsumerBookingSimpleRow, timingMode: PaymentTimingMode) {
+        guard let appt = row.toUserProfileAppointment(timingMode: timingMode) else { return nil }
         self.id = row.id
         self.sourceRow = row
         self.barberId = row.barberId
@@ -53,14 +53,20 @@ struct HomeTodayBookingHighlight: Identifiable, Equatable, Sendable {
         self.barberAvatarURL = ProfileImageURLResolver.url(from: row.barberAvatar)
         self.serviceTitle = appt.serviceName
         self.scheduledAt = appt.scheduledAt
-        self.statusLabel = row.displayStatus
+        self.statusLabel = row.displayStatus(timingMode: timingMode)
+    }
+
+    @MainActor
+    init?(row: ConsumerBookingSimpleRow) {
+        self.init(row: row, timingMode: PlatformFrontendConfigStore.shared.paymentTimingMode)
     }
 
     /// Earliest active appointment in **Today** or **Upcoming** (pending, accepted, upcoming paid, or tip-required).
     static func pickTodayHighlight(
         from rows: [ConsumerBookingSimpleRow],
         now: Date = Date(),
-        calendar: Calendar = BookingPacificSchedule.pacificCalendar
+        calendar: Calendar = BookingPacificSchedule.pacificCalendar,
+        timingMode: PaymentTimingMode
     ) -> HomeTodayBookingHighlight? {
         let candidates = rows.filter { row in
             let u = row.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -68,9 +74,10 @@ struct HomeTodayBookingHighlight: Identifiable, Equatable, Sendable {
                 u == "PENDING"
                 || u == "ACCEPTED"
                 || row.isUpcomingPaidAppointment
-                || row.needsTipDecision
+                || row.needsTipDecision(timingMode: timingMode)
+                || row.needsServicePayment(timingMode: timingMode)
             guard isActive else { return false }
-            switch row.scheduleSegment(now: now, calendar: calendar) {
+            switch row.scheduleSegment(now: now, calendar: calendar, timingMode: timingMode) {
             case .today, .upcoming:
                 return true
             case .past:
@@ -79,11 +86,25 @@ struct HomeTodayBookingHighlight: Identifiable, Equatable, Sendable {
         }
         guard !candidates.isEmpty else { return nil }
         let sorted = candidates.sorted { a, b in
-            let da = a.toUserProfileAppointment()?.scheduledAt ?? .distantFuture
-            let db = b.toUserProfileAppointment()?.scheduledAt ?? .distantFuture
+            let da = a.toUserProfileAppointment(timingMode: timingMode)?.scheduledAt ?? .distantFuture
+            let db = b.toUserProfileAppointment(timingMode: timingMode)?.scheduledAt ?? .distantFuture
             return da < db
         }
-        return HomeTodayBookingHighlight(row: sorted[0])
+        return HomeTodayBookingHighlight(row: sorted[0], timingMode: timingMode)
+    }
+
+    @MainActor
+    static func pickTodayHighlight(
+        from rows: [ConsumerBookingSimpleRow],
+        now: Date = Date(),
+        calendar: Calendar = BookingPacificSchedule.pacificCalendar
+    ) -> HomeTodayBookingHighlight? {
+        pickTodayHighlight(
+            from: rows,
+            now: now,
+            calendar: calendar,
+            timingMode: PlatformFrontendConfigStore.shared.paymentTimingMode
+        )
     }
 
     func meshAccent(at now: Date) -> HomeBookingMeshAccent {

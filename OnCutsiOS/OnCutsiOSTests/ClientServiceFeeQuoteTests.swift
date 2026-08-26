@@ -10,7 +10,8 @@ struct ClientServiceFeeQuoteTests {
             feeBurden: .client,
             platformCommissionEnabled: enabled,
             platformFeePercent: percent,
-            consumerHomeReviewsEnabled: true
+            consumerHomeReviewsEnabled: true,
+            paymentTimingMode: .onAccept
         )
     }
 

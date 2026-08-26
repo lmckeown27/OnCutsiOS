@@ -133,12 +133,27 @@ struct ConsumerPaymentTakeoverView: View {
 
     private var isTipMode: Bool { payload.mode == .tipDecide }
     private var isServiceMode: Bool { payload.mode == .serviceConfirm }
+    /// after_complete service charge can include an optional tip on the same PaymentIntent.
+    private var showsOptionalTipOnService: Bool { payload.allowsOptionalTipOnServiceCharge }
+
+    private var paymentScreenTitle: String {
+        if isTipMode { return "Consider a Tip" }
+        if payload.paymentTimingMode == .afterComplete { return "Pay for Your Service" }
+        return "Pay to Confirm Booking"
+    }
+
+    /// Tip cents included on service create-payment-intent / confirm when after_complete.
+    private var serviceChargeTipCents: Int {
+        showsOptionalTipOnService ? tipAmountCents : 0
+    }
 
     init(payload: BookingPaymentRequestPayload, sessionManager: AppSessionManager) {
         self.payload = payload
         self.sessionManager = sessionManager
         _tipAmountCents = State(initialValue: 0)
-        _selectedTipPreset = State(initialValue: payload.mode == .tipDecide ? .zero : nil)
+        _selectedTipPreset = State(
+            initialValue: (payload.mode == .tipDecide || payload.allowsOptionalTipOnServiceCharge) ? .zero : nil
+        )
         _checkout = StateObject(
             wrappedValue: CheckoutViewModel(
                 merchantDisplayName: "OnCuts",
@@ -220,7 +235,7 @@ struct ConsumerPaymentTakeoverView: View {
             }
         }
         .onChange(of: prefersCashPayment) { _, cash in
-            if cash {
+            if cash, !showsOptionalTipOnService {
                 selectedTipPreset = nil
                 tipAmountCents = 0
                 customTipText = ""
@@ -237,7 +252,7 @@ struct ConsumerPaymentTakeoverView: View {
             }
         }
         .onChange(of: customTipText) { _, text in
-            guard isTipMode, isCustomTipFocused || selectedTipPreset == nil else { return }
+            guard (isTipMode || showsOptionalTipOnService), isCustomTipFocused || selectedTipPreset == nil else { return }
             tipAmountCents = Self.parseCustomTipCents(text)
         }
     }
@@ -311,7 +326,8 @@ struct ConsumerPaymentTakeoverView: View {
     }
 
     private var cashConfirmButtonTitle: String {
-        "Confirm Cash Payment \(USDCurrencyFormatting.string(cents: displayedServiceAmounts.chargeAmountCents))"
+        let total = displayedServiceAmounts.chargeAmountCents + serviceChargeTipCents
+        return "Confirm Cash Payment \(USDCurrencyFormatting.string(cents: total))"
     }
 
     private static let paymentAvatarCorner: CGFloat = 12
@@ -328,7 +344,7 @@ struct ConsumerPaymentTakeoverView: View {
         VStack(spacing: 0) {
             paymentGlassCard {
                 VStack(spacing: 32) {
-                    Text(isTipMode ? "Consider a Tip" : "Pay to Confirm Booking")
+                    Text(paymentScreenTitle)
                         .font(paymentModeTitleFont)
                         .foregroundStyle(Color.lavaShellCream)
                         .multilineTextAlignment(.center)
@@ -377,7 +393,7 @@ struct ConsumerPaymentTakeoverView: View {
                         }
                     }
 
-                    if isTipMode {
+                    if isTipMode || showsOptionalTipOnService {
                         tipDecideSection
                     }
 
@@ -442,10 +458,16 @@ struct ConsumerPaymentTakeoverView: View {
     @ViewBuilder
     private var serviceChargeAmountBlock: some View {
         let amounts = displayedServiceAmounts
-        if amounts.showsServiceFeeRow {
+        let tip = serviceChargeTipCents
+        if amounts.showsServiceFeeRow || tip > 0 {
             VStack(spacing: 8) {
                 serviceChargeLine(title: "Service price", cents: amounts.listedServiceCents)
-                serviceChargeLine(title: "Service Fee", cents: amounts.serviceFeeCents)
+                if amounts.showsServiceFeeRow {
+                    serviceChargeLine(title: "Service Fee", cents: amounts.serviceFeeCents)
+                }
+                if tip > 0 {
+                    serviceChargeLine(title: "Tip", cents: tip)
+                }
                 Rectangle()
                     .fill(Color.lavaShellCream.opacity(0.18))
                     .frame(height: 1)
@@ -454,7 +476,7 @@ struct ConsumerPaymentTakeoverView: View {
                     Text("Total due")
                         .font(OnCutsFont.subheadline(weight: .semibold))
                         .foregroundStyle(Color.lavaShellCreamSecondary)
-                    Text(USDCurrencyFormatting.string(cents: amounts.chargeAmountCents))
+                    Text(USDCurrencyFormatting.string(cents: amounts.chargeAmountCents + tip))
                         .font(paymentServicePriceFont)
                         .foregroundStyle(Color.lavaShellCream)
                         .multilineTextAlignment(.center)
@@ -486,7 +508,11 @@ struct ConsumerPaymentTakeoverView: View {
 
     private var tipDecideSection: some View {
         VStack(alignment: .center, spacing: 16) {
-            Text("Consider leaving a tip that best represents the quality of service")
+            Text(
+                showsOptionalTipOnService
+                    ? "Optional tip — added to your total when you pay"
+                    : "Consider leaving a tip that best represents the quality of service"
+            )
                 .font(OnCutsFont.subheadline)
                 .foregroundStyle(Color.lavaShellCreamSecondary)
                 .multilineTextAlignment(.center)
@@ -863,7 +889,7 @@ struct ConsumerPaymentTakeoverView: View {
                 let config = try await checkout.fetchPaymentParams(
                     bookingID: payload.bookingId,
                     stripeAccountID: payload.barberStripeAccountId,
-                    tipAmountCents: isTipMode ? tipAmountCents : 0,
+                    tipAmountCents: isTipMode ? tipAmountCents : serviceChargeTipCents,
                     bearerToken: sessionManager.currentSession?.token,
                     apiBaseURLTrimmed: AppConfiguration.messagingAPIRootTrimmed,
                     publishableKeyValidatedByHost: validatedPublishableKeyForCheckout.isEmpty
@@ -900,7 +926,7 @@ struct ConsumerPaymentTakeoverView: View {
                 let config = try await checkout.fetchPaymentParams(
                     bookingID: payload.bookingId,
                     stripeAccountID: payload.barberStripeAccountId,
-                    tipAmountCents: isTipMode ? tipAmountCents : 0,
+                    tipAmountCents: isTipMode ? tipAmountCents : serviceChargeTipCents,
                     bearerToken: sessionManager.currentSession?.token,
                     apiBaseURLTrimmed: AppConfiguration.messagingAPIRootTrimmed,
                     publishableKeyValidatedByHost: validatedPublishableKeyForCheckout.isEmpty
@@ -917,7 +943,7 @@ struct ConsumerPaymentTakeoverView: View {
                     paymentConfig: config,
                     serviceCents: applePayAmounts.service,
                     serviceFeeCents: applePayAmounts.fee,
-                    tipCents: isTipMode ? tipAmountCents : 0
+                    tipCents: isTipMode ? tipAmountCents : serviceChargeTipCents
                 )
                 isStartingApplePay = false
                 if !started {
@@ -934,8 +960,16 @@ struct ConsumerPaymentTakeoverView: View {
         guard isServiceMode else { return }
         let listed = config.serviceAmountCents ?? displayedServiceAmounts.listedServiceCents
         let fee = config.serviceFeeCents
-            ?? (config.amountCents.map { max(0, $0 - listed) } ?? displayedServiceAmounts.serviceFeeCents)
-        let charge = config.amountCents ?? (listed + fee)
+            ?? (config.amountCents.map { max(0, $0 - listed - serviceChargeTipCents) } ?? displayedServiceAmounts.serviceFeeCents)
+        let charge = {
+            if let svc = config.serviceAmountCents, let feeAmt = config.serviceFeeCents {
+                return svc + feeAmt
+            }
+            if let amount = config.amountCents {
+                return max(0, amount - serviceChargeTipCents)
+            }
+            return listed + fee
+        }()
         serverServiceAmounts = ClientServiceAmounts(
             listedServiceCents: listed,
             serviceFeeCents: fee,
@@ -973,10 +1007,14 @@ struct ConsumerPaymentTakeoverView: View {
             try await BookingSimplePaymentAPI.confirmPayment(
                 bookingId: payload.bookingId,
                 paymentIntentId: paymentIntentId,
-                tipAmountCents: 0,
+                tipAmountCents: serviceChargeTipCents,
                 bearerToken: sessionManager.currentSession?.token
             )
-            await finishServicePaymentSuccess()
+            if payload.paymentTimingMode == .afterComplete {
+                await finishTipPaymentSuccess()
+            } else {
+                await finishServicePaymentSuccess()
+            }
         } catch {
             bannerError = "Payment went through, but confirmation failed: \(error.localizedDescription)"
             await chatViewModel.refreshConsumerBookingsAndSyncPayment(sessionManager: sessionManager)
@@ -1048,17 +1086,23 @@ struct ConsumerPaymentTakeoverView: View {
             bannerError = "Cash payments are currently disabled"
             return
         }
-        tipAmountCents = 0
-        selectedTipPreset = nil
+        if !showsOptionalTipOnService {
+            tipAmountCents = 0
+            selectedTipPreset = nil
+        }
         isConfirmingCash = true
         do {
             try await BookingSimplePaymentAPI.payWithCash(
                 bookingId: payload.bookingId,
-                tipAmountCents: 0,
+                tipAmountCents: serviceChargeTipCents,
                 bearerToken: sessionManager.currentSession?.token
             )
             isConfirmingCash = false
-            await finishServicePaymentSuccess()
+            if payload.paymentTimingMode == .afterComplete {
+                await finishTipPaymentSuccess()
+            } else {
+                await finishServicePaymentSuccess()
+            }
         } catch {
             isConfirmingCash = false
             if BookingSimplePaymentAPI.isUnauthorizedHTTPError(error) {

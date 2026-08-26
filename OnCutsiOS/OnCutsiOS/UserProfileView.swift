@@ -670,9 +670,9 @@ private struct UserProfileSettingsDrawerOverlay: View {
 
     /// Shown in the Account → Apple Pay & payments sheet (numbered checklist for reviewers and users).
     private static let applePayInstructionSteps: [String] = [
-        "When your provider accepts a request, \(AppBranding.displayName) may open Pay to Confirm Booking so you can lock the appointment with Apple Pay, card, or cash (when enabled). You can tap Pay later, then open Bookings → that booking → Pay now to confirm.",
-        "After the visit, your provider marks the booking Completed. \(AppBranding.displayName) may open Consider a Tip (including $0). You can Pay later, then open Bookings → that booking → Choose Tip.",
-        "On the payment screen, use the Apple Pay button or Card. Apple Pay appears when Wallet has a card and merchant configuration is active. Cash is only offered for confirming the booking when the platform enables it — not for tips.",
+        "Depending on admin settings, you either pay when your provider accepts (Pay to Confirm Booking) or after they mark the visit complete (Pay for Your Service). You can tap Pay later, then open Bookings → that booking → Pay.",
+        "When payment is due after complete, you can add an optional tip on the same charge. When payment is due on accept, tips are a separate step after the visit (including $0).",
+        "On the payment screen, use the Apple Pay button or Card. Apple Pay appears when Wallet has a card and merchant configuration is active. Cash is only offered for the service charge when the platform enables it — not for tip-only screens.",
         "If checkout never appeared, open Bookings, select the booking that shows Payment required or Tip required, and use the pay / tip button there.",
     ]
 

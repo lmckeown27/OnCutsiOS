@@ -45,8 +45,8 @@ enum BookingSimplePaymentAPI {
         guard let url = URL(string: base + "/bookings-simple/\(enc)/create-payment-intent") else {
             throw URLError(.badURL)
         }
-        // Service-confirm phase always charges tip 0 (tip is a separate post-complete flow).
-        var body: [String: Any] = ["tipAmountCents": 0]
+        // Service PI: tip is 0 for on_accept; after_complete may include tipAmountCents.
+        var body: [String: Any] = ["tipAmountCents": max(0, tipAmountCents)]
         if let sid = stripeAccountId?.trimmingCharacters(in: .whitespacesAndNewlines), !sid.isEmpty {
             body["stripeAccountId"] = sid
         }
