@@ -8,6 +8,7 @@
 
 import OnCutsModule
 import SwiftUI
+import CoreLocation
 #if os(iOS)
 import UIKit
 #endif
@@ -504,6 +505,17 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     var isProviderDetailOverlayPresented: Bool = false
     /// Live hub page index — `@Binding` so TabView off-screen pages still see the current tab (plain `Int` went stale).
     @Binding var homeHubPageIndex: Int
+    /// My Barbers | Discover segment (default Discover).
+    @Binding var homeBrowseSegment: ConsumerHomeBrowseSegment
+    /// Grouped My Barbers tiles (client-built from bookings-simple).
+    var myBarbersSections: [MyBarbersSection] = []
+    var isLoadingMyBarbers: Bool = false
+    var discoverAreas: [DiscoverServiceArea] = []
+    @Binding var selectedDiscoverAreaId: String?
+    /// Show distance on Discover tiles when browse radius filter is active.
+    var showsDistanceOnDiscoverTiles: Bool = false
+    var browseMapCenterCoordinate: CLLocationCoordinate2D? = nil
+    var browseMapRadiusMeters: CLLocationDistance? = nil
     @State private var frontendConfigStore = PlatformFrontendConfigStore.shared
 
     @FocusState private var isSearchFieldFocused: Bool
@@ -669,9 +681,27 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     }
 
     private var showsHomePinnedBookingStripes: Bool {
-        sessionManager != nil
+        homeBrowseSegment == .myBarbers
+            && sessionManager != nil
             && mainCoordinator != nil
             && todayBookingActivity != nil
+    }
+
+    private var isAuthenticatedForMyBarbers: Bool {
+        sessionManager?.isAuthenticated == true
+    }
+
+    private var discoverListProviders: [ServiceProvider] {
+        MyBarbersDiscover.providers(displayedProviders, filteredBySelectedArea: selectedDiscoverArea)
+    }
+
+    private var selectedDiscoverArea: DiscoverServiceArea? {
+        guard let selectedDiscoverAreaId else { return nil }
+        return discoverAreas.first(where: { $0.id == selectedDiscoverAreaId })
+    }
+
+    private var discoverListTitle: String {
+        selectedDiscoverArea?.title ?? "Nearby"
     }
 
     /// How far the utility pill travels off-screen — matched to booking clearance for a 1:1 handoff.
@@ -719,6 +749,166 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             allowsInteraction: !isProviderDetailCapturingTouches,
             showsStarRating: frontendConfigStore.consumerHomeReviewsEnabled
         )
+    }
+
+    @ViewBuilder
+    private var homeBrowseSegmentPill: some View {
+        HStack(spacing: 0) {
+            ForEach(ConsumerHomeBrowseSegment.allCases) { segment in
+                let selected = homeBrowseSegment == segment
+                Button {
+                    GlassCapsuleToolbarHaptics.selectionChanged()
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                        homeBrowseSegment = segment
+                    }
+                } label: {
+                    Text(segment.title)
+                        .font(OnCutsFont.labelMedium.weight(selected ? .semibold : .medium))
+                        .foregroundStyle(selected ? Color.primary : Color.neutral500)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background {
+                            if selected {
+                                Capsule()
+                                    .fill(Color.white.opacity(0.92))
+                                    .shadow(color: .black.opacity(0.08), radius: 4, y: 1)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(Color.black.opacity(0.08), in: Capsule())
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Browse segment")
+    }
+
+    @ViewBuilder
+    private var myBarbersBrowseContent: some View {
+        if !isAuthenticatedForMyBarbers {
+            myBarbersSignedOutCTA
+        } else if isLoadingMyBarbers && myBarbersSections.isEmpty {
+            ProviderGlassSkeletonList()
+                .padding(.top, .space4)
+        } else if myBarbersSections.isEmpty {
+            myBarbersEmptyCTA
+        } else {
+            LazyVStack(alignment: .leading, spacing: .space5) {
+                ForEach(myBarbersSections) { section in
+                    VStack(alignment: .leading, spacing: 10) {
+                        if let label = section.label {
+                            Text(label)
+                                .font(OnCutsFont.headlineSmall.weight(.semibold))
+                                .foregroundStyle(Color.primary)
+                        }
+                        BarberPhotoTileGrid(
+                            items: section.tiles,
+                            provider: \.provider,
+                            isMain: \.isMain,
+                            showsDistance: false,
+                            onTap: onProviderTap
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private var myBarbersSignedOutCTA: some View {
+        VStack(spacing: 14) {
+            Text("Sign in to see operators you’ve booked")
+                .font(OnCutsFont.bodyMedium)
+                .foregroundStyle(Color.neutral600)
+                .multilineTextAlignment(.center)
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    homeBrowseSegment = .discover
+                }
+            } label: {
+                Text("Discover barbers")
+                    .font(OnCutsFont.labelMedium.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 10)
+                    .background(Color.oliveGreen, in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 36)
+        .padding(.horizontal, .space4)
+    }
+
+    private var myBarbersEmptyCTA: some View {
+        VStack(spacing: 14) {
+            Text("No past barbers yet")
+                .font(OnCutsFont.headlineSmall.weight(.semibold))
+            Text("Book someone from Discover and they’ll show up here, grouped by city or campus.")
+                .font(OnCutsFont.bodyMedium)
+                .foregroundStyle(Color.neutral600)
+                .multilineTextAlignment(.center)
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    homeBrowseSegment = .discover
+                }
+            } label: {
+                Text("Discover barbers")
+                    .font(OnCutsFont.labelMedium.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 10)
+                    .background(Color.oliveGreen, in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 36)
+        .padding(.horizontal, .space4)
+    }
+
+    @ViewBuilder
+    private var discoverBrowseContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            GeometryReader { geo in
+                DiscoverServiceAreasMap(
+                    areas: discoverAreas,
+                    selectedAreaId: $selectedDiscoverAreaId,
+                    browseCenter: browseMapCenterCoordinate,
+                    browseRadiusMeters: browseMapRadiusMeters
+                )
+                .frame(width: geo.size.width, height: max(220, geo.size.width * 0.72))
+            }
+            .frame(height: 280)
+            .zIndex(1)
+
+            Text(discoverListTitle)
+                .font(OnCutsFont.headlineSmall.weight(.semibold))
+                .foregroundStyle(Color.primary)
+
+            if isLoading && discoverListProviders.isEmpty {
+                ProviderGlassSkeletonList()
+            } else if discoverListProviders.isEmpty {
+                emptyContent()
+            } else {
+                BarberPhotoTileGrid(
+                    items: discoverListProviders,
+                    provider: { $0 },
+                    showsDistance: showsDistanceOnDiscoverTiles,
+                    onTap: onProviderTap
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var homeSegmentBrowseBody: some View {
+        switch homeBrowseSegment {
+        case .myBarbers:
+            myBarbersBrowseContent
+        case .discover:
+            discoverBrowseContent
+        }
     }
 
     /// Label on the utility-pill Tags control: selected provider type replaces “Tags”.
@@ -933,51 +1123,16 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     .ignoresSafeArea(edges: [.top, .leading, .trailing])
                     .ignoresSafeArea(.keyboard, edges: .bottom)
                 #else
-                ServiceProviderBrowseMeshBackdrop(homeBookingHighlight: todayBookingActivity)
+                ServiceProviderBrowseMeshBackdrop(homeBookingHighlight: homeBrowseSegment == .myBarbers ? todayBookingActivity : nil)
                     .ignoresSafeArea()
                 #endif
 
                 ScrollView {
                     LazyVStack(spacing: .space4, pinnedViews: showsHomePinnedBookingStripes ? [.sectionHeaders] : []) {
-                        if isLoading && displayedProviders.isEmpty {
-                            if showsHomePinnedBookingStripes {
-                                Section {
-                                    GlassEffectContainer(spacing: 0) {
-                                        ProviderGlassSkeletonList()
-                                    }
-                                    .zIndex(0)
-                                } header: {
-                                    homePinnedBookingStripesSectionHeader
-                                }
-                            } else {
-                                GlassEffectContainer(spacing: 0) {
-                                    ProviderGlassSkeletonList()
-                                        .padding(.top, .space4)
-                                }
-                            }
-                        } else if displayedProviders.isEmpty {
-                            if showsHomePinnedBookingStripes {
-                                Section {
-                                    GlassEffectContainer(spacing: 0) {
-                                        emptyContent()
-                                    }
-                                    .zIndex(0)
-                                } header: {
-                                    homePinnedBookingStripesSectionHeader
-                                }
-                            } else {
-                                GlassEffectContainer(spacing: 0) {
-                                    emptyContent()
-                                }
-                            }
-                        } else if showsHomePinnedBookingStripes {
+                        if showsHomePinnedBookingStripes {
                             Section {
                                 GlassEffectContainer(spacing: 0) {
-                                    LazyVStack(spacing: .space4) {
-                                        ForEach(displayedProviders) { provider in
-                                            providerBrowseCard(provider)
-                                        }
-                                    }
+                                    homeSegmentBrowseBody
                                 }
                                 .zIndex(0)
                             } header: {
@@ -985,11 +1140,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                             }
                         } else {
                             GlassEffectContainer(spacing: 0) {
-                                LazyVStack(spacing: .space4) {
-                                    ForEach(displayedProviders) { provider in
-                                        providerBrowseCard(provider)
-                                    }
-                                }
+                                homeSegmentBrowseBody
                             }
                         }
                     }
@@ -1095,6 +1246,8 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     .matchedGeometryEffect(id: "browseRadiusGlass", in: radiusMorphNamespace)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
+                    homeBrowseSegmentPill
+                        .padding(.horizontal, 2)
                     #if os(iOS)
                     if !isSearchExpanded && !isServiceTagsExpanded {
                         ConsumerBrowseLocationChrome(

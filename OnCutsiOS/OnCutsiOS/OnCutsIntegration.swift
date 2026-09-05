@@ -96,8 +96,11 @@ extension OnCutsBrowseProviderRow {
             providerType: resolvedProviderType,
             services: mappedServices,
             availability: mappedAvailability,
-            locations: nil,
+            locations: locationNames,
             distanceMilesFromUser: distanceMiles,
+            serviceLatitude: serviceLatitude,
+            serviceLongitude: serviceLongitude,
+            serviceLocationLabel: serviceLocationLabel,
             customerReviews: nil
         )
     }

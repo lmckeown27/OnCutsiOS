@@ -413,6 +413,11 @@ struct ServiceProvider: Identifiable, Codable {
     let locations: [String]? // Service locations
     /// Miles from the user’s device when browse `GET /barbers` was called with `lat`/`lng` (server `distance_miles`).
     let distanceMilesFromUser: Double?
+    /// Operator service pin from `service_latitude` / `service_longitude`.
+    let serviceLatitude: Double?
+    let serviceLongitude: Double?
+    /// Coarse public place label from `service_location_label` when the API provides it.
+    let serviceLocationLabel: String?
     /// Populated from API (list embed or detail fetch); detail UI loads `/barbers/:id/reviews` when needed.
     let customerReviews: [ProviderReview]?
 
@@ -435,6 +440,9 @@ struct ServiceProvider: Identifiable, Codable {
         availability: [DayAvailability]?,
         locations: [String]?,
         distanceMilesFromUser: Double?,
+        serviceLatitude: Double? = nil,
+        serviceLongitude: Double? = nil,
+        serviceLocationLabel: String? = nil,
         customerReviews: [ProviderReview]?
     ) {
         self.id = id
@@ -455,6 +463,9 @@ struct ServiceProvider: Identifiable, Codable {
         self.availability = availability
         self.locations = locations
         self.distanceMilesFromUser = distanceMilesFromUser
+        self.serviceLatitude = serviceLatitude
+        self.serviceLongitude = serviceLongitude
+        self.serviceLocationLabel = serviceLocationLabel
         self.customerReviews = customerReviews
     }
 

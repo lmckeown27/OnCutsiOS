@@ -59,6 +59,10 @@ private struct OnCutsBarberDTO: Decodable, Sendable {
     let providerType: String?
     /// Published weekly hours from `weekly_schedule`.
     let weeklySchedule: OnCutsWeeklySchedulePayload?
+    let serviceLatitude: Double?
+    let serviceLongitude: Double?
+    /// Coarse public place when the API provides `service_location_label`.
+    let serviceLocationLabel: String?
 }
 
 private struct OnCutsPricingDTO: Decodable, Sendable {
@@ -284,6 +288,9 @@ private extension OnCutsBarberDTO {
             availability: mappedAvailability,
             locations: locations,
             distanceMilesFromUser: distanceMiles,
+            serviceLatitude: serviceLatitude,
+            serviceLongitude: serviceLongitude,
+            serviceLocationLabel: serviceLocationLabel.flatMap { $0.trimmedNonEmpty },
             customerReviews: embeddedReviews
         )
     }

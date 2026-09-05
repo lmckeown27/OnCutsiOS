@@ -7,6 +7,7 @@
 
 import OnCutsModule
 import SwiftUI
+import CoreLocation
 #if os(iOS)
 import UIKit
 #endif
@@ -94,6 +95,9 @@ struct ConsumerHomeScreen: View {
     /// Measured height of the sticky search + category header (for scroll underlap).
     @State private var stickyBrowseHeaderHeight: CGFloat = 0
     @State private var frontendConfigStore = PlatformFrontendConfigStore.shared
+    @State private var homeBrowseSegment: ConsumerHomeBrowseSegment = .discover
+    @State private var selectedDiscoverAreaId: String?
+    @State private var myBarbersDiscoverController = MyBarbersDiscoverController()
     
     private var providers: [ServiceProvider] { providerVM.providersForDisplay }
     
@@ -576,6 +580,7 @@ struct ConsumerHomeScreen: View {
     private func loadConsumerBookingsForHome() async {
         guard sessionManager.isAuthenticated else {
             consumerBookingRows = []
+            myBarbersDiscoverController.resetForSignOut()
             #if os(iOS)
             UpcomingBookingAppBadge.syncFromConsumerRows([])
             #endif
@@ -590,6 +595,11 @@ struct ConsumerHomeScreen: View {
             #if os(iOS)
             UpcomingBookingAppBadge.syncFromConsumerRows(consumerBookingRows)
             #endif
+            await myBarbersDiscoverController.refreshMyBarbers(
+                bookingRows: consumerBookingRows,
+                browseProviders: providers,
+                bearerToken: sessionManager.currentSession?.token
+            )
         } catch {
             if ConsumerBookingsSimpleAPI.isUnauthorizedHTTPError(error) {
                 await sessionManager.recoverSessionAfterUnauthorized()
@@ -679,7 +689,35 @@ struct ConsumerHomeScreen: View {
             hasActiveConsumerBooking: hasActiveConsumerBooking,
             isProviderDetailCapturingTouches: isProviderDetailCapturingTouches,
             isProviderDetailOverlayPresented: isProviderDetailOverlayBlockingBrowse,
-            homeHubPageIndex: .constant(0)
+            homeHubPageIndex: .constant(0),
+            homeBrowseSegment: $homeBrowseSegment,
+            myBarbersSections: myBarbersDiscoverController.myBarbersSections,
+            isLoadingMyBarbers: myBarbersDiscoverController.isLoadingMyBarbers,
+            discoverAreas: myBarbersDiscoverController.discoverAreas(from: displayedProviders),
+            selectedDiscoverAreaId: $selectedDiscoverAreaId,
+            showsDistanceOnDiscoverTiles: {
+                #if os(iOS)
+                return ConsumerBrowseDistancePreference.constrainBrowseListByDistance
+                #else
+                return false
+                #endif
+            }(),
+            browseMapCenterCoordinate: {
+                #if os(iOS)
+                if let place = ConsumerBrowseDistancePreference.manualPlace {
+                    return CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)
+                }
+                #endif
+                return nil
+            }(),
+            browseMapRadiusMeters: {
+                #if os(iOS)
+                guard ConsumerBrowseDistancePreference.constrainBrowseListByDistance else { return nil }
+                return ConsumerBrowseDistancePreference.maxDistanceMiles * 1609.344
+                #else
+                return nil
+                #endif
+            }()
         )
         .onChange(of: providerVM.selectedServiceType) { _, _ in
             providerListShuffleSeed = UInt64.random(in: 1 ... UInt64.max)
@@ -965,6 +1003,13 @@ struct ConsumerHomeScreen: View {
         OnCutsSessionSync.appSessionManager = sessionManager
         await providerVM.loadProviders(bearerToken: sessionManager.currentSession?.token)
         providerListShuffleSeed = UInt64.random(in: 1 ... UInt64.max)
+        if sessionManager.isAuthenticated, !consumerBookingRows.isEmpty {
+            await myBarbersDiscoverController.refreshMyBarbers(
+                bookingRows: consumerBookingRows,
+                browseProviders: providers,
+                bearerToken: sessionManager.currentSession?.token
+            )
+        }
     }
 
     @MainActor
@@ -2342,6 +2387,10 @@ struct UnifiedProviderHomeScreen: View {
     @State private var searchText = ""
     @State private var providerListShuffleSeed: UInt64 = UInt64.random(in: 1 ... UInt64.max)
     @State private var stickyUnifiedBrowseHeaderHeight: CGFloat = 0
+    /// Home browse: My Barbers | Discover (default Discover).
+    @State private var homeBrowseSegment: ConsumerHomeBrowseSegment = .discover
+    @State private var selectedDiscoverAreaId: String?
+    @State private var myBarbersDiscoverController = MyBarbersDiscoverController()
     /// 0 = Home (feed), 1 = Messages, 2 = Bookings, 3 = Profile — single paged `TabView` for swipe between all.
     @State private var hubPageIndex = 0
     /// Bookings tab `NavigationStack` depth (`ConsumerBookingsHubView.detailNavigationPath.count`) — hides hub chrome while detail/chat is pushed so the thread isn’t covered.
@@ -2416,6 +2465,9 @@ struct UnifiedProviderHomeScreen: View {
         let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let matched = byCategory.filter { $0.matchesConsumerSearch(query: searchText) }
         guard !q.isEmpty else {
+            if homeBrowseSegment == .discover {
+                return MyBarbersDiscover.sortDiscoverProviders(matched)
+            }
             return matched.shuffledWithStableSeed(providerListShuffleSeed)
         }
         return matched.sorted {
@@ -2424,6 +2476,39 @@ struct UnifiedProviderHomeScreen: View {
             if p0 != p1 { return p0 < p1 }
             return $0.businessName.localizedCaseInsensitiveCompare($1.businessName) == .orderedAscending
         }
+    }
+
+    private var unifiedDiscoverAreas: [DiscoverServiceArea] {
+        myBarbersDiscoverController.discoverAreas(from: displayedProviders)
+    }
+
+    private var unifiedShowsDistanceOnDiscoverTiles: Bool {
+        #if os(iOS)
+        ConsumerBrowseDistancePreference.constrainBrowseListByDistance
+        #else
+        false
+        #endif
+    }
+
+    private var unifiedBrowseMapCenter: CLLocationCoordinate2D? {
+        #if os(iOS)
+        if let place = ConsumerBrowseDistancePreference.manualPlace {
+            return CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)
+        }
+        return nil
+        #else
+        nil
+        #endif
+    }
+
+    private var unifiedBrowseMapRadiusMeters: CLLocationDistance? {
+        #if os(iOS)
+        guard ConsumerBrowseDistancePreference.constrainBrowseListByDistance else { return nil }
+        let miles = ConsumerBrowseDistancePreference.maxDistanceMiles
+        return miles * 1609.344
+        #else
+        nil
+        #endif
     }
 
     private var hasActiveConsumerBooking: Bool {
@@ -3485,6 +3570,7 @@ struct UnifiedProviderHomeScreen: View {
     private func loadUnifiedConsumerBookingsForHome() async {
         guard sessionManager.isAuthenticated else {
             consumerBookingRows = []
+            myBarbersDiscoverController.resetForSignOut()
             #if os(iOS)
             UpcomingBookingAppBadge.syncFromConsumerRows([])
             #endif
@@ -3503,6 +3589,11 @@ struct UnifiedProviderHomeScreen: View {
                 userId: sessionManager.currentSession?.userId
             )
             chatViewModel.syncPaymentTakeover(withBookings: consumerBookingRows)
+            await myBarbersDiscoverController.refreshMyBarbers(
+                bookingRows: consumerBookingRows,
+                browseProviders: serviceProviders,
+                bearerToken: sessionManager.currentSession?.token
+            )
         } catch {
             if ConsumerBookingsSimpleAPI.isUnauthorizedHTTPError(error) {
                 await sessionManager.recoverSessionAfterUnauthorized()
@@ -3583,7 +3674,15 @@ struct UnifiedProviderHomeScreen: View {
             hasActiveConsumerBooking: hasActiveConsumerBooking,
             isProviderDetailCapturingTouches: isProviderDetailCapturingTouches,
             isProviderDetailOverlayPresented: isProviderDetailOverlayBlockingBrowse,
-            homeHubPageIndex: $hubPageIndex
+            homeHubPageIndex: $hubPageIndex,
+            homeBrowseSegment: $homeBrowseSegment,
+            myBarbersSections: myBarbersDiscoverController.myBarbersSections,
+            isLoadingMyBarbers: myBarbersDiscoverController.isLoadingMyBarbers,
+            discoverAreas: unifiedDiscoverAreas,
+            selectedDiscoverAreaId: $selectedDiscoverAreaId,
+            showsDistanceOnDiscoverTiles: unifiedShowsDistanceOnDiscoverTiles,
+            browseMapCenterCoordinate: unifiedBrowseMapCenter,
+            browseMapRadiusMeters: unifiedBrowseMapRadiusMeters
         )
     }
 
@@ -3845,6 +3944,13 @@ struct UnifiedProviderHomeScreen: View {
         OnCutsSessionSync.appSessionManager = sessionManager
         await providerVM.loadProviders(bearerToken: sessionManager.currentSession?.token)
         providerListShuffleSeed = UInt64.random(in: 1 ... UInt64.max)
+        if sessionManager.isAuthenticated, !consumerBookingRows.isEmpty {
+            await myBarbersDiscoverController.refreshMyBarbers(
+                bookingRows: consumerBookingRows,
+                browseProviders: serviceProviders,
+                bearerToken: sessionManager.currentSession?.token
+            )
+        }
     }
 }
 

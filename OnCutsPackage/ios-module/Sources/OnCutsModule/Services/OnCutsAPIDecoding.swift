@@ -134,6 +134,10 @@ internal struct BarberListRowDTO: Decodable {
     let providerType: String?
     /// Published weekly hours (`weekly_schedule` / `weeklySchedule`).
     let weeklySchedule: OnCutsWeeklySchedulePayload?
+    let serviceLatitude: Double?
+    let serviceLongitude: Double?
+    let serviceLocationLabel: String?
+    let serviceLocations: [BarberServiceLocationRowDTO]?
 
     func asBarber() -> Barber {
         let business = name?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
@@ -222,6 +226,11 @@ internal struct BarberDetailDTO: Decodable {
             reviews: reviews?.map { $0.asReview(barberId: id?.value ?? fallbackBarberId) }
         )
     }
+}
+
+internal struct BarberServiceLocationRowDTO: Decodable {
+    let id: String?
+    let name: String?
 }
 
 internal struct BarberPricingRowDTO: Decodable {

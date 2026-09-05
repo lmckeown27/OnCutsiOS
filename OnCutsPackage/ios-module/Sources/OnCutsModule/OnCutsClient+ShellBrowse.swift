@@ -52,6 +52,11 @@ public struct OnCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
     public let providerType: String?
     /// Open days from `weekly_schedule` (empty when unpublished).
     public let weeklyHours: [OnCutsBrowseWeeklyDay]?
+    public let serviceLatitude: Double?
+    public let serviceLongitude: Double?
+    public let serviceLocationLabel: String?
+    /// Approved service-location names (`service_locations`).
+    public let locationNames: [String]?
 
     public init(
         id: String,
@@ -68,7 +73,11 @@ public struct OnCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
         priceRange: OnCutsBrowsePriceRange? = nil,
         instagramHandle: String? = nil,
         providerType: String? = nil,
-        weeklyHours: [OnCutsBrowseWeeklyDay]? = nil
+        weeklyHours: [OnCutsBrowseWeeklyDay]? = nil,
+        serviceLatitude: Double? = nil,
+        serviceLongitude: Double? = nil,
+        serviceLocationLabel: String? = nil,
+        locationNames: [String]? = nil
     ) {
         self.id = id
         self.userId = userId
@@ -85,6 +94,10 @@ public struct OnCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
         self.instagramHandle = instagramHandle
         self.providerType = providerType
         self.weeklyHours = weeklyHours
+        self.serviceLatitude = serviceLatitude
+        self.serviceLongitude = serviceLongitude
+        self.serviceLocationLabel = serviceLocationLabel
+        self.locationNames = locationNames
     }
 }
 
@@ -120,6 +133,10 @@ private extension BarberListRowDTO {
         let priceRange = browsePriceRange(from: services)
         let resolvedProviderType = trimmedNonEmpty(providerType)?.lowercased() ?? "barber"
         let hours = OnCutsWeeklyScheduleMapping.browseDays(from: weeklySchedule)
+        let locationNames: [String]? = {
+            let names = serviceLocations?.compactMap { trimmedNonEmpty($0.name) } ?? []
+            return names.isEmpty ? nil : names
+        }()
         return OnCutsBrowseProviderRow(
             id: id.value,
             userId: userId?.value ?? id.value,
@@ -135,7 +152,11 @@ private extension BarberListRowDTO {
             priceRange: priceRange,
             instagramHandle: trimmedNonEmpty(instagramHandle),
             providerType: resolvedProviderType,
-            weeklyHours: hours.isEmpty ? nil : hours
+            weeklyHours: hours.isEmpty ? nil : hours,
+            serviceLatitude: serviceLatitude,
+            serviceLongitude: serviceLongitude,
+            serviceLocationLabel: trimmedNonEmpty(serviceLocationLabel),
+            locationNames: locationNames
         )
     }
 
