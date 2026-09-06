@@ -146,7 +146,7 @@ final class MyBarbersDiscoverController {
 
     /// Minimal operator card from bookings-simple when browse/detail hydration is unavailable.
     private static func stubProvider(from row: ConsumerBookingSimpleRow, barberId: String) -> ServiceProvider {
-        let name = row.barberName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmptyStub ?? "Barber"
+        let name = row.barberName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmptyStub ?? "Operator"
         let priceDollars: Int? = {
             guard let cents = row.priceUsdCents, cents > 0 else { return nil }
             return max(1, Int((Double(cents) / 100.0).rounded()))
@@ -165,8 +165,8 @@ final class MyBarbersDiscoverController {
             isAvailableNow: nil,
             priceRange: priceDollars.map { ServiceProvider.PriceRange(min: $0, max: $0) },
             category: .haircuts,
-            specialty: "Barber",
-            providerType: "barber",
+            specialty: "Operator",
+            providerType: nil,
             services: priceDollars.map {
                 [
                     ServiceProvider.Service(

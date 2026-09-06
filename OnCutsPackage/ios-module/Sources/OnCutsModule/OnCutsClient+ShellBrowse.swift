@@ -48,7 +48,7 @@ public struct OnCutsBrowseProviderRow: Sendable, Hashable, Identifiable {
     public let services: [OnCutsBrowseServiceRow]?
     public let priceRange: OnCutsBrowsePriceRange?
     public let instagramHandle: String?
-    /// DB `provider_type` (`barber`, `beauty`).
+    /// DB `provider_type` (`barber`, `beauty`) — nil until chosen.
     public let providerType: String?
     /// Open days from `weekly_schedule` (empty when unpublished).
     public let weeklyHours: [OnCutsBrowseWeeklyDay]?
@@ -131,7 +131,8 @@ private extension BarberListRowDTO {
             ?? trimmedNonEmpty(avatarUrl)
         let services = mappedBrowseServices()
         let priceRange = browsePriceRange(from: services)
-        let resolvedProviderType = trimmedNonEmpty(providerType)?.lowercased() ?? "barber"
+        // Omit until the operator chooses Barber or Beauty (`provider_type` in DB).
+        let resolvedProviderType = trimmedNonEmpty(providerType)?.lowercased()
         let hours = OnCutsWeeklyScheduleMapping.browseDays(from: weeklySchedule)
         let locationNames: [String]? = {
             let names = serviceLocations?.compactMap { trimmedNonEmpty($0.name) } ?? []

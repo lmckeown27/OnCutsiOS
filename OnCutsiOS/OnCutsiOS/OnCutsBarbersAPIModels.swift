@@ -253,11 +253,15 @@ private extension OnCutsBarberDTO {
             return ServiceProvider.PriceRange(min: min, max: max)
         }()
 
-        /// Front-of-house **provider kind** from DB `provider_type` (fallback Barber).
+        /// Front-of-house **provider kind** from DB `provider_type` (Operator until Barber / Beauty is chosen).
         let resolvedProviderType = providerType?.trimmingCharacters(in: .whitespacesAndNewlines).trimmedNonEmpty
-            ?? "barber"
-        let specialtyString: String? = ServiceType.fromProviderType(resolvedProviderType)?.toolbarTitle
-            ?? resolvedProviderType.capitalized
+        let specialtyString: String? = {
+            switch ServiceType.fromProviderType(resolvedProviderType) {
+            case .barber: return "Barber"
+            case .beauty: return "Beauty"
+            case .all, .none: return "Operator"
+            }
+        }()
 
         let locations: [String]? = {
             let names = serviceLocations?.compactMap { $0.name.flatMap { $0.trimmedNonEmpty } }
@@ -284,6 +288,7 @@ private extension OnCutsBarberDTO {
         let category: ServiceProvider.ServiceCategory = {
             switch ServiceType.fromProviderType(resolvedProviderType) {
             case .beauty: return .beauty
+            case .barber: return .haircuts
             default: return .haircuts
             }
         }()

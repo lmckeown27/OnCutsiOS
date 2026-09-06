@@ -405,8 +405,8 @@ struct ServiceProvider: Identifiable, Codable {
     let isAvailableNow: Bool?
     let priceRange: PriceRange?
     let category: ServiceCategory? // For filtering and organization
-    let specialty: String? // Provider kind for browse/card: "Barber", "Beauty", etc. (not individual services)
-    /// DB `provider_type` key (`barber`, `beauty`) from `GET /barbers` — drives Tags filtering.
+    let specialty: String? // Provider kind for browse/card: "Operator", "Barber", "Beauty" (not individual services)
+    /// DB `provider_type` key (`barber`, `beauty`) from `GET /barbers` — nil until Barber / Beauty is chosen.
     let providerType: String?
     let services: [Service]? // Services offered with prices
     let availability: [DayAvailability]? // Weekly availability schedule

@@ -124,7 +124,7 @@ internal struct ConsumerHomeView: View {
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
-                TextField("Search barbers...", text: $viewModel.searchText)
+                TextField("Search operators...", text: $viewModel.searchText)
             }
             .padding(12)
             .background(Color.platformGray6)
@@ -142,7 +142,7 @@ internal struct ConsumerHomeView: View {
                     Image(systemName: "scissors")
                         .font(.system(size: 48))
                         .foregroundStyle(.secondary)
-                    Text("No barbers found")
+                    Text("No operators found")
                         .font(.headline)
                     Text("Try adjusting your search")
                         .foregroundStyle(.secondary)
@@ -191,13 +191,13 @@ internal struct ConsumerHomeView: View {
                     Text("No bookings yet")
                         .font(.title2)
                         .fontWeight(.semibold)
-                    Text("Book a haircut to get started!")
+                    Text("Book a service to get started!")
                         .foregroundStyle(.secondary)
                     
                     Button {
                         selectedTab = .browse
                     } label: {
-                        Text("Browse Barbers")
+                        Text("Browse Operators")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)

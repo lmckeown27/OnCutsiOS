@@ -39,7 +39,7 @@ public struct OnCutsSignUpView: View {
         var label: String {
             switch self {
             case .student: return "Student"
-            case .barber: return "Barber"
+            case .barber: return "Operator"
             }
         }
     }

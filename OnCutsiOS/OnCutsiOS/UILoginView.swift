@@ -323,7 +323,7 @@ struct LoginView: View {
                 Button {
                     sessionManager.mockLogin(as: .barber)
                 } label: {
-                    Text("Barber")
+                    Text("Operator")
                         .onCutsStyle(.caption)
                         .padding(.horizontal, .space4)
                         .padding(.vertical, .space2)

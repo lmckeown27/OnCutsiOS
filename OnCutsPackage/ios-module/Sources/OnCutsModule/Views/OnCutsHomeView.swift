@@ -66,7 +66,7 @@ internal struct OnCutsHomeView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.5)
-            Text("Loading barbers...")
+            Text("Loading operators...")
                 .foregroundStyle(.secondary)
         }
     }
@@ -148,7 +148,7 @@ internal struct OnCutsHomeView: View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField("Search barbers...", text: $viewModel.searchText)
+            TextField("Search operators...", text: $viewModel.searchText)
         }
         .padding(12)
         .background(Color.platformGray6)
@@ -163,7 +163,7 @@ internal struct OnCutsHomeView: View {
             Image(systemName: "scissors")
                 .font(.system(size: 60))
                 .foregroundStyle(.secondary)
-            Text("No barbers found")
+            Text("No operators found")
                 .font(.title2)
                 .fontWeight(.semibold)
             Text("Try selecting a different campus or adjusting your search")

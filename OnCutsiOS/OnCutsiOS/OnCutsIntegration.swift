@@ -67,11 +67,22 @@ extension OnCutsBrowseProviderRow {
             return trimmed.isEmpty ? nil : trimmed
         }
 
-        let resolvedProviderType = (providerType ?? "barber")
+        let trimmedType = (providerType ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
-        let kind = ServiceType.fromProviderType(resolvedProviderType) ?? .barber
+        let resolvedProviderType: String? = {
+            guard !trimmedType.isEmpty, trimmedType != "all" else { return nil }
+            return trimmedType
+        }()
+        let kind = ServiceType.fromProviderType(resolvedProviderType)
         let category: ServiceProvider.ServiceCategory = kind == .beauty ? .beauty : .haircuts
+        let specialtyLabel: String = {
+            switch kind {
+            case .barber: return "Barber"
+            case .beauty: return "Beauty"
+            case .all, .none: return "Operator"
+            }
+        }()
         let mappedAvailability: [ServiceProvider.DayAvailability]? = {
             guard let weeklyHours, !weeklyHours.isEmpty else { return nil }
             return weeklyHours.map {
@@ -92,7 +103,7 @@ extension OnCutsBrowseProviderRow {
             isAvailableNow: isAvailableNow,
             priceRange: mappedPriceRange,
             category: category,
-            specialty: kind.toolbarTitle,
+            specialty: specialtyLabel,
             providerType: resolvedProviderType,
             services: mappedServices,
             availability: mappedAvailability,

@@ -127,7 +127,7 @@ public enum UserRole: String, Codable, Sendable {
     public var displayName: String {
         switch self {
         case .student: return "Student"
-        case .barber: return "Barber"
+        case .barber: return "Operator"
         case .admin: return "Admin"
         }
     }

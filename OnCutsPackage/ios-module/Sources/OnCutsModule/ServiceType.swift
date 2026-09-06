@@ -2,7 +2,7 @@
 //  ServiceType.swift
 //  OnCutsModule
 //
-//  Browse Tags chips — aligned with DB `provider_type` / label (barber → Barber, beauty → Beauty).
+//  Browse Tags chips — All / Barber / Beauty. Untyped operators stay Operator until they choose.
 //
 
 import Foundation

@@ -160,7 +160,7 @@ internal struct BarberListRowDTO: Decodable {
     let instagramHandle: String?
     /// Service menu from `barbers.pricing` — included on `GET /barbers` list rows.
     let pricing: [BarberPricingRowDTO]?
-    /// Postgres `provider_type` (`barber`, `beauty`).
+    /// Postgres `provider_type` (`barber`, `beauty`) — omit / null until the operator chooses.
     let providerType: String?
     /// Published weekly hours (`weekly_schedule` / `weeklySchedule`).
     let weeklySchedule: OnCutsWeeklySchedulePayload?

@@ -116,7 +116,7 @@ class MessageService {
           u.first_name || ' ' || u.last_name as barber_display_name,
           br.specialties as barber_specialties,
           br."avgRating" as barber_rating,
-          COALESCE(br.provider_type, 'barber') as barber_provider_type,
+          br.provider_type as barber_provider_type,
           
           -- BOOKING INFO (from conversation context or linked booking)
           c.service_name as conv_service_name,
@@ -215,9 +215,9 @@ class MessageService {
           status: (conv.linked_booking_status || conv.conv_booking_status || 'pending').toLowerCase(),
           barberName: conv.conv_barber_name,
           consumerName: conv.conv_consumer_name,
-          // DB `barbers.provider_type` (`barber` | `beauty`) for consumer occupation labels
-          providerType: conv.barber_provider_type || 'barber',
-          provider_type: conv.barber_provider_type || 'barber',
+          // DB `barbers.provider_type` (`barber` | `beauty`) — omit until chosen (client shows Operator).
+          providerType: conv.barber_provider_type || null,
+          provider_type: conv.barber_provider_type || null,
         } : null,
         // Other user info
         otherUser: {
@@ -233,7 +233,7 @@ class MessageService {
                 displayName: conv.barber_display_name,
                 specialties: conv.barber_specialties,
                 rating: conv.barber_rating,
-                providerType: conv.barber_provider_type || 'barber',
+                providerType: conv.barber_provider_type || null,
               }
             : null,
         },

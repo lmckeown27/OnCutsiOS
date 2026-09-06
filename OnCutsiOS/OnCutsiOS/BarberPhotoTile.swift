@@ -95,7 +95,7 @@ struct BarberPhotoTile: View {
 
     private var accessibilityLabelText: String {
         var parts = [provider.businessName, subtitle]
-        if isMain { parts.insert("Main barber", at: 0) }
+        if isMain { parts.insert("Main operator", at: 0) }
         if let priceLabel { parts.append(priceLabel) }
         return parts.joined(separator: ", ")
     }

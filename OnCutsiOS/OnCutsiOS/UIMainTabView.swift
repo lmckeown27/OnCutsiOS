@@ -89,7 +89,7 @@ struct MainTabView: View {
     private func destinationView(for route: AppRoute) -> some View {
         switch route {
         case .barberProfile(let id):
-            PlaceholderDetailView(title: "Barber Profile", id: id)
+            PlaceholderDetailView(title: "Operator Profile", id: id)
             
         case .bookingDetail(let id):
             PlaceholderDetailView(title: "Booking Detail", id: id)
