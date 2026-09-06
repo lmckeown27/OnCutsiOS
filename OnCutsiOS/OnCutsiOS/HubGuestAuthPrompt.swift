@@ -9,17 +9,38 @@
 import SwiftUI
 
 enum GuestHubSignInMetrics {
-    /// Expanded guest sign-in panel height reference (email + optional password + Apple/Google row).
-    static let expandedChromeHeight: CGFloat = 220
+    /// Fallback before the guest panel reports a measured height (labels + email + Apple/Google).
+    static let expandedChromeHeight: CGFloat = 236
     static let minimizedChromeHeight: CGFloat = 88
-    static let overlayContentBottomPadding: CGFloat = 240
+    /// Used until `GuestHubChromeHeightKey` reports a real panel height.
+    static let overlayContentBottomPadding: CGFloat = expandedChromeHeight
     /// Centered width for the side-by-side provider pills and email field.
     static let pillMaxWidth: CGFloat = 260
+    /// Extra gap between Discover pull-up content and the top of the guest panel / hub padding.
+    static let pullUpClearanceGap: CGFloat = 12
 
-    static func overlayContentBottomInset(collapseProgress: CGFloat) -> CGFloat {
-        let expanded = overlayContentBottomPadding
+    static func overlayContentBottomInset(
+        expandedHeight: CGFloat,
+        collapseProgress: CGFloat
+    ) -> CGFloat {
+        let expanded = max(expandedHeight, minimizedChromeHeight + 20)
         let collapsed = minimizedChromeHeight + 20
         return expanded - (expanded - collapsed) * min(1, max(0, collapseProgress))
+    }
+
+    static func overlayContentBottomInset(collapseProgress: CGFloat) -> CGFloat {
+        overlayContentBottomInset(
+            expandedHeight: overlayContentBottomPadding,
+            collapseProgress: collapseProgress
+        )
+    }
+}
+
+/// Measured height of the floating guest Sign In / Sign Up panel (for Discover pull-up clearance).
+struct GuestHubChromeHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 
@@ -30,6 +51,8 @@ struct GuestHubSignInBar: View {
     @ObservedObject var appleOAuthFollowUp: AppleOAuthPostSignInCoordinator
     let onContinueWithNewEmail: (String) -> Void
     var collapseProgress: CGFloat = 0
+    /// `true` while the guest email/password chrome is focused or expanded (drives Discover pull-up).
+    var authChromeActive: Binding<Bool>? = nil
 
     private static let panelCorner: CGFloat = 28
 
@@ -44,6 +67,11 @@ struct GuestHubSignInBar: View {
                 y: 4
             )
             .animation(.spring(response: 0.34, dampingFraction: 0.86), value: collapseProgress)
+            .background {
+                GeometryReader { geo in
+                    Color.clear.preference(key: GuestHubChromeHeightKey.self, value: geo.size.height)
+                }
+            }
     }
 
     private var guestSignInPanel: some View {
@@ -56,7 +84,8 @@ struct GuestHubSignInBar: View {
             providerPillStackAxis: .horizontal,
             pillMaxWidth: GuestHubSignInMetrics.pillMaxWidth,
             onContinueWithNewEmail: onContinueWithNewEmail,
-            onSignedIn: {}
+            onSignedIn: {},
+            authChromeActive: authChromeActive
         )
         .padding(.horizontal, 14)
         .padding(.vertical, 12)

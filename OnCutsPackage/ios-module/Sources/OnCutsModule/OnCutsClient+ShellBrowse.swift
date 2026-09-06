@@ -143,18 +143,21 @@ private extension BarberListRowDTO {
             businessName: business,
             bio: trimmedNonEmpty(bio),
             profileImageUrl: image,
-            rating: averageRating,
-            reviewCount: reviewCount,
-            completedBookings: totalBookings,
+            rating: averageRating?.value,
+            reviewCount: reviewCount?.value.map { Int($0.rounded()) },
+            completedBookings: totalBookings?.value.map { Int($0.rounded()) },
             isAvailableNow: isActive,
-            distanceMiles: distanceMiles,
+            distanceMiles: distanceMiles?.value ?? {
+                guard let km = distanceKm?.value else { return nil }
+                return km * 0.621371
+            }(),
             services: services,
             priceRange: priceRange,
             instagramHandle: trimmedNonEmpty(instagramHandle),
             providerType: resolvedProviderType,
             weeklyHours: hours.isEmpty ? nil : hours,
-            serviceLatitude: serviceLatitude,
-            serviceLongitude: serviceLongitude,
+            serviceLatitude: resolvedServiceLatitude,
+            serviceLongitude: resolvedServiceLongitude,
             serviceLocationLabel: trimmedNonEmpty(serviceLocationLabel),
             locationNames: locationNames
         )

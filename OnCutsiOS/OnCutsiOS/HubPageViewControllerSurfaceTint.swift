@@ -19,6 +19,9 @@ private let onCutsHubPageSwipeChromeUIColor = UIColor { traits in
 
 /// Paints the page controller shell once — re-running on every tab change caused a one-frame hitch at swipe start.
 struct HubPageViewControllerSurfaceTint: UIViewRepresentable {
+    /// When Discover is full-bleed, keep the page controller clear so shell/map show through any residual gutters.
+    var usesClearSurface: Bool = false
+
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
@@ -31,17 +34,17 @@ struct HubPageViewControllerSurfaceTint: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.applySurfaceTintIfNeeded(anchoredTo: uiView)
+        context.coordinator.applySurfaceTint(anchoredTo: uiView, clear: usesClearSurface)
     }
 
     final class Coordinator {
         private var attempts = 0
         private let maxAttempts = 10
-        private var didApply = false
+        private var lastAppliedClear: Bool?
 
-        func applySurfaceTintIfNeeded(anchoredTo uiView: UIView) {
-            guard !didApply else { return }
-            let color = onCutsHubPageSwipeChromeUIColor
+        func applySurfaceTint(anchoredTo uiView: UIView, clear: Bool) {
+            if lastAppliedClear == clear { return }
+            let color: UIColor = clear ? .clear : onCutsHubPageSwipeChromeUIColor
 
             func tryApply() {
                 guard let window = uiView.window ?? uiView.superview?.window else {
@@ -59,10 +62,11 @@ struct HubPageViewControllerSurfaceTint: UIViewRepresentable {
                         scroll.backgroundColor = color
                     }
                 }
-                didApply = true
+                lastAppliedClear = clear
             }
 
             attempts = 0
+            lastAppliedClear = nil
             if uiView.window != nil {
                 tryApply()
             } else {

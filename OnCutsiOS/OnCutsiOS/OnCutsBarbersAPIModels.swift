@@ -42,27 +42,56 @@ private struct OnCutsBarberDTO: Decodable, Sendable {
     let bio: String?
     let specialties: [String]?
     let pricing: [OnCutsPricingDTO]?
-    let averageRating: Double?
-    let reviewCount: Int?
+    let averageRating: FlexibleOptionalCoord?
+    let reviewCount: FlexibleOptionalCoord?
     /// Barber table lifetime bookings (`total_bookings` on `GET /barbers`).
-    let totalBookings: Int?
+    let totalBookings: FlexibleOptionalCoord?
     /// Some payloads expose completed-only counts separately (`completed_bookings`).
-    let completedBookings: Int?
+    let completedBookings: FlexibleOptionalCoord?
     let serviceLocations: [OnCutsServiceLocationDTO]?
     /// Recent reviews when the list endpoint embeds them (see web `Barber.reviews`).
     let reviews: [OnCutsReviewDTO]?
     /// Present when `GET /barbers` is called with user `lat`/`lng` — server Haversine distance to the barber’s service point.
-    let distanceMiles: Double?
-    let distanceKm: Double?
+    let distanceMiles: FlexibleOptionalCoord?
+    let distanceKm: FlexibleOptionalCoord?
     let instagramHandle: String?
     /// Postgres `provider_type` (`barber`, `beauty`) — drives Home Tags filtering.
     let providerType: String?
     /// Published weekly hours from `weekly_schedule`.
     let weeklySchedule: OnCutsWeeklySchedulePayload?
-    let serviceLatitude: Double?
-    let serviceLongitude: Double?
+    let serviceLatitude: FlexibleOptionalCoord?
+    let serviceLongitude: FlexibleOptionalCoord?
     /// Coarse public place when the API provides `service_location_label`.
     let serviceLocationLabel: String?
+    let userLatitude: FlexibleOptionalCoord?
+    let userLongitude: FlexibleOptionalCoord?
+}
+
+/// Accepts JSON number, numeric string, or null for map coordinates.
+private struct FlexibleOptionalCoord: Decodable, Sendable {
+    let value: Double?
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if c.decodeNil() {
+            value = nil
+            return
+        }
+        if let d = try? c.decode(Double.self) {
+            value = d
+            return
+        }
+        if let i = try? c.decode(Int.self) {
+            value = Double(i)
+            return
+        }
+        if let s = try? c.decode(String.self) {
+            let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            value = t.isEmpty ? nil : Double(t)
+            return
+        }
+        value = nil
+    }
 }
 
 private struct OnCutsPricingDTO: Decodable, Sendable {
@@ -242,7 +271,9 @@ private extension OnCutsBarberDTO {
         }()
 
         let lifetimeBookings: Int? = {
-            switch (totalBookings, completedBookings) {
+            let total = totalBookings?.value.map { Int($0.rounded()) }
+            let completed = completedBookings?.value.map { Int($0.rounded()) }
+            switch (total, completed) {
             case (nil, nil): return nil
             case let (t?, c?): return max(t, c)
             case (let t?, nil): return t
@@ -265,6 +296,9 @@ private extension OnCutsBarberDTO {
             }
         }()
 
+        let resolvedLat = Self.finiteCoord(serviceLatitude?.value) ?? Self.finiteCoord(userLatitude?.value)
+        let resolvedLng = Self.finiteCoord(serviceLongitude?.value) ?? Self.finiteCoord(userLongitude?.value)
+
         return ServiceProvider(
             id: pid,
             userId: uid,
@@ -276,8 +310,8 @@ private extension OnCutsBarberDTO {
                     .compactMap { $0?.trimmedNonEmpty }
                     .first
             ),
-            rating: averageRating,
-            reviewCount: reviewCount,
+            rating: averageRating?.value,
+            reviewCount: reviewCount?.value.map { Int($0.rounded()) },
             completedBookings: lifetimeBookings,
             isAvailableNow: nil,
             priceRange: range,
@@ -287,12 +321,20 @@ private extension OnCutsBarberDTO {
             services: services,
             availability: mappedAvailability,
             locations: locations,
-            distanceMilesFromUser: distanceMiles,
-            serviceLatitude: serviceLatitude,
-            serviceLongitude: serviceLongitude,
+            distanceMilesFromUser: distanceMiles?.value ?? {
+                guard let km = distanceKm?.value else { return nil }
+                return km * 0.621371
+            }(),
+            serviceLatitude: resolvedLat,
+            serviceLongitude: resolvedLng,
             serviceLocationLabel: serviceLocationLabel.flatMap { $0.trimmedNonEmpty },
             customerReviews: embeddedReviews
         )
+    }
+
+    private static func finiteCoord(_ value: Double?) -> Double? {
+        guard let value, value.isFinite else { return nil }
+        return value
     }
 }
 

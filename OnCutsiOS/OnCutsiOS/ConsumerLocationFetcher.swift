@@ -50,6 +50,16 @@ final class ConsumerLocationFetcher: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    /// Synchronous last-known fix when fresh enough — used to seed Discover before async resolve.
+    var cachedCoordinateIfAvailable: CLLocationCoordinate2D? {
+        guard let cached = manager.location,
+              cached.horizontalAccuracy >= 0,
+              cached.timestamp.timeIntervalSinceNow > -180,
+              CLLocationCoordinate2DIsValid(cached.coordinate)
+        else { return nil }
+        return cached.coordinate
+    }
+
     /// Serialized so concurrent `loadProviders` calls share one fix and don’t corrupt continuations.
     func resolveForNearbyProviders(timeoutSeconds: TimeInterval = 12) async -> ConsumerNearbyLocationResult {
         if let inflightFetch {

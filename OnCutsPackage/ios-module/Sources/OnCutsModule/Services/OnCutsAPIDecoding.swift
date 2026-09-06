@@ -108,6 +108,36 @@ internal enum OnCutsAPIDecoding {
     }
 }
 
+internal struct FlexibleOptionalDouble: Decodable, Hashable, Sendable {
+    let value: Double?
+
+    init(value: Double?) {
+        self.value = value
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() {
+            value = nil
+            return
+        }
+        if let double = try? container.decode(Double.self) {
+            value = double
+            return
+        }
+        if let int = try? container.decode(Int.self) {
+            value = Double(int)
+            return
+        }
+        if let string = try? container.decode(String.self) {
+            let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+            value = trimmed.isEmpty ? nil : Double(trimmed)
+            return
+        }
+        value = nil
+    }
+}
+
 internal struct BarberListRowDTO: Decodable {
     let id: FlexibleStringID
     let userId: FlexibleStringID?
@@ -121,12 +151,12 @@ internal struct BarberListRowDTO: Decodable {
     let avatarUrl: String?
     let campusId: FlexibleStringID?
     let campusName: String?
-    let averageRating: Double?
-    let reviewCount: Int?
-    let totalBookings: Int?
+    let averageRating: FlexibleOptionalDouble?
+    let reviewCount: FlexibleOptionalDouble?
+    let totalBookings: FlexibleOptionalDouble?
     let isActive: Bool?
-    let distanceMiles: Double?
-    let distanceKm: Double?
+    let distanceMiles: FlexibleOptionalDouble?
+    let distanceKm: FlexibleOptionalDouble?
     let instagramHandle: String?
     /// Service menu from `barbers.pricing` — included on `GET /barbers` list rows.
     let pricing: [BarberPricingRowDTO]?
@@ -134,10 +164,27 @@ internal struct BarberListRowDTO: Decodable {
     let providerType: String?
     /// Published weekly hours (`weekly_schedule` / `weeklySchedule`).
     let weeklySchedule: OnCutsWeeklySchedulePayload?
-    let serviceLatitude: Double?
-    let serviceLongitude: Double?
+    let serviceLatitude: FlexibleOptionalDouble?
+    let serviceLongitude: FlexibleOptionalDouble?
     let serviceLocationLabel: String?
     let serviceLocations: [BarberServiceLocationRowDTO]?
+    /// Fallback pin when the operator has not set a dedicated service point.
+    let userLatitude: FlexibleOptionalDouble?
+    let userLongitude: FlexibleOptionalDouble?
+
+    /// Prefer service pin, else user profile coordinates (mirrors web browse distance COALESCE).
+    var resolvedServiceLatitude: Double? {
+        Self.finiteCoordinate(serviceLatitude?.value) ?? Self.finiteCoordinate(userLatitude?.value)
+    }
+
+    var resolvedServiceLongitude: Double? {
+        Self.finiteCoordinate(serviceLongitude?.value) ?? Self.finiteCoordinate(userLongitude?.value)
+    }
+
+    private static func finiteCoordinate(_ value: Double?) -> Double? {
+        guard let value, value.isFinite else { return nil }
+        return value
+    }
 
     func asBarber() -> Barber {
         let business = name?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
@@ -158,10 +205,10 @@ internal struct BarberListRowDTO: Decodable {
             profileImageUrl: image,
             campusId: campusId?.value,
             campusName: campusName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
-            rating: averageRating,
-            reviewCount: reviewCount,
+            rating: averageRating?.value,
+            reviewCount: reviewCount?.value.map { Int($0.rounded()) },
             isAvailableNow: isActive,
-            completedBookings: totalBookings
+            completedBookings: totalBookings?.value.map { Int($0.rounded()) }
         )
     }
 }

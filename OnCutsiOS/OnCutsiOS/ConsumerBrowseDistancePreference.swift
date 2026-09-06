@@ -74,8 +74,20 @@ enum ConsumerBrowseDistancePreference {
 
     static let minimumMiles: Double = 1
     static let maximumMiles: Double = 100
-    /// Within 1…100 mi; default 25 mi when no valid preference is stored.
-    static let defaultMiles: Double = 25
+    /// Within 1…100 mi; default 5 mi when no valid preference is stored.
+    static let defaultMiles: Double = 5
+    private static let didMigrateEchoedHundredKey = "consumer.browse.didMigrateEchoedHundredDefault"
+
+    /// One-shot: an early Discover map echo could persist 100 mi; reset that to the real default once.
+    static func migrateEchoedHundredMileDefaultIfNeeded() {
+        guard UserDefaults.standard.object(forKey: didMigrateEchoedHundredKey) == nil else { return }
+        UserDefaults.standard.set(true, forKey: didMigrateEchoedHundredKey)
+        let stored = UserDefaults.standard.double(forKey: key)
+        if stored >= maximumMiles - 0.5 {
+            UserDefaults.standard.set(defaultMiles, forKey: key)
+            NotificationCenter.default.post(name: .consumerBrowseMaxDistanceDidChange, object: nil)
+        }
+    }
 
     /// When `true` (default), browse center prefers device GPS; when `false`, uses ``manualPlace``.
     static var deviceTrackingEnabled: Bool {

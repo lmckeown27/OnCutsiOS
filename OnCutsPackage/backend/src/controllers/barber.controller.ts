@@ -569,13 +569,19 @@ export const getBarberById = async (req: AuthRequest, res: Response, next: NextF
         b."isActive" as is_active,
         b."createdAt" as created_at,
         b."weeklySchedule" as weekly_schedule,
+        b.service_latitude,
+        b.service_longitude,
+        b.service_radius_km,
+        COALESCE(b.provider_type, 'barber') as provider_type,
         u."instagramHandle" as instagram_handle,
         u.email,
         u.first_name,
         u.last_name,
         u."displayName" as display_name,
         u."avatarUrl" as profile_picture_url,
-        u."campusId" as campus_id
+        u."campusId" as campus_id,
+        u.latitude as user_latitude,
+        u.longitude as user_longitude
       FROM barbers b
       JOIN users u ON b."userId" = u.id
       WHERE b.id = $1`,

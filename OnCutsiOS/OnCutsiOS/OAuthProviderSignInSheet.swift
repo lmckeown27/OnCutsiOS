@@ -71,6 +71,8 @@ struct OAuthProviderSignInOptionsContent: View {
     /// Unknown email — continue to Create Account with this email prefilled.
     var onContinueWithNewEmail: ((String) -> Void)?
     let onSignedIn: () -> Void
+    /// Hub guest chrome: `true` while email/password is focused or the password step is showing.
+    var authChromeActive: Binding<Bool>? = nil
 
     @State private var emailEntry = ""
     @State private var passwordEntry = ""
@@ -112,6 +114,19 @@ struct OAuthProviderSignInOptionsContent: View {
         } message: {
             Text(authOutcomeMessage)
         }
+        .onAppear { publishAuthChromeActive() }
+        .onChange(of: focusedAuthField) { _, _ in publishAuthChromeActive() }
+    }
+
+    private var isAuthChromeActive: Bool {
+        focusedAuthField != nil
+    }
+
+    private func publishAuthChromeActive() {
+        guard let authChromeActive else { return }
+        let active = isAuthChromeActive
+        guard authChromeActive.wrappedValue != active else { return }
+        authChromeActive.wrappedValue = active
     }
 
     private func dismissAuthKeyboard() {
@@ -124,6 +139,7 @@ struct OAuthProviderSignInOptionsContent: View {
             for: nil
         )
         #endif
+        publishAuthChromeActive()
     }
 
     private var providerPills: some View {
@@ -213,11 +229,34 @@ struct OAuthProviderSignInOptionsContent: View {
     }
 
     private var inlineLayoutBody: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
+            if showsEmailSignInOption {
+                Text("Sign In/Sign Up")
+                    .font(OnCutsFont.caption(weight: .semibold))
+                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.9))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .modifier(OAuthSignInPillWidthModifier(maxWidth: pillMaxWidth))
+                    .padding(.bottom, 6)
+                    .opacity(showPrimaryOAuthProviderRows ? 1 : 0)
+                    .accessibilityAddTraits(.isHeader)
+            }
+
             emailHandshakeSection
 
+            if showsEmailSignInOption {
+                Text("Sign In")
+                    .font(OnCutsFont.caption(weight: .semibold))
+                    .foregroundStyle(BookingSelectorTheme.cream.opacity(0.9))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .modifier(OAuthSignInPillWidthModifier(maxWidth: pillMaxWidth))
+                    .padding(.top, 10)
+                    .padding(.bottom, 6)
+                    .opacity(showPrimaryOAuthProviderRows ? 1 : 0)
+                    .accessibilityAddTraits(.isHeader)
+            }
+
             providerPills
-                .padding(.top, showsEmailSignInOption ? 4 : 0)
+                .padding(.top, showsEmailSignInOption ? 0 : 0)
                 .simultaneousGesture(TapGesture().onEnded { dismissAuthKeyboard() })
 
             if showsStandaloneCreateAccountLink, let onContinueWithNewEmail {

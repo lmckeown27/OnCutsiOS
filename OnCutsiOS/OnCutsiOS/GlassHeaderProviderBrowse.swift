@@ -9,6 +9,7 @@
 import OnCutsModule
 import SwiftUI
 import CoreLocation
+import MapKit
 #if os(iOS)
 import UIKit
 #endif
@@ -505,7 +506,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     var isProviderDetailOverlayPresented: Bool = false
     /// Live hub page index — `@Binding` so TabView off-screen pages still see the current tab (plain `Int` went stale).
     @Binding var homeHubPageIndex: Int
-    /// My Barbers | Discover segment (default Discover).
+    /// My Operators | Discover segment (default Discover).
     @Binding var homeBrowseSegment: ConsumerHomeBrowseSegment
     /// Grouped My Barbers tiles (client-built from bookings-simple).
     var myBarbersSections: [MyBarbersSection] = []
@@ -516,6 +517,10 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     var showsDistanceOnDiscoverTiles: Bool = false
     var browseMapCenterCoordinate: CLLocationCoordinate2D? = nil
     var browseMapRadiusMeters: CLLocationDistance? = nil
+    /// Signed-out Discover: `true` when guest auth is idle (pull-up open), `false` when email/password is active.
+    var discoverPullUpPreferredOpen: Bool? = nil
+    /// Dismiss guest auth keyboard when the user opens the operators pull-up.
+    var onDiscoverPullUpOpened: (() -> Void)? = nil
     @State private var frontendConfigStore = PlatformFrontendConfigStore.shared
 
     @FocusState private var isSearchFieldFocused: Bool
@@ -527,6 +532,14 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     @State private var utilityPillCollapseOffset: CGFloat = 0
     @State private var utilityPillScrollResyncGeneration = 0
     @State private var headerMeasuredHeight: CGFloat = 4 + Self.utilityPillMainBarHeight + GlassHeaderConstants.utilityPillToBookingSpacing
+    /// Resolved browse center for Discover map radius (device GPS or manual place).
+    @State private var resolvedDiscoverBrowseCenter: CLLocationCoordinate2D?
+    /// Visible Discover map region — pull-up operators follow zoom/pan.
+    @State private var discoverVisibleMapRegion: MKCoordinateRegion?
+    /// Only apply viewport filtering after MapKit reports a post-fit region (avoids blank sheet on `.automatic`).
+    @State private var discoverMapViewportFilterEnabled = false
+    /// Bumped when a dashed operator circle is tapped so a closed pull-up reopens.
+    @State private var discoverOperatorsSheetReopenToken: Int = 0
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(\.onCutsHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
     @Environment(\.onCutsHubBarScrollOffsetHandler) private var hubBarScrollHandler
@@ -541,8 +554,40 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     /// `globalHeaderChrome` is above the `ScrollView` in the `ZStack`, so the system refresh spinner sits underneath; show an explicit wheel while refreshing.
     @State private var showsPullRefreshProgressIndicator = false
 
+    /// Prefer live resolved center; fall back to parent-provided coordinate / manual place.
+    private var effectiveDiscoverBrowseCenter: CLLocationCoordinate2D? {
+        resolvedDiscoverBrowseCenter ?? browseMapCenterCoordinate
+    }
+
     @Namespace private var radiusMorphNamespace
     @Namespace private var serviceTagsMorphNamespace
+    @Namespace private var homeBrowseSegmentSelectionNamespace
+
+    private static var homeBrowseSegmentSpring: Animation {
+        .spring(response: 0.38, dampingFraction: 0.9, blendDuration: 0.12)
+    }
+
+    /// Content crossfade between Discover / My Operators — short ease, not a page push.
+    private static var homeBrowseSegmentContentAnimation: Animation {
+        .easeInOut(duration: 0.28)
+    }
+
+    /// Extra space below the utility pill so My Operators cards aren’t tucked under it.
+    private static var browseListBelowChromeGap: CGFloat { 14 }
+
+    /// Cached window top inset — `UIApplication` key-window reads can briefly return `0` and jump chrome.
+    @State private var resolvedChromeSafeAreaTop: CGFloat = 0
+
+    /// Top pad for the shared floating chrome (Discover + My Operators). Home is always full-bleed,
+    /// so this is exactly one status-bar / Island clearance — never stacked on a second safe-area.
+    private var sharedChromeTopPadding: CGFloat {
+        OnCutsHubChromeLayout.floatingChromeTopPadding(resolvedSafeAreaTop: resolvedChromeSafeAreaTop)
+    }
+
+    private func considerResolvedChromeSafeAreaTop(_ top: CGFloat) {
+        guard top > 1, abs(resolvedChromeSafeAreaTop - top) > 0.5 else { return }
+        resolvedChromeSafeAreaTop = top
+    }
 
     /// Morph between the radius chip and the inline distance slider.
     private static var radiusMorphSpring: Animation {
@@ -583,18 +628,25 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
 
     /// Resting clearance from scroll top to booking / list — full measured chrome (location + pill), not pill-only.
     private var utilityPillBookingStackOffset: CGFloat {
-        let gap = GlassHeaderConstants.utilityPillToBookingSpacing
+        let gap = GlassHeaderConstants.utilityPillToBookingSpacing + Self.browseListBelowChromeGap
         if headerMeasuredHeight > 2 {
-            return headerMeasuredHeight + gap
+            return sharedChromeTopPadding + headerMeasuredHeight + gap
         }
-        let topInset = CGFloat(showsHomePinnedBookingStripes ? 4 : 10)
+        let topInset = CGFloat(showsHomePinnedBookingStripes ? 2 : 4)
         #if os(iOS)
-        // Fallback before first measure: location label + toggle + spacing above the pill.
         let locationChromeEstimate: CGFloat = 72
         #else
         let locationChromeEstimate: CGFloat = 0
         #endif
-        return topInset + locationChromeEstimate + Self.utilityPillMainBarHeight + gap
+        return sharedChromeTopPadding + topInset + locationChromeEstimate + Self.utilityPillMainBarHeight + gap
+    }
+
+    /// Same chrome builder for Discover / My Operators (full-bleed root).
+    /// `safeAreaTop` should already include window safe-area (+ iPad underlap); do not add underlap again.
+    @ViewBuilder
+    private func browseFloatingChrome(safeAreaTop: CGFloat) -> some View {
+        globalHeaderChrome(browseTopUnderlapCompensation: 0)
+            .padding(.top, safeAreaTop)
     }
 
     /// Vertical inset for the custom pull-to-refresh wheel — centered in the gap below the utility pill and above the upcoming booking / first provider card.
@@ -692,16 +744,30 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     }
 
     private var discoverListProviders: [ServiceProvider] {
-        MyBarbersDiscover.providers(displayedProviders, filteredBySelectedArea: selectedDiscoverArea)
+        // Area tap narrows the pool; zoom/pan focuses who’s on screen (with safe fallbacks).
+        let byArea = MyBarbersDiscover.providers(
+            displayedProviders,
+            filteredBySelectedArea: selectedDiscoverArea
+        )
+        let pool = (selectedDiscoverArea != nil && !byArea.isEmpty) ? byArea : displayedProviders
+        return MyBarbersDiscover.providers(
+            pool,
+            intersectingVisibleRegion: discoverMapViewportFilterEnabled ? discoverVisibleMapRegion : nil
+        )
     }
 
     private var selectedDiscoverArea: DiscoverServiceArea? {
-        guard let selectedDiscoverAreaId else { return nil }
-        return discoverAreas.first(where: { $0.id == selectedDiscoverAreaId })
+        MyBarbersDiscover.resolvedSelectedArea(id: selectedDiscoverAreaId, from: discoverAreas)
     }
 
     private var discoverListTitle: String {
-        selectedDiscoverArea?.title ?? "Nearby"
+        if let selectedDiscoverArea {
+            return selectedDiscoverArea.title
+        }
+        if let miles = MyBarbersDiscover.visibleRadiusMilesLabel(for: discoverVisibleMapRegion) {
+            return "Within \(miles)"
+        }
+        return "Nearby"
     }
 
     /// How far the utility pill travels off-screen — matched to booking clearance for a 1:1 handoff.
@@ -712,7 +778,8 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     /// Fixed top inset at rest — never tied to scroll progress (dynamic inset caused scroll feedback loops / glitches).
     private var listTopContentInset: CGFloat {
         guard !showsHomePinnedBookingStripes else { return 0 }
-        return effectiveHeaderHeight
+        // External chrome pad isn’t in `headerMeasuredHeight`; add gap so cards clear the utility pill.
+        return sharedChromeTopPadding + effectiveHeaderHeight + Self.browseListBelowChromeGap
     }
 
     /// Pinned `Section` header — fixed layout padding plus transform-only slide (never mutates scroll metrics mid-gesture).
@@ -754,46 +821,70 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     @ViewBuilder
     private var homeBrowseSegmentPill: some View {
         HStack(spacing: 0) {
-            ForEach(ConsumerHomeBrowseSegment.allCases) { segment in
+            ForEach(Array(ConsumerHomeBrowseSegment.allCases.enumerated()), id: \.element.id) { index, segment in
                 let selected = homeBrowseSegment == segment
+                if index > 0 {
+                    Rectangle()
+                        .fill(Color.lavaShellCream.opacity(0.5))
+                        .frame(width: 1, height: 22)
+                        .padding(.horizontal, 4)
+                        .accessibilityHidden(true)
+                }
                 Button {
                     GlassCapsuleToolbarHaptics.selectionChanged()
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    // Pill selection springs; content crossfades without tearing down the tree.
+                    withAnimation(Self.homeBrowseSegmentSpring) {
                         homeBrowseSegment = segment
                     }
                 } label: {
-                    Text(segment.title)
-                        .font(OnCutsFont.labelMedium.weight(selected ? .semibold : .medium))
-                        .foregroundStyle(selected ? Color.primary : Color.neutral500)
-                        .frame(maxWidth: .infinity)
+                    Text(segment.compactTitle)
+                        .font(OnCutsFont.system(size: 13, weight: selected ? .semibold : .medium, design: .default))
+                        // Bright shell labels so both options read as tappable buttons.
+                        .foregroundStyle(
+                            selected
+                                ? Color.lavaShellCream
+                                : Color.lavaShellCream.opacity(0.88)
+                        )
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                        .padding(.horizontal, 10)
                         .padding(.vertical, 8)
                         .background {
                             if selected {
                                 Capsule()
-                                    .fill(Color.white.opacity(0.92))
-                                    .shadow(color: .black.opacity(0.08), radius: 4, y: 1)
+                                    .fill(Color.lavaShellCream.opacity(0.22))
+                                    .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
+                                    .matchedGeometryEffect(
+                                        id: "homeBrowseSegmentSelection",
+                                        in: homeBrowseSegmentSelectionNamespace
+                                    )
                             }
                         }
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(segment.title)
+                .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
-        .padding(3)
-        .background(Color.black.opacity(0.08), in: Capsule())
+        .padding(4)
+        .frame(minHeight: Self.utilityPillMainBarHeight, alignment: .center)
+        .background {
+            Capsule()
+                .fill(.ultraThinMaterial)
+        }
+        .overlay {
+            Capsule()
+                .stroke(Color.lavaShellCream, lineWidth: 1)
+                .allowsHitTesting(false)
+        }
+        .fixedSize(horizontal: true, vertical: false)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Browse segment")
     }
 
     @ViewBuilder
     private var myBarbersBrowseContent: some View {
-        if !isAuthenticatedForMyBarbers {
-            myBarbersSignedOutCTA
-        } else if isLoadingMyBarbers && myBarbersSections.isEmpty {
-            ProviderGlassSkeletonList()
-                .padding(.top, .space4)
-        } else if myBarbersSections.isEmpty {
-            myBarbersEmptyCTA
-        } else {
+        if myBarbersShowsOperatorTiles {
             LazyVStack(alignment: .leading, spacing: .space5) {
                 ForEach(myBarbersSections) { section in
                     VStack(alignment: .leading, spacing: 10) {
@@ -812,102 +903,152 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     }
                 }
             }
+        } else {
+            // Empty / signed-out CTAs are rendered as a centered overlay in `myOperatorsBrowseBody`
+            // so they aren’t clipped or washed out inside `GlassEffectContainer` + LazyVStack.
+            Color.clear
+                .frame(maxWidth: .infinity)
+                .frame(height: 1)
         }
+    }
+
+    /// Signed-out or empty My Operators — never leave a stuck skeleton loader here.
+    private var myBarbersShowsOperatorTiles: Bool {
+        isAuthenticatedForMyBarbers && !myBarbersSections.isEmpty
+    }
+
+    private var myBarbersEmptyStateOverlay: some View {
+        Group {
+            if !isAuthenticatedForMyBarbers {
+                myBarbersSignedOutCTA
+            } else if myBarbersSections.isEmpty {
+                // Skip infinite skeleton while bookings hydrate — same Discover CTA either way.
+                myBarbersEmptyCTA
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .padding(.top, listTopContentInset * 0.15)
+        .padding(.bottom, hubBarOverlayBottomInset)
+        .allowsHitTesting(true)
     }
 
     private var myBarbersSignedOutCTA: some View {
-        VStack(spacing: 14) {
-            Text("Sign in to see operators you’ve booked")
-                .font(OnCutsFont.bodyMedium)
-                .foregroundStyle(Color.neutral600)
+        VStack(spacing: 20) {
+            Text("Go to Discover to find Operators near you")
+                .font(OnCutsFont.title3(weight: .semibold))
+                .foregroundStyle(Color.primary)
                 .multilineTextAlignment(.center)
             Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                withAnimation(Self.homeBrowseSegmentSpring) {
                     homeBrowseSegment = .discover
                 }
             } label: {
-                Text("Discover barbers")
-                    .font(OnCutsFont.labelMedium.weight(.semibold))
+                Text("Discover Operators")
+                    .font(OnCutsFont.headline(weight: .semibold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, 28)
+                    .padding(.vertical, 16)
                     .background(Color.oliveGreen, in: Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Discover Operators")
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 36)
-        .padding(.horizontal, .space4)
+        .padding(.horizontal, .space5)
+        .accessibilityElement(children: .contain)
     }
 
     private var myBarbersEmptyCTA: some View {
-        VStack(spacing: 14) {
-            Text("No past barbers yet")
-                .font(OnCutsFont.headlineSmall.weight(.semibold))
-            Text("Book someone from Discover and they’ll show up here, grouped by city or campus.")
-                .font(OnCutsFont.bodyMedium)
-                .foregroundStyle(Color.neutral600)
+        VStack(spacing: 20) {
+            Text("No past operators yet")
+                .font(OnCutsFont.title3(weight: .bold))
+                .foregroundStyle(Color.primary)
+            Text("Go to Discover to find Operators near you")
+                .font(OnCutsFont.title3(weight: .semibold))
+                .foregroundStyle(Color.secondary)
                 .multilineTextAlignment(.center)
             Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                withAnimation(Self.homeBrowseSegmentSpring) {
                     homeBrowseSegment = .discover
                 }
             } label: {
-                Text("Discover barbers")
-                    .font(OnCutsFont.labelMedium.weight(.semibold))
+                Text("Discover Operators")
+                    .font(OnCutsFont.headline(weight: .semibold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, 28)
+                    .padding(.vertical, 16)
                     .background(Color.oliveGreen, in: Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Discover Operators")
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 36)
-        .padding(.horizontal, .space4)
+        .padding(.horizontal, .space5)
+        .accessibilityElement(children: .contain)
     }
 
     @ViewBuilder
     private var discoverBrowseContent: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            GeometryReader { geo in
-                DiscoverServiceAreasMap(
-                    areas: discoverAreas,
-                    selectedAreaId: $selectedDiscoverAreaId,
-                    browseCenter: browseMapCenterCoordinate,
-                    browseRadiusMeters: browseMapRadiusMeters
-                )
-                .frame(width: geo.size.width, height: max(220, geo.size.width * 0.72))
-            }
-            .frame(height: 280)
-            .zIndex(1)
-
-            Text(discoverListTitle)
-                .font(OnCutsFont.headlineSmall.weight(.semibold))
-                .foregroundStyle(Color.primary)
-
-            if isLoading && discoverListProviders.isEmpty {
-                ProviderGlassSkeletonList()
-            } else if discoverListProviders.isEmpty {
-                emptyContent()
-            } else {
-                BarberPhotoTileGrid(
-                    items: discoverListProviders,
-                    provider: { $0 },
-                    showsDistance: showsDistanceOnDiscoverTiles,
-                    onTap: onProviderTap
-                )
-            }
-        }
+        // Legacy in-scroll Discover content is unused; Discover uses `discoverFullScreenRoot`.
+        EmptyView()
     }
 
+    /// Full-bleed Discover: map fills every pixel of the screen; operators live in a bottom pull-up carousel.
     @ViewBuilder
-    private var homeSegmentBrowseBody: some View {
-        switch homeBrowseSegment {
-        case .myBarbers:
-            myBarbersBrowseContent
-        case .discover:
-            discoverBrowseContent
+    private func discoverFullScreenRoot(safeAreaTop: CGFloat, safeAreaBottom: CGFloat) -> some View {
+        let sheetBottomInset = max(hubBarOverlayBottomInset, safeAreaBottom > 0 ? 8 : 12)
+        let pillMiles = isAdjustingRadius ? radiusEditingMiles : displayedMaxDistanceMiles
+        let radiusMeters = max(1, pillMiles) * 1609.344
+        ZStack(alignment: .bottom) {
+            DiscoverServiceAreasMap(
+                areas: discoverAreas,
+                selectedAreaId: $selectedDiscoverAreaId,
+                browseCenter: effectiveDiscoverBrowseCenter,
+                browseRadiusMeters: radiusMeters,
+                fillsScreen: true,
+                onAreaSelected: {
+                    discoverOperatorsSheetReopenToken &+= 1
+                },
+                onVisibleRegionChange: { region in
+                    discoverVisibleMapRegion = region
+                    let heightMeters = region.span.latitudeDelta * 111_320
+                    if heightMeters > 400 {
+                        discoverMapViewportFilterEnabled = true
+                    }
+                },
+                onVisibleRadiusMilesChange: { miles in
+                    applyVisibleMapRadiusMilesToUtilityPill(miles)
+                }
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
+            .allowsHitTesting(!isProviderDetailOverlayPresented)
+
+            DiscoverOperatorsPullUpSheet(
+                title: discoverListTitle,
+                providers: discoverListProviders,
+                isLoading: isLoading,
+                showsDistance: showsDistanceOnDiscoverTiles,
+                // Guest sign-in chrome is taller than the hub bar; inset clears it without shrinking the carousel body.
+                bottomInset: sheetBottomInset,
+                reopenToken: discoverOperatorsSheetReopenToken,
+                preferredIsOpen: discoverPullUpPreferredOpen,
+                onOpened: onDiscoverPullUpOpened,
+                onProviderTap: onProviderTap
+            )
+            .allowsHitTesting(!isProviderDetailCapturingTouches)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
+        .overlay {
+            if isLoading && !discoverListProviders.isEmpty {
+                ProgressView()
+                    .scaleEffect(1.15)
+                    .tint(Color.oliveGreen)
+                    .padding(14)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .padding(.top, safeAreaTop + 120)
+                    .allowsHitTesting(false)
+            }
         }
     }
 
@@ -998,6 +1139,22 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         radiusEditingMiles = clamped
     }
 
+    /// Keeps the utility-pill miles in lockstep when the user pinches the Discover map.
+    private func applyVisibleMapRadiusMilesToUtilityPill(_ miles: Double) {
+        // Don't fight the slider while the user is dragging it.
+        guard !isAdjustingRadius else { return }
+        let stepped = miles.rounded()
+        let clamped = min(
+            ConsumerBrowseDistancePreference.maximumMiles,
+            max(ConsumerBrowseDistancePreference.minimumMiles, stepped)
+        )
+        guard abs(clamped - displayedMaxDistanceMiles) >= 1 else { return }
+        ConsumerBrowseDistancePreference.maxDistanceMiles = clamped
+        displayedMaxDistanceMiles = clamped
+        radiusEditingMiles = clamped
+        onBrowseRadiusCommitted?()
+    }
+
     private func commitRadiusAdjustment() {
         guard isAdjustingRadius else { return }
         applyRadiusEditingToPreference()
@@ -1005,6 +1162,52 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             isAdjustingRadius = false
         }
         onBrowseRadiusCommitted?()
+    }
+
+    @MainActor
+    private func seedDiscoverBrowseCenterIfNeeded() {
+        guard resolvedDiscoverBrowseCenter == nil else { return }
+        #if os(iOS)
+        if let place = ConsumerBrowseDistancePreference.manualPlace {
+            resolvedDiscoverBrowseCenter = CLLocationCoordinate2D(
+                latitude: place.latitude,
+                longitude: place.longitude
+            )
+            return
+        }
+        if let coordinate = browseMapCenterCoordinate {
+            resolvedDiscoverBrowseCenter = coordinate
+            return
+        }
+        if let coordinate = ConsumerLocationFetcher.shared.cachedCoordinateIfAvailable {
+            resolvedDiscoverBrowseCenter = coordinate
+        }
+        #else
+        resolvedDiscoverBrowseCenter = browseMapCenterCoordinate
+        #endif
+    }
+
+    @MainActor
+    private func refreshDiscoverBrowseCenter() async {
+        #if os(iOS)
+        if let resolved = await ConsumerBrowseLocationController.shared.resolveBrowseCenter() {
+            resolvedDiscoverBrowseCenter = CLLocationCoordinate2D(
+                latitude: resolved.latitude,
+                longitude: resolved.longitude
+            )
+            return
+        }
+        if let place = ConsumerBrowseDistancePreference.manualPlace {
+            resolvedDiscoverBrowseCenter = CLLocationCoordinate2D(
+                latitude: place.latitude,
+                longitude: place.longitude
+            )
+            return
+        }
+        resolvedDiscoverBrowseCenter = browseMapCenterCoordinate
+        #else
+        resolvedDiscoverBrowseCenter = browseMapCenterCoordinate
+        #endif
     }
 
     /// True when expanded search, tags, radius slider, or keyboard would steal the first list tap.
@@ -1114,128 +1317,209 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         #endif
     }
 
+    /// Window safe-area insets — GeometryReader inside a page TabView often reports an already-inset
+    /// size, so chrome padding must not rely on that for Discover full-bleed.
+    private static var windowSafeAreaInsets: EdgeInsets {
+        #if os(iOS)
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)
+            ?? scenes.flatMap(\.windows).first
+        let insets = window?.safeAreaInsets ?? .zero
+        return EdgeInsets(
+            top: insets.top,
+            leading: insets.left,
+            bottom: insets.bottom,
+            trailing: insets.right
+        )
+        #else
+        return EdgeInsets()
+        #endif
+    }
+
     var body: some View {
+        let showDiscover = homeBrowseSegment == .discover
+        let chromeSafeTop = sharedChromeTopPadding
+
+        ZStack {
+            // Keep both surfaces mounted so segment switches crossfade instead of remounting.
+            discoverFullBleedBody
+                .opacity(showDiscover ? 1 : 0)
+                .allowsHitTesting(showDiscover && !isProviderDetailOverlayPresented)
+                .accessibilityHidden(!showDiscover)
+                .zIndex(showDiscover ? 1 : 0)
+
+            myOperatorsBrowseBody
+                .opacity(showDiscover ? 0 : 1)
+                .allowsHitTesting(!showDiscover && !isProviderDetailOverlayPresented)
+                .accessibilityHidden(showDiscover)
+                .zIndex(showDiscover ? 0 : 1)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
+        .background {
+            // Even while ignoring safe area, insets still report the system camera / home regions.
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { considerResolvedChromeSafeAreaTop(geo.safeAreaInsets.top) }
+                    .onChange(of: geo.safeAreaInsets.top) { _, top in
+                        considerResolvedChromeSafeAreaTop(top)
+                    }
+            }
+        }
+        .overlay(alignment: .top) {
+            // Shared chrome — does not remount when the segment changes.
+            browseFloatingChrome(safeAreaTop: chromeSafeTop)
+        }
+        .overlay(alignment: .top) {
+            if !showDiscover {
+                pullRefreshWheelOverlay(
+                    safeAreaTop: chromeSafeTop,
+                    browseTopUnderlap: 0
+                )
+            }
+        }
+        .onChange(of: isSearchFieldFocused) { _, focused in
+            utilitySearchFieldFocused?.wrappedValue = focused || isManualPlaceFieldEditing
+        }
+        .onChange(of: isManualPlaceFieldEditing) { _, editing in
+            utilityPillSuppressesHubPaging?.wrappedValue = utilityPillChromeBlocksParentHubPaging
+            utilitySearchFieldFocused?.wrappedValue = editing || isSearchFieldFocused
+            if editing {
+                withAnimation(Self.utilityPillSearchSpring) {
+                    isSearchExpanded = false
+                    isServiceTagsExpanded = false
+                    if isAdjustingRadius {
+                        applyRadiusEditingToPreference()
+                        isAdjustingRadius = false
+                    }
+                }
+            }
+        }
+        .onChange(of: utilityPillChromeBlocksParentHubPaging) { _, active in
+            utilityPillSuppressesHubPaging?.wrappedValue = active
+        }
+        .onChange(of: homeHubPageIndex) { _, page in
+            guard page == 0 else { return }
+            beginUtilityPillScrollResync()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .homeHubBrowseShouldResyncUtilityPill)) { _ in
+            beginUtilityPillScrollResync()
+        }
+        .onAppear {
+            considerResolvedChromeSafeAreaTop(Self.windowSafeAreaInsets.top)
+            utilityPillSuppressesHubPaging?.wrappedValue = utilityPillChromeBlocksParentHubPaging
+            if isHomeHubPageActive {
+                beginUtilityPillScrollResync()
+            }
+            ConsumerBrowseDistancePreference.migrateEchoedHundredMileDefaultIfNeeded()
+            displayedMaxDistanceMiles = ConsumerBrowseDistancePreference.maxDistanceMiles
+            radiusEditingMiles = displayedMaxDistanceMiles
+            seedDiscoverBrowseCenterIfNeeded()
+            Task { await refreshDiscoverBrowseCenter() }
+        }
+        .onChange(of: homeBrowseSegment) { _, segment in
+            if segment == .discover {
+                Task { await refreshDiscoverBrowseCenter() }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .consumerBrowseLocationDidChange)) { _ in
+            Task { await refreshDiscoverBrowseCenter() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .consumerBrowseMaxDistanceDidChange)) { _ in
+            displayedMaxDistanceMiles = ConsumerBrowseDistancePreference.maxDistanceMiles
+        }
+    }
+
+    /// Discover map + pull-up (chrome is owned by the shared parent overlay).
+    @ViewBuilder
+    private var discoverFullBleedBody: some View {
+        let windowInsets = Self.windowSafeAreaInsets
+        discoverFullScreenRoot(
+            safeAreaTop: windowInsets.top,
+            safeAreaBottom: windowInsets.bottom
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
+    }
+
+    /// My Operators list (chrome is owned by the shared parent overlay).
+    @ViewBuilder
+    private var myOperatorsBrowseBody: some View {
         GeometryReader { geo in
             ZStack(alignment: .top) {
                 #if os(iOS)
                 Color.clear
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .ignoresSafeArea(edges: [.top, .leading, .trailing])
-                    .ignoresSafeArea(.keyboard, edges: .bottom)
                 #else
-                ServiceProviderBrowseMeshBackdrop(homeBookingHighlight: homeBrowseSegment == .myBarbers ? todayBookingActivity : nil)
+                ServiceProviderBrowseMeshBackdrop(homeBookingHighlight: todayBookingActivity)
                     .ignoresSafeArea()
                 #endif
 
-                ScrollView {
-                    LazyVStack(spacing: .space4, pinnedViews: showsHomePinnedBookingStripes ? [.sectionHeaders] : []) {
-                        if showsHomePinnedBookingStripes {
-                            Section {
-                                GlassEffectContainer(spacing: 0) {
-                                    homeSegmentBrowseBody
+                if myBarbersShowsOperatorTiles {
+                    ScrollView {
+                        LazyVStack(spacing: .space4, pinnedViews: showsHomePinnedBookingStripes ? [.sectionHeaders] : []) {
+                            if showsHomePinnedBookingStripes {
+                                Section {
+                                    GlassEffectContainer(spacing: 0) {
+                                        myBarbersBrowseContent
+                                    }
+                                    .zIndex(0)
+                                } header: {
+                                    homePinnedBookingStripesSectionHeader
                                 }
-                                .zIndex(0)
-                            } header: {
-                                homePinnedBookingStripesSectionHeader
-                            }
-                        } else {
-                            GlassEffectContainer(spacing: 0) {
-                                homeSegmentBrowseBody
+                            } else {
+                                GlassEffectContainer(spacing: 0) {
+                                    myBarbersBrowseContent
+                                }
                             }
                         }
+                        .padding(.top, listTopContentInset)
+                        .padding(.horizontal, .space4 + .space2)
+                        .padding(.bottom, .space6 + hubBarOverlayBottomInset)
                     }
-                    .padding(.top, listTopContentInset)
-                    .padding(.horizontal, .space4)
-                    .padding(.bottom, .space6 + hubBarOverlayBottomInset)
-                }
-                #if os(iOS)
-                .scrollContentBackground(.hidden)
-                .scrollBounceBehavior(.always, axes: .vertical)
-                .scrollDismissesKeyboard(.immediately)
-                #endif
-                .scrollDisabled(isProviderDetailOverlayPresented)
-                .zIndex(0)
-                .simultaneousGesture(
-                    TapGesture().onEnded {
-                        guard shouldDismissUtilityChromeOnListTap else { return }
-                        dismissChromeFromScroll()
-                    }
-                )
-                .modifier(GlassBrowseScrollOffsetBridgeModifier(onSampleChange: { handleScrollContentSampleChange($0) }))
-                #if os(iOS)
-                .background {
-                    HomeBrowseScrollResyncBridge(resyncGeneration: utilityPillScrollResyncGeneration) { offsetY in
-                        handleScrollContentSampleChange(
-                            GlassBrowseScrollSample(contentOffsetY: offsetY, pullRefreshStretch: 0),
-                            resyncSample: true
-                        )
-                    }
-                }
-                #endif
-                .refreshable {
-                    showsPullRefreshProgressIndicator = true
-                    defer { showsPullRefreshProgressIndicator = false }
-                    await OnCutsPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
-                        await onRefresh()
-                    }
-                }
-                .overlay {
-                    if isLoading && !displayedProviders.isEmpty {
-                        ZStack {
-                            Color.black.opacity(0.1)
-                            ProgressView()
-                                .scaleEffect(1.25)
-                                .tint(.white)
+                    #if os(iOS)
+                    .scrollContentBackground(.hidden)
+                    .scrollBounceBehavior(.always, axes: .vertical)
+                    .scrollDismissesKeyboard(.immediately)
+                    #endif
+                    .scrollDisabled(isProviderDetailOverlayPresented)
+                    .zIndex(0)
+                    .simultaneousGesture(
+                        TapGesture().onEnded {
+                            guard shouldDismissUtilityChromeOnListTap else { return }
+                            dismissChromeFromScroll()
                         }
-                        .allowsHitTesting(false)
+                    )
+                    .modifier(GlassBrowseScrollOffsetBridgeModifier(onSampleChange: { handleScrollContentSampleChange($0) }))
+                    #if os(iOS)
+                    .background {
+                        HomeBrowseScrollResyncBridge(resyncGeneration: utilityPillScrollResyncGeneration) { offsetY in
+                            handleScrollContentSampleChange(
+                                GlassBrowseScrollSample(contentOffsetY: offsetY, pullRefreshStretch: 0),
+                                resyncSample: true
+                            )
+                        }
                     }
+                    #endif
+                    .refreshable {
+                        showsPullRefreshProgressIndicator = true
+                        defer { showsPullRefreshProgressIndicator = false }
+                        await OnCutsPullToRefresh.runMainActorAsyncIsolatedFromRefreshableCancellation {
+                            await onRefresh()
+                        }
+                    }
+                } else {
+                    // Signed-out / empty: centered CTA (not inside glass LazyVStack — was easy to miss).
+                    myBarbersEmptyStateOverlay
+                        .zIndex(0)
                 }
-
-                globalHeaderChrome(browseTopUnderlapCompensation: browseTopUnderlapCompensation(safeAreaTop: geo.safeAreaInsets.top))
-                    .zIndex(5)
-            }
-            .overlay(alignment: .top) {
-                pullRefreshWheelOverlay(
-                    safeAreaTop: geo.safeAreaInsets.top,
-                    browseTopUnderlap: browseTopUnderlapCompensation(safeAreaTop: geo.safeAreaInsets.top)
-                )
             }
             .frame(width: geo.size.width, height: geo.size.height)
-            .onChange(of: isSearchFieldFocused) { _, focused in
-                // Keep hub suppressed if the manual place field still owns the keyboard.
-                utilitySearchFieldFocused?.wrappedValue = focused || isManualPlaceFieldEditing
-            }
-            .onChange(of: isManualPlaceFieldEditing) { _, editing in
-                utilityPillSuppressesHubPaging?.wrappedValue = utilityPillChromeBlocksParentHubPaging
-                utilitySearchFieldFocused?.wrappedValue = editing || isSearchFieldFocused
-                if editing {
-                    withAnimation(Self.utilityPillSearchSpring) {
-                        isSearchExpanded = false
-                        isServiceTagsExpanded = false
-                        if isAdjustingRadius {
-                            applyRadiusEditingToPreference()
-                            isAdjustingRadius = false
-                        }
-                    }
-                }
-            }
-            .onChange(of: utilityPillChromeBlocksParentHubPaging) { _, active in
-                utilityPillSuppressesHubPaging?.wrappedValue = active
-            }
-            .onChange(of: homeHubPageIndex) { _, page in
-                guard page == 0 else { return }
-                beginUtilityPillScrollResync()
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .homeHubBrowseShouldResyncUtilityPill)) { _ in
-                beginUtilityPillScrollResync()
-            }
-            .onAppear {
-                utilityPillSuppressesHubPaging?.wrappedValue = utilityPillChromeBlocksParentHubPaging
-                if isHomeHubPageActive {
-                    beginUtilityPillScrollResync()
-                }
-            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
     }
 
     /// Utility pill / radius / search suggestions — opacity/scale follow `utilityChromeProgress` via the parent chrome.
@@ -1246,8 +1530,6 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     .matchedGeometryEffect(id: "browseRadiusGlass", in: radiusMorphNamespace)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
-                    homeBrowseSegmentPill
-                        .padding(.horizontal, 2)
                     #if os(iOS)
                     if !isSearchExpanded && !isServiceTagsExpanded {
                         ConsumerBrowseLocationChrome(
@@ -1257,9 +1539,9 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                         .zIndex(40)
                     }
                     #endif
-                    // Hide utility pill while typing a manual place (same idea as search hiding location chrome).
+                    // Hide utility row while typing a manual place (same idea as search hiding location chrome).
                     if !isManualPlaceFieldEditing {
-                        HStack(alignment: .center, spacing: 16) {
+                        HStack(alignment: .center, spacing: 10) {
                             if isServiceTagsExpanded {
                                 expandedServiceTagsGlassBar
                                     .scaleEffect(serviceTypeControlScale)
@@ -1269,6 +1551,11 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                                 floatingUtilityPill
                                     .scaleEffect(serviceTypeControlScale)
                                     .frame(maxWidth: .infinity)
+
+                                if !isSearchExpanded && !isServiceTagsExpanded && !isAdjustingRadius {
+                                    homeBrowseSegmentPill
+                                        .scaleEffect(serviceTypeControlScale)
+                                }
                             }
 
                             if !hidesQuickNavigationIcons && !isSearchExpanded && !isServiceTagsExpanded {
@@ -1352,10 +1639,10 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         .onAppear {
             displayedMaxDistanceMiles = ConsumerBrowseDistancePreference.maxDistanceMiles
         }
-        .padding(.horizontal, .space4)
-        /// Tighter top inset when the booking reminder sits below — less dead space between pill and reminder.
-        .padding(.top, (showsHomePinnedBookingStripes ? 4 : 10) + browseTopUnderlapCompensation)
-        .padding(.bottom, showsHomePinnedBookingStripes ? 0 : 10)
+        .padding(.horizontal, .space4 + .space2)
+        /// Sit tight under the status bar / Dynamic Island — glass chrome replaces the nav bar.
+        .padding(.top, (showsHomePinnedBookingStripes ? 2 : 4) + browseTopUnderlapCompensation)
+        .padding(.bottom, showsHomePinnedBookingStripes ? 0 : 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             GeometryReader { geo in
@@ -1538,21 +1825,15 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                         isServiceTagsExpanded = true
                     }
                 } label: {
-                    HStack(spacing: 0) {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
-                            .font(OnCutsFont.body(weight: .semibold))
-                            .foregroundStyle(Color.lavaShellCream)
-                            .frame(width: 40, height: 40)
-                        Text(tagsControlTitle)
-                            .font(OnCutsFont.system(size: 14, weight: .semibold, design: .default))
-                            .foregroundStyle(Color.lavaShellCream)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.82)
-                            .fixedSize(horizontal: true, vertical: false)
-                    }
-                    // Minimum width keeps the icon + label on one row during matched-geometry retraction (avoids vertical glyph stacking).
-                    .frame(minWidth: 78, alignment: .center)
-                    .contentShape(Rectangle())
+                    Text(tagsControlTitle)
+                        .font(OnCutsFont.system(size: 14, weight: .semibold, design: .default))
+                        .foregroundStyle(Color.lavaShellCream)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.horizontal, 10)
+                        .frame(minHeight: 40, alignment: .center)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(UtilityPillPhysicalPressStyle())
                 .accessibilityLabel(

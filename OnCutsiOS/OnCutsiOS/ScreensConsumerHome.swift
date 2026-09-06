@@ -712,7 +712,6 @@ struct ConsumerHomeScreen: View {
             }(),
             browseMapRadiusMeters: {
                 #if os(iOS)
-                guard ConsumerBrowseDistancePreference.constrainBrowseListByDistance else { return nil }
                 return ConsumerBrowseDistancePreference.maxDistanceMiles * 1609.344
                 #else
                 return nil
@@ -1860,14 +1859,24 @@ struct ServiceProviderDetailSheet: View {
             }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .clipped()
+        .overlay(alignment: .topLeading) {
+            // Popup/overlay detail: keep a reliable top-leading close (toolbar alone can be
+            // clipped or obscured under Discover’s full-bleed chrome).
+            if showsToolbarCloseButton, isPopupPresentation {
+                closeButton
+                    .padding(.leading, 10)
+                    .padding(.top, 10)
+                    .zIndex(200)
+            }
+        }
         .navigationTitle(provider.businessName)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar {
-            if showsToolbarCloseButton {
+            if showsToolbarCloseButton, !isPopupPresentation {
                 #if os(iOS)
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .topBarLeading) {
                     closeButton
                 }
                 #else
@@ -2387,7 +2396,7 @@ struct UnifiedProviderHomeScreen: View {
     @State private var searchText = ""
     @State private var providerListShuffleSeed: UInt64 = UInt64.random(in: 1 ... UInt64.max)
     @State private var stickyUnifiedBrowseHeaderHeight: CGFloat = 0
-    /// Home browse: My Barbers | Discover (default Discover).
+    /// Home browse: My Operators | Discover (default Discover).
     @State private var homeBrowseSegment: ConsumerHomeBrowseSegment = .discover
     @State private var selectedDiscoverAreaId: String?
     @State private var myBarbersDiscoverController = MyBarbersDiscoverController()
@@ -2448,6 +2457,10 @@ struct UnifiedProviderHomeScreen: View {
     @State private var messagesHubNavigationStackEpoch = 0
     /// Sticky browse chrome overlays the scroll view pre–iOS 26, hiding the system refresh spinner — mirror the glass path with an explicit wheel.
     @State private var showsUnifiedBrowsePullRefreshWheel = false
+    /// Guest Sign In/Sign Up chrome is focused or showing the password step — Discover pull-up closes in response.
+    @State private var isGuestSignInChromeActive = false
+    /// Measured guest Sign In/Sign Up panel height (Discover pull-up sits above this when signed out).
+    @State private var measuredGuestSignInChromeHeight: CGFloat = 0
 
     private var serviceProviders: [ServiceProvider] { providerVM.providersForDisplay }
     private var isLoading: Bool { providerVM.isLoading }
@@ -2492,6 +2505,10 @@ struct UnifiedProviderHomeScreen: View {
 
     private var unifiedBrowseMapCenter: CLLocationCoordinate2D? {
         #if os(iOS)
+        if !ConsumerBrowseDistancePreference.deviceTrackingEnabled,
+           let place = ConsumerBrowseDistancePreference.manualPlace {
+            return CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)
+        }
         if let place = ConsumerBrowseDistancePreference.manualPlace {
             return CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)
         }
@@ -2503,9 +2520,7 @@ struct UnifiedProviderHomeScreen: View {
 
     private var unifiedBrowseMapRadiusMeters: CLLocationDistance? {
         #if os(iOS)
-        guard ConsumerBrowseDistancePreference.constrainBrowseListByDistance else { return nil }
-        let miles = ConsumerBrowseDistancePreference.maxDistanceMiles
-        return miles * 1609.344
+        ConsumerBrowseDistancePreference.maxDistanceMiles * 1609.344
         #else
         nil
         #endif
@@ -2530,8 +2545,10 @@ struct UnifiedProviderHomeScreen: View {
     }
 
     /// When a thread is open on Messages (`hubPageIndex == 1`), the hub’s page `UIScrollView` must not steal horizontal drags from interactive back.
+    /// Discover map also locks hub paging so map pan/zoom is not stolen by tab swipes.
     private var hubTabPagingInteractionEnabled: Bool {
         if !sessionManager.isAuthenticated { return false }
+        if hubPageIndex == 0, homeBrowseSegment == .discover { return false }
         if isUtilityPillChromeExpanded { return false }
         if hubPageIndex != 1 { return true }
         return !messagesThreadPresentedForHubPaging
@@ -2700,11 +2717,20 @@ struct UnifiedProviderHomeScreen: View {
         #if os(iOS)
         .tabViewStyle(.page(indexDisplayMode: .never))
         .animation(nil, value: hubPageIndex)
+        // Page TabView proposes a safe-area-sized page; Discover must bleed at this layer
+        // or leaf `.ignoresSafeArea` never reaches the status bar / home indicator.
+        .ignoresSafeArea(edges: discoverMapClaimsFullScreen ? .all : [])
         .background {
-            HubPageViewControllerSurfaceTint()
+            HubPageViewControllerSurfaceTint(usesClearSurface: discoverMapClaimsFullScreen)
         }
         #endif
         .background(Color.clear)
+    }
+
+    /// Home + every hub tab stay full-bleed so the sticky hub bar and top chrome
+    /// don’t jump when leaving Discover / My Operators.
+    private var discoverMapClaimsFullScreen: Bool {
+        true
     }
 
     #if os(iOS)
@@ -2869,8 +2895,17 @@ struct UnifiedProviderHomeScreen: View {
         guard hubShellAllowsBottomChromeInset else { return 0 }
         let expandedInset: CGFloat = {
             if guestHubNavigationLocked {
-                return GuestHubSignInMetrics.overlayContentBottomInset(collapseProgress: hubBarCollapseProgress)
+                // Signed out: clear the measured Sign In/Sign Up panel (not the short hub-rail inset).
+                let measured = measuredGuestSignInChromeHeight
+                let expanded = (measured > 1
+                    ? measured + 8 + GuestHubSignInMetrics.pullUpClearanceGap
+                    : GuestHubSignInMetrics.overlayContentBottomPadding)
+                return GuestHubSignInMetrics.overlayContentBottomInset(
+                    expandedHeight: expanded,
+                    collapseProgress: hubBarCollapseProgress
+                )
             }
+            // Signed in: clear the sticky hub navbar.
             return ConsumerStickyHubMetrics.overlayContentBottomInset(collapseProgress: hubBarCollapseProgress)
         }()
         return expandedInset * (1.0 - hubBarUtilitySuppressionProgress)
@@ -2893,7 +2928,8 @@ struct UnifiedProviderHomeScreen: View {
                             authEmailHandoff = email
                             showIntegratedSignUpSheet = true
                         },
-                        collapseProgress: hubBarCollapseProgress
+                        collapseProgress: hubBarCollapseProgress,
+                        authChromeActive: $isGuestSignInChromeActive
                     )
                 } else if unifiedShowsConsumerStickyHubBar {
                     #if os(iOS)
@@ -2945,6 +2981,7 @@ struct UnifiedProviderHomeScreen: View {
                 unifiedHubPagedContent
             }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea(edges: discoverMapClaimsFullScreen ? .all : [])
                 .simultaneousGesture(
                     TapGesture().onEnded {
                         guard unifiedShowsGuestSignInBar else { return }
@@ -2963,6 +3000,10 @@ struct UnifiedProviderHomeScreen: View {
             .overlay(alignment: .bottom) {
                 hubStickyBarOverlay
                     .zIndex(50)
+            }
+            .onPreferenceChange(GuestHubChromeHeightKey.self) { height in
+                guard height > 1, abs(measuredGuestSignInChromeHeight - height) > 0.5 else { return }
+                measuredGuestSignInChromeHeight = height
             }
             #if os(iOS)
             .overlay {
@@ -3110,6 +3151,9 @@ struct UnifiedProviderHomeScreen: View {
             .navigationTitle("")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            // Glass browse owns its floating chrome; an empty nav bar left a white band above the location toggle.
+            .toolbar(unifiedShowsLegacyNavigationProfileButton ? .automatic : .hidden, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
             #endif
             .toolbar {
                 #if os(iOS)
@@ -3228,6 +3272,7 @@ struct UnifiedProviderHomeScreen: View {
     private var unifiedProviderHomeNavigationStackInner: some View {
         unifiedProviderHubShell
             #if os(iOS)
+            .ignoresSafeArea(edges: discoverMapClaimsFullScreen ? .all : [])
             .onCutsNavigationShellBackgroundClear()
             .sheet(isPresented: $showMaxDistanceSheet) {
                 ConsumerBrowseDistanceSheet {
@@ -3410,23 +3455,27 @@ struct UnifiedProviderHomeScreen: View {
             await loadUnifiedConsumerBookingsForHome()
             await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager)
         }
-        .onChange(of: sessionManager.isAuthenticated) { _, authed in
-            Task {
-                await frontendConfigStore.refresh()
-                if !frontendConfigStore.showsWaitlistHome {
-                    await loadProviders()
+            .onChange(of: sessionManager.isAuthenticated) { _, authed in
+                if authed {
+                    isGuestSignInChromeActive = false
+                    measuredGuestSignInChromeHeight = 0
+                }
+                Task {
+                    await frontendConfigStore.refresh()
+                    if !frontendConfigStore.showsWaitlistHome {
+                        await loadProviders()
+                    }
+                }
+                Task { await loadUnifiedConsumerBookingsForHome() }
+                Task { await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager) }
+                if !authed {
+                    hubPageIndex = 0
+                    #if os(iOS)
+                    hubTabSyncPagingScrollAggressive = true
+                    hubTabSyncPagingScrollToSelection = true
+                    #endif
                 }
             }
-            Task { await loadUnifiedConsumerBookingsForHome() }
-            Task { await chatViewModel.refreshUnreadMessageCount(sessionManager: sessionManager) }
-            if !authed {
-                hubPageIndex = 0
-                #if os(iOS)
-                hubTabSyncPagingScrollAggressive = true
-                hubTabSyncPagingScrollToSelection = true
-                #endif
-            }
-        }
         .onReceive(NotificationCenter.default.publisher(for: .consumerBrowseLocationDidChange)) { _ in
             guard !frontendConfigStore.showsWaitlistHome else { return }
             Task { await loadProviders() }
@@ -3682,8 +3731,27 @@ struct UnifiedProviderHomeScreen: View {
             selectedDiscoverAreaId: $selectedDiscoverAreaId,
             showsDistanceOnDiscoverTiles: unifiedShowsDistanceOnDiscoverTiles,
             browseMapCenterCoordinate: unifiedBrowseMapCenter,
-            browseMapRadiusMeters: unifiedBrowseMapRadiusMeters
+            browseMapRadiusMeters: unifiedBrowseMapRadiusMeters,
+            discoverPullUpPreferredOpen: guestHubNavigationLocked ? !isGuestSignInChromeActive : nil,
+            onDiscoverPullUpOpened: {
+                guard guestHubNavigationLocked else { return }
+                isGuestSignInChromeActive = false
+                #if os(iOS)
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil,
+                    from: nil,
+                    for: nil
+                )
+                #endif
+            }
         )
+        #if os(iOS)
+        .background(Color.clear)
+        // Always full-bleed on Home (Discover + My Operators). Toggling this per segment
+        // made chrome pad double-count safe area on one page and look correct on the other.
+        .ignoresSafeArea()
+        #endif
     }
 
     private func presentProviderDetail(_ provider: ServiceProvider) {

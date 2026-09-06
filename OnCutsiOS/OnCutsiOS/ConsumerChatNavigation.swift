@@ -133,13 +133,18 @@ struct ConversationListView: View {
     }
 
     private var inboxWithNavigationChrome: some View {
-        inboxRootStack
+        let showingThread = chatViewModel.hubMessagesThreadPresentation != nil
+        return inboxRootStack
             .navigationTitle("")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            // Match Home: hide the empty system bar and pad to the shared hub chrome line.
+            .toolbar(showingThread ? .automatic : .hidden, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
             #endif
             .tint(Color.oliveGreen)
-            .toolbarBackground(.hidden, for: .navigationBar)
+            .padding(.top, showingThread ? 0 : OnCutsHubChromeLayout.floatingChromeTopPadding())
+            .ignoresSafeArea(edges: showingThread ? [] : .top)
     }
 
     private var inboxWithThreadAndHandoffObservers: some View {

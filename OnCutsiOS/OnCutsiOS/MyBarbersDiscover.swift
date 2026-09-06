@@ -8,6 +8,7 @@
 
 import Foundation
 import CoreLocation
+import MapKit
 
 // MARK: - Segment
 
@@ -19,9 +20,14 @@ enum ConsumerHomeBrowseSegment: String, CaseIterable, Identifiable, Hashable, Se
 
     var title: String {
         switch self {
-        case .myBarbers: return "My Barbers"
+        case .myBarbers: return "My Operators"
         case .discover: return "Discover"
         }
+    }
+
+    /// Short label for the compact glass segment pill beside the utility chrome.
+    var compactTitle: String {
+        title
     }
 }
 
@@ -62,9 +68,24 @@ struct DiscoverServiceArea: Identifiable, Sendable, Hashable {
     let isTemporaryPinBucket: Bool
 }
 
+/// Zoom-dependent map circle: one or more `DiscoverServiceArea`s merged when the camera is far out.
+struct DiscoverMapAreaCluster: Identifiable, Sendable, Hashable {
+    let id: String
+    let title: String
+    let latitude: Double
+    let longitude: Double
+    /// Drawn circle radius (covers member blobs at the current zoom merge).
+    let radiusMeters: CLLocationDistance
+    let memberAreaIds: [String]
+    let barberIds: [String]
+}
+
 enum MyBarbersDiscover {
-    /// Approximate map blob radius (not full `service_radius_km`).
+    /// Approximate map blob radius at 1 mi zoom (scales with zoom for constant on-screen size).
     static let mapAreaRadiusMeters: CLLocationDistance = 400
+
+    /// Prefix for synthetic selection ids that represent a multi-area cluster tap.
+    static let mapClusterSelectionPrefix = "cluster:"
 
     // MARK: - Public location label
 
@@ -198,8 +219,9 @@ enum MyBarbersDiscover {
     ) -> [MyBarbersTile] {
         let orderedSeeds = seeds.sorted(by: sortSeeds)
         return orderedSeeds.enumerated().compactMap { index, seed in
-            guard let provider = providersById[seed.barberId] else { return nil }
-            let override = labelOverrides[seed.barberId]
+            let key = seed.barberId.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard let provider = providersById[key] ?? providersById[seed.barberId] else { return nil }
+            let override = labelOverrides[provider.id] ?? labelOverrides[seed.barberId] ?? labelOverrides[key]
             let label = coarsenPublicLocationLabel(override)
                 ?? publicBroadLocationLabel(for: provider)
             return MyBarbersTile(
@@ -391,6 +413,169 @@ enum MyBarbersDiscover {
         .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
+    // MARK: - Zoom-aware map clustering
+
+    /// Visible map radius (short axis) used as the “1 mi” visual reference for dashed circles.
+    private static let mapAreaVisualReferenceVisibleRadiusMeters: CLLocationDistance = 1_609.344
+
+    /// Half of the shorter visible map axis (meters) — matches the olive browse circle / pill radius.
+    static func visibleMapRadiusMeters(from region: MKCoordinateRegion) -> CLLocationDistance? {
+        guard region.span.latitudeDelta.isFinite, region.span.longitudeDelta.isFinite,
+              region.span.latitudeDelta > 0, region.span.longitudeDelta > 0
+        else { return nil }
+        let halfLatMeters = region.span.latitudeDelta * 111_320 * 0.5
+        let cosLat = max(0.2, abs(cos(region.center.latitude * .pi / 180)))
+        let halfLngMeters = region.span.longitudeDelta * 111_320 * cosLat * 0.5
+        let radius = min(halfLatMeters, halfLngMeters)
+        guard radius.isFinite, radius > 0 else { return nil }
+        return radius
+    }
+
+    /// Dashed-circle ground radius that keeps ~the same on-screen size as at 1 mi zoom.
+    static func mapAreaScreenConstantRadiusMeters(for region: MKCoordinateRegion) -> CLLocationDistance {
+        let visibleRadius = visibleMapRadiusMeters(from: region) ?? mapAreaVisualReferenceVisibleRadiusMeters
+        let scale = max(1, visibleRadius / mapAreaVisualReferenceVisibleRadiusMeters)
+        return mapAreaRadiusMeters * scale
+    }
+
+    /// Merge when two screen-constant circles would heavily overlap.
+    static func mapAreaMergeDistanceMeters(for region: MKCoordinateRegion) -> CLLocationDistance {
+        mapAreaScreenConstantRadiusMeters(for: region) * 1.75
+    }
+
+    static func clusterMapAreas(
+        _ areas: [DiscoverServiceArea],
+        mergeDistanceMeters: CLLocationDistance,
+        baseRadiusMeters: CLLocationDistance
+    ) -> [DiscoverMapAreaCluster] {
+        guard !areas.isEmpty else { return [] }
+        if areas.count == 1 {
+            return [makeMapAreaCluster(from: areas, baseRadiusMeters: baseRadiusMeters)]
+        }
+
+        var groups: [[DiscoverServiceArea]] = areas.map { [$0] }
+        var didMerge = true
+        while didMerge {
+            didMerge = false
+            var i = 0
+            while i < groups.count {
+                var j = i + 1
+                while j < groups.count {
+                    if shouldMergeMapAreaGroups(
+                        groups[i],
+                        groups[j],
+                        mergeDistanceMeters: mergeDistanceMeters
+                    ) {
+                        groups[i].append(contentsOf: groups[j])
+                        groups.remove(at: j)
+                        didMerge = true
+                    } else {
+                        j += 1
+                    }
+                }
+                i += 1
+            }
+        }
+
+        return groups.map { makeMapAreaCluster(from: $0, baseRadiusMeters: baseRadiusMeters) }
+    }
+
+    private static func shouldMergeMapAreaGroups(
+        _ a: [DiscoverServiceArea],
+        _ b: [DiscoverServiceArea],
+        mergeDistanceMeters: CLLocationDistance
+    ) -> Bool {
+        let ca = centroidLocation(of: a)
+        let cb = centroidLocation(of: b)
+        return ca.distance(from: cb) <= mergeDistanceMeters
+    }
+
+    private static func centroidLocation(of areas: [DiscoverServiceArea]) -> CLLocation {
+        let n = max(1, areas.count)
+        let lat = areas.reduce(0.0) { $0 + $1.latitude } / Double(n)
+        let lng = areas.reduce(0.0) { $0 + $1.longitude } / Double(n)
+        return CLLocation(latitude: lat, longitude: lng)
+    }
+
+    private static func makeMapAreaCluster(
+        from members: [DiscoverServiceArea],
+        baseRadiusMeters: CLLocationDistance
+    ) -> DiscoverMapAreaCluster {
+        let center = centroidLocation(of: members)
+        let extent = members
+            .map { center.distance(from: CLLocation(latitude: $0.latitude, longitude: $0.longitude)) }
+            .max() ?? 0
+        // Single: screen-constant size. Combined: cover members and grow as zoom-out scales baseRadius.
+        var radius = max(baseRadiusMeters, extent + baseRadiusMeters)
+        if members.count > 1 {
+            // Combined ring reads slightly larger than a lone operator at the same zoom.
+            let clusterBoost = 1 + 0.06 * Double(min(members.count - 1, 10))
+            radius = max(radius, baseRadiusMeters * clusterBoost)
+        }
+
+        let memberIds = members.map(\.id).sorted()
+        let id: String
+        if memberIds.count == 1 {
+            id = memberIds[0]
+        } else {
+            id = mapClusterSelectionPrefix + memberIds.joined(separator: "\u{1e}")
+        }
+
+        let titles = members.map(\.title)
+        let title: String
+        if members.count == 1 {
+            title = members[0].title
+        } else if titles.count <= 2 {
+            title = titles.joined(separator: " · ")
+        } else {
+            title = "\(members.count) areas"
+        }
+
+        return DiscoverMapAreaCluster(
+            id: id,
+            title: title,
+            latitude: center.coordinate.latitude,
+            longitude: center.coordinate.longitude,
+            radiusMeters: radius,
+            memberAreaIds: memberIds,
+            barberIds: members.flatMap(\.barberIds)
+        )
+    }
+
+    /// Resolves a single-area or multi-area cluster selection id into a filterable area.
+    static func resolvedSelectedArea(
+        id: String?,
+        from areas: [DiscoverServiceArea]
+    ) -> DiscoverServiceArea? {
+        guard let id else { return nil }
+        if id.hasPrefix(mapClusterSelectionPrefix) {
+            let raw = String(id.dropFirst(mapClusterSelectionPrefix.count))
+            let memberIds = Set(raw.split(separator: "\u{1e}").map(String.init))
+            let members = areas.filter { memberIds.contains($0.id) }
+            guard !members.isEmpty else { return nil }
+            let cluster = makeMapAreaCluster(from: members, baseRadiusMeters: mapAreaRadiusMeters)
+            return DiscoverServiceArea(
+                id: cluster.id,
+                title: cluster.title,
+                latitude: cluster.latitude,
+                longitude: cluster.longitude,
+                barberIds: cluster.barberIds,
+                isTemporaryPinBucket: members.contains(where: \.isTemporaryPinBucket)
+            )
+        }
+        return areas.first(where: { $0.id == id })
+    }
+
+    static func selectionContainsArea(selectionId: String?, areaId: String) -> Bool {
+        guard let selectionId else { return false }
+        if selectionId == areaId { return true }
+        if selectionId.hasPrefix(mapClusterSelectionPrefix) {
+            let raw = String(selectionId.dropFirst(mapClusterSelectionPrefix.count))
+            return raw.split(separator: "\u{1e}").map(String.init).contains(areaId)
+        }
+        return false
+    }
+
     static func providers(
         _ providers: [ServiceProvider],
         filteredBySelectedArea area: DiscoverServiceArea?
@@ -398,6 +583,59 @@ enum MyBarbersDiscover {
         guard let area else { return providers }
         let ids = Set(area.barberIds)
         return providers.filter { ids.contains($0.id) }
+    }
+
+    /// Providers whose service pin falls inside the visible map region (zoom/pan).
+    /// Pads the viewport slightly so sheet chrome doesn’t clip edge pins. Falls back to
+    /// `providers` when the region isn’t usable yet or nobody has coordinates.
+    static func providers(
+        _ providers: [ServiceProvider],
+        intersectingVisibleRegion region: MKCoordinateRegion?
+    ) -> [ServiceProvider] {
+        guard let region,
+              region.span.latitudeDelta.isFinite,
+              region.span.longitudeDelta.isFinite,
+              region.span.latitudeDelta > 0,
+              region.span.longitudeDelta > 0
+        else { return providers }
+
+        let withCoords = providers.filter(\.hasFiniteServiceCoordinate)
+        // No geocoded operators — keep the browse list visible in the pull-up.
+        guard !withCoords.isEmpty else { return providers }
+
+        // ~20% pad so operators near the sheet / header aren’t dropped.
+        let halfLat = max(region.span.latitudeDelta * 0.6, 0.002)
+        let halfLng = max(region.span.longitudeDelta * 0.6, 0.002)
+        let minLat = region.center.latitude - halfLat
+        let maxLat = region.center.latitude + halfLat
+        let minLng = region.center.longitude - halfLng
+        let maxLng = region.center.longitude + halfLng
+
+        let inView = withCoords.filter { provider in
+            guard let lat = provider.serviceLatitude, let lng = provider.serviceLongitude else { return false }
+            return lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng
+        }
+
+        if !inView.isEmpty { return inView }
+
+        // Zoomed out far enough that an empty hit is almost certainly a bad region sample —
+        // keep showing geocoded nearby operators instead of a blank sheet.
+        let visibleHeightMeters = region.span.latitudeDelta * 111_320
+        if visibleHeightMeters >= 6_000 {
+            return withCoords
+        }
+        return inView
+    }
+
+    /// Approximate visible “radius” label from the map span (for sheet chrome).
+    static func visibleRadiusMilesLabel(for region: MKCoordinateRegion?) -> String? {
+        guard let region, let radiusMeters = visibleMapRadiusMeters(from: region) else { return nil }
+        let radiusMiles = radiusMeters / 1609.344
+        guard radiusMiles.isFinite, radiusMiles > 0 else { return nil }
+        if radiusMiles < 1 {
+            return String(format: "%.1f mi", radiusMiles)
+        }
+        return "\(Int(radiusMiles.rounded())) mi"
     }
 
     // MARK: - Helpers

@@ -110,6 +110,9 @@ struct UserProfileView: View {
         .navigationTitle("")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        // Hub Profile uses a floating utility pill (same top line as Home); keep system bar for sheet/pushed hosts.
+        .toolbar(showsIntegratedAccountMenu ? .hidden : .automatic, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
         #endif
         .tint(Color.oliveGreen)
         .task(id: sessionManager.isAuthenticated ? session?.userId : nil) {
@@ -701,7 +704,9 @@ private struct UserProfileSettingsDrawerOverlay: View {
     private static let profileUtilityPillChromeHideRange: CGFloat = 88
 
     private var profileUtilityPillReservedTopInset: CGFloat {
-        Self.profileUtilityPillBarHeight + Self.profileUtilityPillVerticalPadding
+        OnCutsHubChromeLayout.floatingChromeTopPadding()
+            + Self.profileUtilityPillBarHeight
+            + Self.profileUtilityPillVerticalPadding
     }
 
     private var shouldTrackProfileUtilityPillScrollCollapse: Bool {
@@ -728,7 +733,8 @@ private struct UserProfileSettingsDrawerOverlay: View {
 
     private var profileScrollTopInset: CGFloat {
         guard showsIntegratedAccountMenu else { return 0 }
-        let minTop: CGFloat = 10
+        let chromeTop = OnCutsHubChromeLayout.floatingChromeTopPadding()
+        let minTop = chromeTop
         return minTop + (profileUtilityPillReservedTopInset - minTop) * profileUtilityChromeProgress
     }
 
@@ -829,6 +835,9 @@ private struct UserProfileSettingsDrawerOverlay: View {
                 #endif
             }
         }
+        #if os(iOS)
+        .ignoresSafeArea(edges: showsIntegratedAccountMenu ? .top : [])
+        #endif
         .task {
             await loadRemoteProfile()
         }
@@ -1053,7 +1062,7 @@ private struct UserProfileSettingsDrawerOverlay: View {
     private var profileUtilityPillChrome: some View {
         editTabBar
             .padding(.horizontal, .space4)
-            .padding(.top, 10)
+            .padding(.top, OnCutsHubChromeLayout.floatingChromeTopPadding())
             .padding(.bottom, 10)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .top)

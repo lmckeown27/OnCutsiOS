@@ -2,7 +2,7 @@
 //  BarberPhotoTile.swift
 //  OnCuts
 //
-//  Square photo tile for My Barbers / Discover (name overlay, MAIN badge, min price, next-open).
+//  Square photo tile for My Barbers / Discover (name overlay, MAIN badge, price range, next-open).
 //
 
 import SwiftUI
@@ -17,9 +17,8 @@ struct BarberPhotoTile: View {
         MyBarbersDiscover.nextOpenDisplayString(for: provider)
     }
 
-    private var minPriceLabel: String? {
-        guard let min = provider.priceRange?.min else { return nil }
-        return "$\(min)+"
+    private var priceLabel: String? {
+        provider.priceRange?.displayLabel
     }
 
     private var subtitle: String {
@@ -49,8 +48,8 @@ struct BarberPhotoTile: View {
                     .allowsHitTesting(false)
                 }
                 .overlay(alignment: .topTrailing) {
-                    if let minPriceLabel {
-                        Text(minPriceLabel)
+                    if let priceLabel {
+                        Text(priceLabel)
                             .font(OnCutsFont.caption.weight(.semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 8)
@@ -97,13 +96,13 @@ struct BarberPhotoTile: View {
     private var accessibilityLabelText: String {
         var parts = [provider.businessName, subtitle]
         if isMain { parts.insert("Main barber", at: 0) }
-        if let minPriceLabel { parts.append("from \(minPriceLabel)") }
+        if let priceLabel { parts.append(priceLabel) }
         return parts.joined(separator: ", ")
     }
 
     @ViewBuilder
     private var photo: some View {
-        if let url = ProfileImageURLResolver.url(from: provider.profileImageUrl) {
+        if let url = ProfileImageURLResolver.urlForAsyncImage(from: provider.profileImageUrl) {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .success(let image):

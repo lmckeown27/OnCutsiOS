@@ -195,6 +195,13 @@ struct ConsumerBookingsHubView: View {
     var body: some View {
         NavigationStack(path: $detailNavigationPath) {
             hubTimelineRoot
+                #if os(iOS)
+                .toolbar(detailNavigationPath.isEmpty ? .hidden : .automatic, for: .navigationBar)
+                #endif
+                .padding(.top, detailNavigationPath.isEmpty ? OnCutsHubChromeLayout.floatingChromeTopPadding() : 0)
+                #if os(iOS)
+                .ignoresSafeArea(edges: detailNavigationPath.isEmpty ? .top : [])
+                #endif
                 .navigationDestination(for: ConsumerHomeBookingStackRoute.self) { route in
                     hubBookingStackRouteDestination(route)
                 }
