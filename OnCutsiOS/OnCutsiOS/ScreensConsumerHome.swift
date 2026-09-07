@@ -211,7 +211,7 @@ struct ConsumerHomeScreen: View {
                     coordinator: coordinator,
                     bookingDetailPresentationID: presentationID,
                     hasActiveConsumerBooking: hasActiveConsumerBooking,
-                    onShowLogin: { showOAuthSignInSheet = true }
+                    onShowLogin: { presentOAuthSignInSheet() }
                 )
                 .id(presentationID)
                 #if os(iOS)
@@ -316,7 +316,7 @@ struct ConsumerHomeScreen: View {
                 switch guestAuthResumeAction {
                 case .signInOptions:
                     oauthSignInShowsCreateAccountLink = false
-                    showOAuthSignInSheet = true
+                    presentOAuthSignInSheet()
                 case .signUp:
                     showIntegratedSignUpSheet = true
                 case .none:
@@ -351,7 +351,7 @@ struct ConsumerHomeScreen: View {
                             authEmailHandoff = email
                             showIntegratedSignUpSheet = true
                         },
-                        showsCreateAccountLink: oauthSignInShowsCreateAccountLink
+                        showsCreateAccountLink: oauthSignInShowsCreateAccountLink,
                     )
                     #if os(iOS)
                     .presentationDetents([.medium, .large])
@@ -386,7 +386,7 @@ struct ConsumerHomeScreen: View {
                             sessionManager: sessionManager,
                             hasCurrentBooking: hasActiveConsumerBooking,
                             onShowLogin: {
-                                showOAuthSignInSheet = true
+                                presentOAuthSignInSheet()
                             }
                         )
                     }
@@ -417,7 +417,7 @@ struct ConsumerHomeScreen: View {
                 ConsumerBookingsHubView(
                     sessionManager: sessionManager,
                     coordinator: coordinator,
-                    onShowLogin: { showOAuthSignInSheet = true }
+                    onShowLogin: { presentOAuthSignInSheet() }
                 )
                 #if os(iOS)
                 .onCutsNavigationShellBackgroundClear()
@@ -435,7 +435,7 @@ struct ConsumerHomeScreen: View {
                             capturesTouches: isProviderDetailCapturingTouches,
                             onDismiss: { dismissProviderDetail() },
                             onShowLogin: {
-                                showOAuthSignInSheet = true
+                                presentOAuthSignInSheet()
                             },
                             onBookingRequestCompleted: { dismissProviderDetail() },
                             onOverlayDidDisappear: {
@@ -452,7 +452,7 @@ struct ConsumerHomeScreen: View {
                             capturesTouches: isProviderDetailCapturingTouches,
                             onDismiss: { dismissProviderDetail() },
                             onShowLogin: {
-                                showOAuthSignInSheet = true
+                                presentOAuthSignInSheet()
                             },
                             onBookingRequestCompleted: { dismissProviderDetail() },
                             onOverlayDidDisappear: {
@@ -647,14 +647,14 @@ struct ConsumerHomeScreen: View {
                 if sessionManager.isAuthenticated {
                     showMessagesInbox = true
                 } else {
-                    showOAuthSignInSheet = true
+                    presentOAuthSignInSheet()
                 }
             },
             onBookingsTap: {
                 if sessionManager.isAuthenticated {
                     showBookingChatsHub = true
                 } else {
-                    showOAuthSignInSheet = true
+                    presentOAuthSignInSheet()
                 }
             },
             onProfileTap: {
@@ -681,7 +681,7 @@ struct ConsumerHomeScreen: View {
                     navigationPath = NavigationPath()
                     navigationPath.append(ConsumerHomeBookingStackRoute.bookingsTabDetailPush(for: row))
                 } else {
-                    showOAuthSignInSheet = true
+                    presentOAuthSignInSheet()
                 }
             },
             sessionManager: sessionManager,
@@ -1062,6 +1062,10 @@ struct ConsumerHomeScreen: View {
             }
         }
         scheduleProviderDetailOverlayTeardownFallback()
+    }
+
+    private func presentOAuthSignInSheet() {
+        showOAuthSignInSheet = true
     }
 
     private func finalizeProviderDetailOverlayTeardown(expectedPresentationID: UUID) {
@@ -2639,7 +2643,7 @@ struct UnifiedProviderHomeScreen: View {
                     },
                     onSignIn: {
                         unifiedOAuthSignInShowsCreateAccountLink = false
-                        showOAuthSignInSheet = true
+                        presentOAuthSignInSheet()
                     }
                 )
                 #if os(iOS)
@@ -2678,7 +2682,7 @@ struct UnifiedProviderHomeScreen: View {
                         messagesHubNavigationStackEpoch += 1
                     },
                     hasActiveConsumerBooking: hasActiveConsumerBooking,
-                    onShowLogin: { showOAuthSignInSheet = true }
+                    onShowLogin: { presentOAuthSignInSheet() }
                 )
                 #if os(iOS)
                 .onCutsNavigationShellBackgroundClear()
@@ -2691,7 +2695,7 @@ struct UnifiedProviderHomeScreen: View {
             ConsumerBookingsHubView(
                 sessionManager: sessionManager,
                 coordinator: coordinator,
-                onShowLogin: { showOAuthSignInSheet = true },
+                onShowLogin: { presentOAuthSignInSheet() },
                 onNavigationDepthChange: { bookingsTabNavigationDepth = $0 }
             )
             #if os(iOS)
@@ -2929,7 +2933,7 @@ struct UnifiedProviderHomeScreen: View {
                             showIntegratedSignUpSheet = true
                         },
                         collapseProgress: hubBarCollapseProgress,
-                        authChromeActive: $isGuestSignInChromeActive
+                        authChromeActive: $isGuestSignInChromeActive,
                     )
                 } else if unifiedShowsConsumerStickyHubBar {
                     #if os(iOS)
@@ -3250,7 +3254,7 @@ struct UnifiedProviderHomeScreen: View {
                     coordinator: coordinator,
                     bookingDetailPresentationID: presentationID,
                     hasActiveConsumerBooking: hasActiveConsumerBooking,
-                    onShowLogin: { showOAuthSignInSheet = true }
+                    onShowLogin: { presentOAuthSignInSheet() }
                 )
                 .id(presentationID)
                 #if os(iOS)
@@ -3290,7 +3294,7 @@ struct UnifiedProviderHomeScreen: View {
                 switch unifiedGuestAuthResumeAction {
                 case .signInOptions:
                     unifiedOAuthSignInShowsCreateAccountLink = false
-                    showOAuthSignInSheet = true
+                    presentOAuthSignInSheet()
                 case .signUp:
                     showIntegratedSignUpSheet = true
                 case .none:
@@ -3325,7 +3329,7 @@ struct UnifiedProviderHomeScreen: View {
                             authEmailHandoff = email
                             showIntegratedSignUpSheet = true
                         },
-                        showsCreateAccountLink: unifiedOAuthSignInShowsCreateAccountLink
+                        showsCreateAccountLink: unifiedOAuthSignInShowsCreateAccountLink,
                     )
                     #if os(iOS)
                     .presentationDetents([.medium, .large])
@@ -3360,7 +3364,7 @@ struct UnifiedProviderHomeScreen: View {
                             sessionManager: sessionManager,
                             hasCurrentBooking: hasActiveConsumerBooking,
                             onShowLogin: {
-                                showOAuthSignInSheet = true
+                                presentOAuthSignInSheet()
                             }
                         )
                     }
@@ -3393,7 +3397,7 @@ struct UnifiedProviderHomeScreen: View {
                             capturesTouches: isProviderDetailCapturingTouches,
                             onDismiss: { dismissProviderDetail() },
                             onShowLogin: {
-                                showOAuthSignInSheet = true
+                                presentOAuthSignInSheet()
                             },
                             onBookingRequestCompleted: { dismissProviderDetail() },
                             onOverlayDidDisappear: {
@@ -3410,7 +3414,7 @@ struct UnifiedProviderHomeScreen: View {
                             capturesTouches: isProviderDetailCapturingTouches,
                             onDismiss: { dismissProviderDetail() },
                             onShowLogin: {
-                                showOAuthSignInSheet = true
+                                presentOAuthSignInSheet()
                             },
                             onBookingRequestCompleted: { dismissProviderDetail() },
                             onOverlayDidDisappear: {
@@ -3711,7 +3715,7 @@ struct UnifiedProviderHomeScreen: View {
             utilityPillSuppressesHubPaging: $isUtilityPillChromeExpanded,
             onTodayBookingReminderTap: { (row: ConsumerBookingSimpleRow) in
                 guard sessionManager.isAuthenticated else {
-                    showOAuthSignInSheet = true
+                    presentOAuthSignInSheet()
                     return
                 }
                 navigateHubPage(0, animated: false)
@@ -3774,6 +3778,10 @@ struct UnifiedProviderHomeScreen: View {
             selectedProvider = nil
         }
         scheduleProviderDetailOverlayTeardownFallback()
+    }
+
+    private func presentOAuthSignInSheet() {
+        showOAuthSignInSheet = true
     }
 
     private func finalizeProviderDetailOverlayTeardown(expectedPresentationID: UUID) {

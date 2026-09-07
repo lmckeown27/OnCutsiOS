@@ -7,6 +7,9 @@
 //
 
 import SwiftUI
+#if canImport(UIKit) && !os(watchOS)
+import UIKit
+#endif
 
 enum GuestHubSignInMetrics {
     /// Fallback before the guest panel reports a measured height (labels + email + Apple/Google).
@@ -44,6 +47,30 @@ struct GuestHubChromeHeightKey: PreferenceKey {
     }
 }
 
+#if canImport(UIKit) && !os(watchOS)
+/// Overlap of the system keyboard with the key window’s bottom edge (0 when hidden).
+enum GuestHubKeyboardOverlap {
+    static func overlap(from notification: Notification) -> CGFloat {
+        guard
+            let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+            let window = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .flatMap(\.windows)
+                .first(where: \.isKeyWindow)
+        else {
+            return 0
+        }
+        let converted = window.convert(frame, from: nil)
+        return max(0, window.bounds.maxY - converted.minY)
+    }
+
+    static func animation(from notification: Notification) -> Animation {
+        let duration = (notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
+        return .easeOut(duration: max(0.15, duration))
+    }
+}
+#endif
+
 /// Sign-in options overlay shown instead of the hub bar when the user is signed out.
 @available(iOS 17.0, macOS 14.0, *)
 struct GuestHubSignInBar: View {
@@ -53,6 +80,11 @@ struct GuestHubSignInBar: View {
     var collapseProgress: CGFloat = 0
     /// `true` while the guest email/password chrome is focused or expanded (drives Discover pull-up).
     var authChromeActive: Binding<Bool>? = nil
+
+    #if canImport(UIKit) && !os(watchOS)
+    /// Lifts the panel above the keyboard (Discover is full-bleed and ignores safe area).
+    @State private var keyboardBottomInset: CGFloat = 0
+    #endif
 
     private static let panelCorner: CGFloat = 28
 
@@ -67,11 +99,26 @@ struct GuestHubSignInBar: View {
                 y: 4
             )
             .animation(.spring(response: 0.34, dampingFraction: 0.86), value: collapseProgress)
+            // Measure panel only — keyboard inset must not inflate Discover pull-up clearance.
             .background {
                 GeometryReader { geo in
                     Color.clear.preference(key: GuestHubChromeHeightKey.self, value: geo.size.height)
                 }
             }
+            #if canImport(UIKit) && !os(watchOS)
+            .padding(.bottom, keyboardBottomInset)
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
+                let next = GuestHubKeyboardOverlap.overlap(from: notification)
+                withAnimation(GuestHubKeyboardOverlap.animation(from: notification)) {
+                    keyboardBottomInset = next
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+                withAnimation(GuestHubKeyboardOverlap.animation(from: notification)) {
+                    keyboardBottomInset = 0
+                }
+            }
+            #endif
     }
 
     private var guestSignInPanel: some View {

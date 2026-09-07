@@ -177,8 +177,9 @@ struct DiscoverOperatorsPullUpSheet: View {
                 let dy = abs(value.translation.height)
 
                 if !isDragging {
-                    // Require a clear vertical bias before locking the sheet drag.
-                    guard dy >= 6, dy >= dx * 0.85 else { return }
+                    // Lock only on a clearly vertical drag. Horizontal carousel pans
+                    // share this gesture via simultaneousGesture and must not steal.
+                    guard dy >= 10, dy > dx * 1.15 else { return }
                     isDragging = true
                     dragStartHeight = sheetHeight > 1 ? sheetHeight : restingHeight
                 }
@@ -195,13 +196,13 @@ struct DiscoverOperatorsPullUpSheet: View {
                 let predictedY = value.predictedEndTranslation.height
                 let velocityY = value.velocity.height
                 let locked = isDragging
+                let movedSheet = abs(renderedSheetHeight - restingHeight) > 4
 
                 isDragging = false
 
-                // Always finish if we moved the sheet, or if a vertical swipe was clear.
-                let movedSheet = abs(renderedSheetHeight - restingHeight) > 4
-                let clearSwipe = abs(translationY) >= 6 || abs(predictedY) >= 24 || abs(velocityY) > 120
-                guard locked || movedSheet || clearSwipe else { return }
+                // Do not settle from incidental vertical noise on a horizontal scroll.
+                // `clearSwipe` used to fire here and snap the sheet closed mid-pan.
+                guard locked || movedSheet else { return }
 
                 settle(
                     open: resolvedOpen(

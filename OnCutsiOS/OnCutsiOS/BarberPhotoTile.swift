@@ -21,11 +21,13 @@ struct BarberPhotoTile: View {
         provider.priceRange?.displayLabel
     }
 
-    private var subtitle: String {
-        if showsDistance, let miles = provider.formattedDistanceFromUser {
-            return "\(nextOpen) · \(miles)"
-        }
-        return nextOpen
+    private var distanceLabel: String? {
+        guard showsDistance else { return nil }
+        return provider.formattedDistanceFromUser
+    }
+
+    private var accessibilitySubtitle: String {
+        [nextOpen, distanceLabel].compactMap { $0 }.joined(separator: ", ")
     }
 
     var body: some View {
@@ -75,11 +77,21 @@ struct BarberPhotoTile: View {
                         Text(provider.businessName)
                             .font(OnCutsFont.labelMedium.weight(.semibold))
                             .foregroundStyle(.white)
-                            .lineLimit(2)
-                        Text(subtitle)
+                            .lineLimit(1)
+                        Text(nextOpen)
                             .font(OnCutsFont.caption)
                             .foregroundStyle(.white.opacity(0.88))
-                            .lineLimit(2)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if showsDistance {
+                            // Always reserve one line so “mi away” aligns across Discover tiles.
+                            Text(distanceLabel ?? " ")
+                                .font(OnCutsFont.caption)
+                                .foregroundStyle(.white.opacity(distanceLabel == nil ? 0 : 0.88))
+                                .lineLimit(1)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityHidden(distanceLabel == nil)
+                        }
                     }
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -94,7 +106,7 @@ struct BarberPhotoTile: View {
     }
 
     private var accessibilityLabelText: String {
-        var parts = [provider.businessName, subtitle]
+        var parts = [provider.businessName, accessibilitySubtitle]
         if isMain { parts.insert("Main operator", at: 0) }
         if let priceLabel { parts.append(priceLabel) }
         return parts.joined(separator: ", ")
