@@ -1858,6 +1858,7 @@ struct MessagingConversationView: View {
                         }
                     },
                     serviceName: MessagingProviderRoleLine.presentableServiceName(vm.bookingContext?.serviceName),
+                    barberId: vm.bookingContext?.barberId,
                     schedule: formattedContextHeaderScheduledTime,
                     status: headerBookingStatusPresentable,
                     canOpenFullBookingDetail: resolvedThreadBookingId != nil,
@@ -2422,6 +2423,7 @@ private struct MessagingThreadBookingDetailsView: View {
     let onClose: () -> Void
 
     let serviceName: String
+    let barberId: String?
     let schedule: String
     let status: String
     let canOpenFullBookingDetail: Bool
@@ -2494,6 +2496,12 @@ private struct MessagingThreadBookingDetailsView: View {
                         Spacer(minLength: 0)
                         VStack(alignment: .leading, spacing: 16) {
                             bookingDetailRow(title: "Service", value: serviceName)
+                            if let barberId, !barberId.isEmpty {
+                                OperatorPortfolioSpecialtyStrip(
+                                    barberId: barberId,
+                                    serviceName: serviceName
+                                )
+                            }
                             bookingDetailRow(title: "Schedule", value: schedule)
                             bookingDetailRow(title: "Status", value: status)
                         }

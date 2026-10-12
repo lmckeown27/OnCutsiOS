@@ -2,46 +2,56 @@
 //  DiscoverOperatorsPullUpSheet.swift
 //  OnCuts
 //
-//  Bottom pull-up for Discover operators. A clear swipe up/down always finishes
-//  open or closed — it does not spring back mid-transition.
+//  Map-first Discover sheet. Three stops: peek (map), split (default), and full list.
+//  The map stays mounted underneath; dragging or tapping the handle moves the sheet.
 //
 
 import SwiftUI
 
+enum DiscoverNearbySheetDetent: Equatable {
+    case peek
+    case split
+    case full
+}
+
 struct DiscoverOperatorsPullUpSheet: View {
-    let title: String
     let providers: [ServiceProvider]
     var isLoading: Bool = false
-    var showsDistance: Bool = false
     var bottomInset: CGFloat = 0
-    /// Increment to force the sheet open when an operator area is tapped on the map.
+    /// Full screen height so the expanded list can reach the top chrome.
+    var containerHeight: CGFloat = 800
+    /// Space reserved for the floating search so the full list does not cover it.
+    var topChromeInset: CGFloat = 120
     var reopenToken: Int = 0
-    /// When non-`nil` (signed-out Discover), open state follows guest sign-in idle (`true`) vs active (`false`).
+    /// Increment to return from the full list to the split stop.
+    var collapseToSplitToken: Int = 0
     var preferredIsOpen: Bool? = nil
-    /// Fired when the sheet settles open (e.g. dismiss guest email keyboard).
     var onOpened: (() -> Void)? = nil
+    var onDetentChange: (DiscoverNearbySheetDetent) -> Void = { _ in }
     let onProviderTap: (ServiceProvider) -> Void
 
-    @State private var isOpen: Bool = true
+    @State private var detent: DiscoverNearbySheetDetent = .split
     @State private var sheetHeight: CGFloat = 0
     @State private var dragStartHeight: CGFloat = 0
     @State private var isDragging: Bool = false
 
-    private var closedHeight: CGFloat { 52 + bottomInset }
-    private var openHeight: CGFloat { 240 + bottomInset }
+    private var peekHeight: CGFloat { 58 + bottomInset }
+    private var splitHeight: CGFloat {
+        let proposed = 420 + bottomInset
+        return min(max(peekHeight + 120, proposed), fullHeight)
+    }
+    private var fullHeight: CGFloat {
+        max(peekHeight + 160, containerHeight - topChromeInset)
+    }
 
     private var renderedSheetHeight: CGFloat {
         if sheetHeight > 1 { return sheetHeight }
-        return isOpen ? openHeight : closedHeight
+        return height(for: detent)
     }
 
-    private var openProgress: CGFloat {
-        let span = max(1, openHeight - closedHeight)
-        return min(1, max(0, (renderedSheetHeight - closedHeight) / span))
-    }
-
-    private var restingHeight: CGFloat {
-        isOpen ? openHeight : closedHeight
+    private var listProgress: CGFloat {
+        let span = max(1, splitHeight - peekHeight)
+        return min(1, max(0, (renderedSheetHeight - peekHeight) / span))
     }
 
     private var sheetSpring: Animation {
@@ -50,51 +60,41 @@ struct DiscoverOperatorsPullUpSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header owns vertical open/close — highPriority so map can't cancel mid-swipe.
             header
                 .highPriorityGesture(sheetDragGesture)
 
-            VStack(spacing: 0) {
+            Group {
                 if isLoading && providers.isEmpty {
                     ProgressView()
                         .tint(Color.oliveGreen)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 132)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if providers.isEmpty {
                     Text("No operators here yet")
                         .font(OnCutsFont.bodyMedium)
                         .foregroundStyle(Color.neutral500)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 132)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(spacing: 12) {
-                            ForEach(providers) { provider in
-                                BarberPhotoTile(
-                                    provider: provider,
-                                    showsDistance: showsDistance,
-                                    onTap: { onProviderTap(provider) }
-                                )
-                                .frame(width: 168, height: 168)
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(providers.enumerated()), id: \.element.id) { index, provider in
+                                DiscoverNearbyOperatorRow(provider: provider) {
+                                    onProviderTap(provider)
+                                }
+                                if index < providers.count - 1 {
+                                    Divider()
+                                        .overlay(Color.primary.opacity(0.08))
+                                        .padding(.leading, 16)
+                                }
                             }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 4)
+                        .padding(.bottom, bottomInset + 12)
                     }
-                    .frame(height: 168)
                     .scrollDisabled(isDragging)
-                    // Simultaneous so horizontal tile scroll still works.
-                    .simultaneousGesture(sheetDragGesture)
                 }
             }
-            .frame(maxWidth: .infinity)
-            .opacity(Double(openProgress))
-            .allowsHitTesting(openProgress > 0.45 && !isDragging)
-
-            Spacer(minLength: 0)
-                .frame(height: max(0, bottomInset))
-                .contentShape(Rectangle())
-                .highPriorityGesture(sheetDragGesture)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .opacity(Double(listProgress))
+            .allowsHitTesting(listProgress > 0.55 && !isDragging)
         }
         .frame(maxWidth: .infinity)
         .frame(height: renderedSheetHeight, alignment: .top)
@@ -114,23 +114,31 @@ struct DiscoverOperatorsPullUpSheet: View {
             }
             .shadow(color: .black.opacity(0.18), radius: 18, y: -4)
         }
-        .contentShape(Rectangle())
-        .onAppear {
-            if let preferredIsOpen {
-                settle(open: preferredIsOpen, animated: false)
-            } else if sheetHeight <= 1 {
-                sheetHeight = restingHeight
+        .overlay(alignment: .top) {
+            if detent == .full {
+                mapPill
+                    .offset(y: -52)
             }
         }
+        .onAppear {
+            let initial: DiscoverNearbySheetDetent = preferredIsOpen == false ? .peek : .split
+            settle(initial, animated: false)
+        }
         .onChange(of: bottomInset) { _, _ in
-            settle(open: isOpen, animated: false)
+            settle(detent, animated: false)
+        }
+        .onChange(of: containerHeight) { _, _ in
+            settle(detent, animated: false)
         }
         .onChange(of: reopenToken) { _, _ in
-            settle(open: true)
+            settle(.split)
+        }
+        .onChange(of: collapseToSplitToken) { _, _ in
+            settle(.split)
         }
         .onChange(of: preferredIsOpen) { _, preferred in
             guard let preferred else { return }
-            settle(open: preferred)
+            settle(preferred ? .split : .peek)
         }
     }
 
@@ -139,11 +147,13 @@ struct DiscoverOperatorsPullUpSheet: View {
             Capsule()
                 .fill(Color.primary.opacity(0.28))
                 .frame(width: 36, height: 5)
-                .padding(.top, 10)
-                .padding(.bottom, 8)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture { toggleDetent() }
 
             HStack(alignment: .firstTextBaseline) {
-                Text(title)
+                Text("Nearby · closest first")
                     .font(OnCutsFont.headlineSmall.weight(.semibold))
                     .foregroundStyle(Color.primary)
                     .lineLimit(1)
@@ -152,38 +162,48 @@ struct DiscoverOperatorsPullUpSheet: View {
                     Text("\(providers.count)")
                         .font(OnCutsFont.caption.weight(.semibold))
                         .foregroundStyle(Color.neutral500)
-                        .opacity(Double(openProgress))
+                        .monospacedDigit()
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 10)
+            .padding(.bottom, 12)
+            .opacity(Double(listProgress))
         }
         .frame(maxWidth: .infinity)
-        .padding(.bottom, 8)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(isOpen ? "Operators, open" : "Operators, closed")
-        .accessibilityHint(isOpen ? "Swipe down to close" : "Swipe up to open")
+        .accessibilityLabel("Nearby, closest first")
+        .accessibilityHint("Swipe to resize the list")
         .accessibilityAddTraits(.isButton)
-        .accessibilityAction(named: Text(isOpen ? "Close" : "Open")) {
-            settle(open: !isOpen)
+    }
+
+    private var mapPill: some View {
+        Button {
+            settle(.split)
+        } label: {
+            Text("Map")
+                .font(OnCutsFont.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.primary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color(.systemBackground), in: Capsule())
+                .shadow(color: .black.opacity(0.16), radius: 8, y: 2)
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Map")
+        .accessibilityHint("Returns to the split map and list")
     }
 
     private var sheetDragGesture: some Gesture {
-        DragGesture(minimumDistance: 6, coordinateSpace: .local)
+        DragGesture(minimumDistance: 8, coordinateSpace: .local)
             .onChanged { value in
                 let dx = abs(value.translation.width)
                 let dy = abs(value.translation.height)
-
                 if !isDragging {
-                    // Lock only on a clearly vertical drag. Horizontal carousel pans
-                    // share this gesture via simultaneousGesture and must not steal.
                     guard dy >= 10, dy > dx * 1.15 else { return }
                     isDragging = true
-                    dragStartHeight = sheetHeight > 1 ? sheetHeight : restingHeight
+                    dragStartHeight = sheetHeight > 1 ? sheetHeight : height(for: detent)
                 }
-
                 let proposed = dragStartHeight - value.translation.height
                 var transaction = Transaction(animation: nil)
                 transaction.disablesAnimations = true
@@ -192,76 +212,82 @@ struct DiscoverOperatorsPullUpSheet: View {
                 }
             }
             .onEnded { value in
-                let translationY = value.translation.height
-                let predictedY = value.predictedEndTranslation.height
-                let velocityY = value.velocity.height
                 let locked = isDragging
-                let movedSheet = abs(renderedSheetHeight - restingHeight) > 4
-
+                let movedSheet = abs(renderedSheetHeight - height(for: detent)) > 4
                 isDragging = false
-
-                // Do not settle from incidental vertical noise on a horizontal scroll.
-                // `clearSwipe` used to fire here and snap the sheet closed mid-pan.
                 guard locked || movedSheet else { return }
-
                 settle(
-                    open: resolvedOpen(
-                        translationY: translationY,
-                        predictedY: predictedY,
-                        velocityDownPositive: velocityY
+                    resolvedDetent(
+                        translationY: value.translation.height,
+                        velocityY: value.velocity.height
                     )
                 )
             }
     }
 
+    private func height(for detent: DiscoverNearbySheetDetent) -> CGFloat {
+        switch detent {
+        case .peek: return peekHeight
+        case .split: return splitHeight
+        case .full: return fullHeight
+        }
+    }
+
     private func rubberBand(_ proposed: CGFloat) -> CGFloat {
-        let minH = closedHeight
-        let maxH = openHeight
+        let minH = peekHeight
+        let maxH = fullHeight
         if proposed < minH {
-            let overflow = minH - proposed
-            return minH - overflow * 0.16
+            return minH - (minH - proposed) * 0.16
         }
         if proposed > maxH {
-            let overflow = proposed - maxH
-            return maxH + overflow * 0.12
+            return maxH + (proposed - maxH) * 0.12
         }
         return proposed
     }
 
-    /// Positive translationY / velocityY = finger moving down.
-    /// Translation direction wins over release-velocity flick — otherwise a swipe-up
-    /// that ends with a tiny downward lift incorrectly snaps closed.
-    private func resolvedOpen(
-        translationY: CGFloat,
-        predictedY: CGFloat,
-        velocityDownPositive: CGFloat
-    ) -> Bool {
-        let effectiveY: CGFloat = {
-            // Prefer predicted end when it amplifies the same direction.
-            if abs(predictedY) > abs(translationY),
-               (predictedY < 0) == (translationY < 0) || abs(translationY) < 8 {
-                return predictedY
-            }
-            return translationY
-        }()
-
-        // Any clear finger travel completes that direction.
-        if effectiveY < -4 { return true }
-        if effectiveY > 4 { return false }
-
-        // Near-zero travel: fling velocity decides.
-        if velocityDownPositive < -80 { return true }
-        if velocityDownPositive > 80 { return false }
-
-        // Still ambiguous: finish to the nearer detent.
-        let mid = (openHeight + closedHeight) * 0.5
-        return renderedSheetHeight >= mid
+    private func resolvedDetent(translationY: CGFloat, velocityY: CGFloat) -> DiscoverNearbySheetDetent {
+        let height = renderedSheetHeight
+        if translationY < -48 || velocityY < -700 {
+            return step(from: nearest(to: height), direction: -1)
+        }
+        if translationY > 48 || velocityY > 700 {
+            return step(from: nearest(to: height), direction: 1)
+        }
+        return nearest(to: height)
     }
 
-    private func settle(open: Bool, animated: Bool = true) {
-        let target = open ? openHeight : closedHeight
+    private func nearest(to height: CGFloat) -> DiscoverNearbySheetDetent {
+        let stops: [(DiscoverNearbySheetDetent, CGFloat)] = [
+            (.peek, peekHeight),
+            (.split, splitHeight),
+            (.full, fullHeight),
+        ]
+        return stops.min { abs($0.1 - height) < abs($1.1 - height) }?.0 ?? .split
+    }
+
+    /// Negative direction moves toward the full list.
+    private func step(from detent: DiscoverNearbySheetDetent, direction: Int) -> DiscoverNearbySheetDetent {
+        switch (detent, direction) {
+        case (.peek, -1): return .split
+        case (.split, -1): return .full
+        case (.full, 1): return .split
+        case (.split, 1): return .peek
+        default: return detent
+        }
+    }
+
+    private func toggleDetent() {
+        switch detent {
+        case .peek: settle(.split)
+        case .split: settle(.full)
+        case .full: settle(.split)
+        }
+    }
+
+    private func settle(_ next: DiscoverNearbySheetDetent, animated: Bool = true) {
+        let target = height(for: next)
         let apply = {
-            isOpen = open
+            detent = next
             sheetHeight = target
         }
         if animated {
@@ -271,8 +297,221 @@ struct DiscoverOperatorsPullUpSheet: View {
             transaction.disablesAnimations = true
             withTransaction(transaction, apply)
         }
-        if open {
+        onDetentChange(next)
+        if next != .peek {
             onOpened?()
         }
+    }
+}
+
+// MARK: - Nearby row
+
+private struct DiscoverNearbyOperatorRow: View {
+    let provider: ServiceProvider
+    let onTap: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button(action: onTap) {
+                HStack(spacing: 8) {
+                    AvatarView(
+                        imageUrl: provider.profileImageUrl,
+                        name: provider.businessName,
+                        size: 32
+                    )
+                    Text(provider.businessName)
+                        .font(OnCutsFont.bodyMedium.weight(.semibold))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                    Text(provider.providerKindDisplayName)
+                        .font(OnCutsFont.bodyMedium)
+                        .foregroundStyle(Color.neutral500)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+            }
+            .buttonStyle(.plain)
+
+            DiscoverNearbyWorkStrip(barberId: provider.id, onTap: onTap)
+
+            Button(action: onTap) {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text(DiscoverNearbyCopy.convenienceLine(for: provider))
+                        .font(OnCutsFont.bodyMedium.weight(.semibold))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    if let price = DiscoverNearbyCopy.priceRangeLabel(for: provider) {
+                        Text(price)
+                            .font(OnCutsFont.bodyMedium.weight(.semibold))
+                            .foregroundStyle(Color.primary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(DiscoverNearbyCopy.accessibilityLabel(for: provider))
+        .accessibilityAction { onTap() }
+    }
+}
+
+private struct DiscoverNearbyWorkStrip: View {
+    let barberId: String
+    let onTap: () -> Void
+
+    @State private var items: [OperatorPortfolioItem] = []
+    @State private var didLoad = false
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                if items.isEmpty {
+                    DiscoverNearbyEmptyWorkTile()
+                        .opacity(didLoad ? 1 : 0.45)
+                } else {
+                    ForEach(items) { item in
+                        Button(action: onTap) {
+                            DiscoverNearbyWorkTile(item: item)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.trailing, 36)
+        }
+        .scrollClipDisabled()
+        .padding(.trailing, -16)
+        .frame(height: Self.tileHeight)
+        .task(id: barberId) {
+            await loadLatest()
+        }
+    }
+
+    private static let tileWidth: CGFloat = 96
+    private static let tileHeight: CGFloat = 96 * 16 / 9
+
+    private func loadLatest() async {
+        do {
+            guard case .available(let preview) = try await OperatorPortfolioPreviewAPI.fetch(barberId: barberId) else {
+                items = []
+                didLoad = true
+                return
+            }
+            let withMedia = preview.items.filter { $0.tileURL != nil }
+            items = Array(withMedia.sorted { lhs, rhs in
+                let left = lhs.createdAt ?? .distantPast
+                let right = rhs.createdAt ?? .distantPast
+                if left != right { return left > right }
+                return lhs.sortOrder > rhs.sortOrder
+            }.prefix(4))
+            didLoad = true
+        } catch {
+            items = []
+            didLoad = true
+        }
+    }
+}
+
+private struct DiscoverNearbyEmptyWorkTile: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .strokeBorder(Color.primary.opacity(0.35), lineWidth: 1)
+            .background(Color.clear)
+            .overlay {
+                Text("No Work Attached")
+                    .font(OnCutsFont.caption.weight(.semibold))
+                    .foregroundStyle(Color.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(8)
+            }
+            .frame(width: 96, height: 96 * 16 / 9)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .accessibilityLabel("No Work Attached")
+    }
+}
+
+private struct DiscoverNearbyWorkTile: View {
+    let item: OperatorPortfolioItem
+
+    var body: some View {
+        ZStack {
+            AsyncImage(url: item.tileURL) { phase in
+                switch phase {
+                case .success(let image):
+                    image.resizable().scaledToFill()
+                default:
+                    Color.primary.opacity(0.06)
+                }
+            }
+            if item.isVideo {
+                Image(systemName: "play.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(7)
+                    .background(.black.opacity(0.45), in: Circle())
+            }
+        }
+        .frame(width: 96, height: 96 * 16 / 9)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+enum DiscoverNearbyCopy {
+    static func distanceLabel(for provider: ServiceProvider) -> String? {
+        guard let miles = provider.distanceMilesFromUser, miles >= 0, miles.isFinite else { return nil }
+        if miles < 10 {
+            return String(format: "%.1f mi", miles)
+        }
+        return String(format: "%.0f mi", miles)
+    }
+
+    static func priceRangeLabel(for provider: ServiceProvider) -> String? {
+        guard let range = provider.priceRange, range.max > 0 || range.min > 0 else { return nil }
+        return range.displayLabel
+    }
+
+    static func convenienceLine(for provider: ServiceProvider) -> String {
+        let time = MyBarbersDiscover.nextOpenDisplayString(for: provider)
+        if let distance = distanceLabel(for: provider) {
+            return "\(distance) · \(time)"
+        }
+        return time
+    }
+
+    static func pinCaption(for provider: ServiceProvider) -> String {
+        let time = compactPinTime(MyBarbersDiscover.nextOpenDisplayString(for: provider))
+        if let price = priceRangeLabel(for: provider) {
+            return "\(time) · \(price)"
+        }
+        return time
+    }
+
+    static func accessibilityLabel(for provider: ServiceProvider) -> String {
+        var parts = [provider.businessName, provider.providerKindDisplayName, convenienceLine(for: provider)]
+        if let price = priceRangeLabel(for: provider) {
+            parts.append(price)
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    /// Pin leads with the clock ("5:00pm · $30"), not the weekday.
+    static func compactPinTime(_ display: String) -> String {
+        let lower = display.lowercased()
+        if lower.hasPrefix("open now") { return "Now" }
+        let parts = display.split(separator: " ")
+        if let last = parts.last {
+            let token = String(last)
+            let clock = token.lowercased()
+            if clock.contains(":") || clock.hasSuffix("am") || clock.hasSuffix("pm") {
+                return token
+            }
+        }
+        return display
     }
 }

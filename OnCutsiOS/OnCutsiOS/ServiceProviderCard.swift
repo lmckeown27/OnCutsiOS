@@ -408,6 +408,8 @@ struct ServiceProvider: Identifiable, Codable {
     let specialty: String? // Provider kind for browse/card: "Operator", "Barber", "Beauty" (not individual services)
     /// DB `provider_type` key (`barber`, `beauty`) from `GET /barbers` — nil until Barber / Beauty is chosen.
     let providerType: String?
+    /// Operator specialty keys from `GET /barbers` (`specialties`), used to match the service catalog.
+    let offeredSpecialties: [String]?
     let services: [Service]? // Services offered with prices
     let availability: [DayAvailability]? // Weekly availability schedule
     let locations: [String]? // Service locations
@@ -436,6 +438,7 @@ struct ServiceProvider: Identifiable, Codable {
         category: ServiceCategory?,
         specialty: String?,
         providerType: String? = nil,
+        offeredSpecialties: [String]? = nil,
         services: [Service]?,
         availability: [DayAvailability]?,
         locations: [String]?,
@@ -459,6 +462,7 @@ struct ServiceProvider: Identifiable, Codable {
         self.category = category
         self.specialty = specialty
         self.providerType = providerType
+        self.offeredSpecialties = offeredSpecialties
         self.services = services
         self.availability = availability
         self.locations = locations
@@ -478,8 +482,26 @@ struct ServiceProvider: Identifiable, Codable {
         let id: String
         let name: String
         let price: Int
+        /// Unrounded menu price when the API sends cents (for example 25.50).
+        let exactPrice: Decimal?
         let duration: Int? // in minutes
         let description: String?
+
+        init(
+            id: String,
+            name: String,
+            price: Int,
+            duration: Int?,
+            description: String?,
+            exactPrice: Decimal? = nil
+        ) {
+            self.id = id
+            self.name = name
+            self.price = price
+            self.exactPrice = exactPrice
+            self.duration = duration
+            self.description = description
+        }
         
         var formattedPrice: String {
             "$\(price)"

@@ -125,16 +125,28 @@ private struct OnCutsServiceLocationDTO: Decodable, Sendable {
 /// Accepts JSON number as Int or Double.
 private struct FlexibleIntDecodable: Decodable, Sendable {
     let value: Int
+    let exact: Decimal
 
     init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
         if let i = try? c.decode(Int.self) {
             value = i
+            exact = Decimal(i)
         } else if let d = try? c.decode(Double.self) {
             value = Int(d.rounded())
+            exact = Decimal(d)
         } else if let s = try? c.decode(String.self),
-                  let parsed = Double(s.trimmingCharacters(in: .whitespacesAndNewlines)) {
-            value = Int(parsed.rounded())
+                  let parsed = Decimal(string: s.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            let number = NSDecimalNumber(decimal: parsed)
+            value = Int(number.rounding(accordingToBehavior: NSDecimalNumberHandler(
+                roundingMode: .plain,
+                scale: 0,
+                raiseOnExactness: false,
+                raiseOnOverflow: false,
+                raiseOnUnderflow: false,
+                raiseOnDivideByZero: false
+            )).intValue)
+            exact = parsed
         } else {
             throw DecodingError.dataCorruptedError(in: c, debugDescription: "Expected Int, Double, or numeric String for price")
         }
@@ -240,7 +252,8 @@ private extension OnCutsBarberDTO {
                     name: p.name,
                     price: p.price.value,
                     duration: p.durationMinutes,
-                    description: nil
+                    description: nil,
+                    exactPrice: p.price.exact
                 )
             }
             guard let mapped, !mapped.isEmpty else { return nil }
@@ -323,6 +336,7 @@ private extension OnCutsBarberDTO {
             category: category,
             specialty: specialtyString,
             providerType: resolvedProviderType,
+            offeredSpecialties: specialties?.compactMap { $0.trimmedNonEmpty },
             services: services,
             availability: mappedAvailability,
             locations: locations,

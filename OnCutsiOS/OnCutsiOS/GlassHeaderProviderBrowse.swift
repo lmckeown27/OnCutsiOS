@@ -760,16 +760,6 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         MyBarbersDiscover.resolvedSelectedArea(id: selectedDiscoverAreaId, from: discoverAreas)
     }
 
-    private var discoverListTitle: String {
-        if let selectedDiscoverArea {
-            return selectedDiscoverArea.title
-        }
-        if let miles = MyBarbersDiscover.visibleRadiusMilesLabel(for: discoverVisibleMapRegion) {
-            return "Within \(miles)"
-        }
-        return "Nearby"
-    }
-
     /// How far the utility pill travels off-screen — matched to booking clearance for a 1:1 handoff.
     private var utilityPillHideTravel: CGFloat {
         utilityPillHandoffClearance * (1 - utilityChromeProgress)
@@ -991,63 +981,69 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         EmptyView()
     }
 
-    /// Full-bleed Discover: map fills every pixel of the screen; operators live in a bottom pull-up carousel.
+    /// Full-bleed Discover: the map stays mounted; the nearby sheet moves between peek, split, and full list.
     @ViewBuilder
     private func discoverFullScreenRoot(safeAreaTop: CGFloat, safeAreaBottom: CGFloat) -> some View {
         let sheetBottomInset = max(hubBarOverlayBottomInset, safeAreaBottom > 0 ? 8 : 12)
         let pillMiles = isAdjustingRadius ? radiusEditingMiles : displayedMaxDistanceMiles
         let radiusMeters = max(1, pillMiles) * 1609.344
-        ZStack(alignment: .bottom) {
-            DiscoverServiceAreasMap(
-                areas: discoverAreas,
-                selectedAreaId: $selectedDiscoverAreaId,
-                browseCenter: effectiveDiscoverBrowseCenter,
-                browseRadiusMeters: radiusMeters,
-                fillsScreen: true,
-                onAreaSelected: {
-                    discoverOperatorsSheetReopenToken &+= 1
-                },
-                onVisibleRegionChange: { region in
-                    discoverVisibleMapRegion = region
-                    let heightMeters = region.span.latitudeDelta * 111_320
-                    if heightMeters > 400 {
-                        discoverMapViewportFilterEnabled = true
-                    }
-                },
-                onVisibleRadiusMilesChange: { miles in
-                    applyVisibleMapRadiusMilesToUtilityPill(miles)
-                }
-            )
+        let nearby = MyBarbersDiscover.sortDiscoverProviders(discoverListProviders)
+        let featuredOperatorId = nearby.first(where: \.hasFiniteServiceCoordinate)?.id
+        GeometryReader { geo in
+            ZStack(alignment: .bottom) {
+                DiscoverServiceAreasMap(
+                    areas: discoverAreas,
+                    selectedAreaId: $selectedDiscoverAreaId,
+                    browseCenter: effectiveDiscoverBrowseCenter,
+                    browseRadiusMeters: radiusMeters,
+                    fillsScreen: true,
+                    onAreaSelected: {
+                        discoverOperatorsSheetReopenToken &+= 1
+                    },
+                    onVisibleRegionChange: { region in
+                        discoverVisibleMapRegion = region
+                        let heightMeters = region.span.latitudeDelta * 111_320
+                        if heightMeters > 400 {
+                            discoverMapViewportFilterEnabled = true
+                        }
+                    },
+                    onVisibleRadiusMilesChange: { miles in
+                        applyVisibleMapRadiusMilesToUtilityPill(miles)
+                    },
+                    operators: nearby,
+                    featuredOperatorId: featuredOperatorId,
+                    onOperatorTap: onProviderTap
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea()
+                .allowsHitTesting(!isProviderDetailOverlayPresented)
+
+                DiscoverOperatorsPullUpSheet(
+                    providers: nearby,
+                    isLoading: isLoading,
+                    bottomInset: sheetBottomInset,
+                    containerHeight: geo.size.height,
+                    topChromeInset: safeAreaTop + sharedChromeTopPadding + Self.utilityPillMainBarHeight + 28,
+                    reopenToken: discoverOperatorsSheetReopenToken,
+                    preferredIsOpen: discoverPullUpPreferredOpen,
+                    onOpened: onDiscoverPullUpOpened,
+                    onProviderTap: onProviderTap
+                )
+                .allowsHitTesting(!isProviderDetailCapturingTouches)
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea()
-            .allowsHitTesting(!isProviderDetailOverlayPresented)
-
-            DiscoverOperatorsPullUpSheet(
-                title: discoverListTitle,
-                providers: discoverListProviders,
-                isLoading: isLoading,
-                showsDistance: showsDistanceOnDiscoverTiles,
-                // Guest sign-in chrome is taller than the hub bar; inset clears it without shrinking the carousel body.
-                bottomInset: sheetBottomInset,
-                reopenToken: discoverOperatorsSheetReopenToken,
-                preferredIsOpen: discoverPullUpPreferredOpen,
-                onOpened: onDiscoverPullUpOpened,
-                onProviderTap: onProviderTap
-            )
-            .allowsHitTesting(!isProviderDetailCapturingTouches)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea()
-        .overlay {
-            if isLoading && !discoverListProviders.isEmpty {
-                ProgressView()
-                    .scaleEffect(1.15)
-                    .tint(Color.oliveGreen)
-                    .padding(14)
-                    .background(.ultraThinMaterial, in: Circle())
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .padding(.top, safeAreaTop + 120)
-                    .allowsHitTesting(false)
+            .overlay {
+                if isLoading && !nearby.isEmpty {
+                    ProgressView()
+                        .scaleEffect(1.15)
+                        .tint(Color.oliveGreen)
+                        .padding(14)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .padding(.top, safeAreaTop + 120)
+                        .allowsHitTesting(false)
+                }
             }
         }
     }

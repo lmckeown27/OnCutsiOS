@@ -104,6 +104,13 @@ enum AppConfiguration: Sendable {
     /// Optional `campusId` query (UUID or slug) for `GET /barbers`.
     static let onCutsDefaultCampusId: String? = nil
 
+    /// `GET …/api/v1/barbers/:id/operator-portfolio/preview` — public Client View library.
+    static func urlOperatorPortfolioPreview(barberId: String) -> URL? {
+        let base = onCutsAPIv1BaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let encoded = barberId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? barberId
+        return URL(string: base + "/barbers/" + encoded + "/operator-portfolio/preview")
+    }
+
     /// `GET …/api/v1/barbers/:id` — production embeds `reviews` on this payload (Prisma/bookings-backed).
     static func urlOnCutsBarber(barberId: String) -> URL? {
         let base = onCutsAPIv1BaseURLString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))

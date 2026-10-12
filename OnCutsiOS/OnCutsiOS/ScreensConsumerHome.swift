@@ -1108,34 +1108,49 @@ private struct ServiceProviderGlassMatchedDetailOverlay: View {
     var onOverlayDidDisappear: (() -> Void)? = nil
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.38)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    guard capturesTouches else { return }
-                    onDismiss()
-                }
-                .transition(.opacity)
+        GeometryReader { geo in
+            let sideInset: CGFloat = .space4
+            let cornerButton: CGFloat = 32
+            let safeTop = geo.safeAreaInsets.top
+            let topGap = safeTop + cornerButton / 2
+            let bottomGap: CGFloat = 36
+            let sheetHeight = max(320, geo.size.height - topGap - bottomGap)
+            ZStack(alignment: .topLeading) {
+                Color.black.opacity(0.38)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        guard capturesTouches else { return }
+                        onDismiss()
+                    }
+                    .transition(.opacity)
 
-            ServiceProviderLiquidGlassDetailPanel(
-                provider: provider,
-                namespace: namespace,
-                applyGlassEffectMorphID: false,
-                applyGlassToEntirePanel: false,
-                usesInnerNavigationStack: true,
-                showsToolbarCloseButton: true,
-                sessionManager: sessionManager,
-                hasCurrentBooking: hasCurrentBooking,
-                onDismiss: onDismiss,
-                onShowLogin: onShowLogin,
-                onBookingRequestCompleted: onBookingRequestCompleted
-            )
-            .padding(.horizontal, .space4)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .transition(
-                .opacity.combined(with: .scale(scale: 0.96, anchor: .top))
-            )
+                ZStack(alignment: .topLeading) {
+                    ServiceProviderLiquidGlassDetailPanel(
+                        provider: provider,
+                        namespace: namespace,
+                        applyGlassEffectMorphID: false,
+                        applyGlassToEntirePanel: false,
+                        usesInnerNavigationStack: true,
+                        showsToolbarCloseButton: false,
+                        sessionManager: sessionManager,
+                        hasCurrentBooking: hasCurrentBooking,
+                        onDismiss: onDismiss,
+                        onShowLogin: onShowLogin,
+                        onBookingRequestCompleted: onBookingRequestCompleted
+                    )
+                    .frame(width: geo.size.width - sideInset * 2, height: sheetHeight)
+                    .padding(.leading, sideInset)
+                    .padding(.top, topGap)
+
+                    OperatorDetailEdgeCloseButton(action: onDismiss)
+                        .offset(y: safeTop)
+                }
+                .transition(
+                    .opacity.combined(with: .scale(scale: 0.96, anchor: .top))
+                )
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .allowsHitTesting(capturesTouches)
@@ -1327,7 +1342,7 @@ private struct ServiceProviderDetailPresentationOverlay: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let sheetHeight = geometry.size.height * 0.92
+            let sheetHeight = geometry.size.height * 0.84
             ZStack(alignment: .bottom) {
                 Color.black.opacity(0.45)
                     .ignoresSafeArea()
@@ -1346,10 +1361,15 @@ private struct ServiceProviderDetailPresentationOverlay: View {
                     onShowLogin: onShowLogin,
                     isPopupPresentation: true,
                     dismissesOnContentTap: false,
+                    showsToolbarCloseButton: false,
                     onBookingRequestCompleted: onBookingRequestCompleted
                 )
                 .frame(width: geometry.size.width, height: sheetHeight)
                 .liquidGlassSheetChrome(cornerRadius: 16)
+                .overlay(alignment: .topLeading) {
+                    OperatorDetailEdgeCloseButton(action: onDismiss)
+                        .offset(y: -16)
+                }
                 .shadow(color: .black.opacity(0.18), radius: 24, y: -4)
                 .transition(
                     .asymmetric(
@@ -1615,44 +1635,11 @@ struct ServiceProviderDetailSheet: View {
     private var detailChrome: some View {
         ScrollView {
                     VStack(alignment: .leading, spacing: 32) {
-                    // Header
-                    VStack(spacing: 20) {
-                        // Profile Image
-                        ServiceProviderProfileThumbnail(
-                            imageUrl: provider.profileImageUrl,
-                            businessName: provider.businessName,
-                            size: 120,
-                            cornerRadius: 16
-                        )
-                        
-                        // Name + distance — rating lives in its own section below (not stacked on the hero).
-                        VStack(spacing: 12) {
-                            Text(provider.businessName)
-                                .font(OnCutsFont.headlineLarge)
-                                .foregroundStyle(detailHeadlineColor)
-
-                            if let distanceLabel = provider.formattedDistanceFromUser {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "location.circle.fill")
-                                        .font(OnCutsFont.body(weight: .semibold))
-                                        .accessibilityHidden(true)
-                                    Text(distanceLabel)
-                                        .font(OnCutsFont.subheadline(weight: .semibold))
-                                }
-                                .foregroundStyle(detailSubtleColor)
-                                .accessibilityElement(children: .combine)
-                                .accessibilityLabel("About \(distanceLabel) from your location")
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    // Services stacked above About on the front of the detail card.
-                    ProviderDetailAboutServicesSection(
+                    OperatorClientPortfolioView(
                         provider: provider,
-                        detailHeadlineColor: detailHeadlineColor,
-                        detailEmphasisColor: detailEmphasisColor,
-                        useVibrantLiquidGlassStyling: useVibrantLiquidGlassStyling
+                        headlineColor: detailHeadlineColor,
+                        bodyColor: detailBodyColor,
+                        onBook: { handleBookNow() }
                     )
 
                     // Average stars only after at least one completed booking; hidden when preview rows exist below.
@@ -1678,155 +1665,6 @@ struct ServiceProviderDetailSheet: View {
 
                         Divider()
                     }
-                    
-                    // Availability (if available)
-                    if let availability = provider.availability, !availability.isEmpty {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Availability")
-                                .font(OnCutsFont.headlineSmall)
-                                .foregroundStyle(detailHeadlineColor)
-                            
-                            // First row: Days 0-3 (Mon-Thu)
-                            VStack(spacing: 12) {
-                                // Day labels
-                                HStack(spacing: 8) {
-                                    ForEach(availability.prefix(4)) { day in
-                                        Text(day.dayOfWeek)
-                                            .font(OnCutsFont.caption)
-                                            .fontWeight(.medium)
-                                            .foregroundStyle(detailEmphasisColor)
-                                            .frame(maxWidth: .infinity)
-                                    }
-                                }
-                                
-                                // Time slots for first 4 days
-                                let maxSlotsFirst = availability.prefix(4).map { $0.timeSlots.count }.max() ?? 0
-                                ForEach(0..<maxSlotsFirst, id: \.self) { slotIndex in
-                                    HStack(spacing: 8) {
-                                        ForEach(availability.prefix(4)) { day in
-                                            if slotIndex < day.timeSlots.count {
-                                                Text(day.timeSlots[slotIndex])
-                                                    .font(OnCutsFont.caption2)
-                                                    .foregroundStyle(detailBodyColor)
-                                                    .frame(maxWidth: .infinity)
-                                                    .multilineTextAlignment(.center)
-                                            } else {
-                                                Text("")
-                                                    .frame(maxWidth: .infinity)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // Second row: Days 4-6 (Fri-Sun)
-                            if availability.count > 4 {
-                                VStack(spacing: 12) {
-                                    // Day labels
-                                    HStack(spacing: 8) {
-                                        ForEach(availability.suffix(from: 4)) { day in
-                                            Text(day.dayOfWeek)
-                                                .font(OnCutsFont.caption)
-                                                .fontWeight(.medium)
-                                                .foregroundStyle(detailEmphasisColor)
-                                                .frame(maxWidth: .infinity)
-                                        }
-                                        // Add empty spacers to align with 4 columns
-                                        if availability.count < 7 {
-                                            ForEach(0..<(7 - availability.count), id: \.self) { _ in
-                                                Text("")
-                                                    .frame(maxWidth: .infinity)
-                                            }
-                                        }
-                                    }
-                                    
-                                    // Time slots for last 3 days
-                                    let maxSlotsSecond = availability.suffix(from: 4).map { $0.timeSlots.count }.max() ?? 0
-                                    ForEach(0..<maxSlotsSecond, id: \.self) { slotIndex in
-                                        HStack(spacing: 8) {
-                                            ForEach(availability.suffix(from: 4)) { day in
-                                                if slotIndex < day.timeSlots.count {
-                                                    Text(day.timeSlots[slotIndex])
-                                                        .font(OnCutsFont.caption2)
-                                                        .foregroundStyle(detailBodyColor)
-                                                        .frame(maxWidth: .infinity)
-                                                        .multilineTextAlignment(.center)
-                                                } else {
-                                                    Text("")
-                                                        .frame(maxWidth: .infinity)
-                                                }
-                                            }
-                                            // Add empty cells to align with 4 columns
-                                            if availability.count < 7 {
-                                                ForEach(0..<(7 - availability.count), id: \.self) { _ in
-                                                    Text("")
-                                                        .frame(maxWidth: .infinity)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Instagram (opens in Instagram or Safari)
-                    if let instagramURL = provider.instagramProfileURL {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Social")
-                                .font(OnCutsFont.headlineSmall)
-                                .foregroundStyle(detailHeadlineColor)
-
-                            Link(destination: instagramURL) {
-                                HStack(spacing: 14) {
-                                    Image("Instagram")
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 36, height: 36)
-                                        .accessibilityHidden(true)
-
-                                    Text(provider.instagramDisplayHandle)
-                                        .font(OnCutsFont.bodyMedium)
-                                        .foregroundStyle(detailHeadlineColor)
-
-                                    Spacer(minLength: 8)
-
-                                    Image(systemName: "arrow.up.right.circle.fill")
-                                        .font(OnCutsFont.title3)
-                                        .symbolRenderingMode(.hierarchical)
-                                        .foregroundStyle(detailBodyColor)
-                                        .accessibilityHidden(true)
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 14)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(useVibrantLiquidGlassStyling ? Color.primary.opacity(0.06) : Color.white.opacity(0.12))
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            }
-                            .modifier(InstagramLinkGlassButtonStyle(useVibrantLiquidGlassStyling: useVibrantLiquidGlassStyling))
-                            .accessibilityLabel("Instagram")
-                            .accessibilityValue(provider.instagramDisplayHandle)
-                        }
-                    }
-                    
-                    /*
-                    // Locations (if available)
-                    if let locations = provider.locations, !locations.isEmpty {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Locations")
-                                .font(OnCutsFont.headlineSmall)
-                                .foregroundStyle(detailHeadlineColor)
-                            
-                            VStack(alignment: .leading, spacing: 12) {
-                                ForEach(locations, id: \.self) { location in
-                                    Text(location)
-                                        .font(OnCutsFont.bodyMedium)
-                                        .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary : Color.white.opacity(0.9))
-                                }
-                            }
-                        }
-                    }
-                    */
                     
                     if frontendConfigStore.consumerHomeReviewsEnabled {
                         ProviderDetailReviewsPreviewSection(
@@ -1863,16 +1701,6 @@ struct ServiceProviderDetailSheet: View {
             }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .clipped()
-        .overlay(alignment: .topLeading) {
-            // Popup/overlay detail: keep a reliable top-leading close (toolbar alone can be
-            // clipped or obscured under Discover’s full-bleed chrome).
-            if showsToolbarCloseButton, isPopupPresentation {
-                closeButton
-                    .padding(.leading, 10)
-                    .padding(.top, 10)
-                    .zIndex(200)
-            }
-        }
         .navigationTitle(provider.businessName)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -1923,17 +1751,7 @@ struct ServiceProviderDetailSheet: View {
     }
 
     private var closeButton: some View {
-        Button {
-            onDismiss()
-        } label: {
-            Image(systemName: "xmark")
-                .font(OnCutsFont.system(size: 16, weight: .semibold))
-                .foregroundStyle(useVibrantLiquidGlassStyling ? Color.primary : Color.white.opacity(0.92))
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .modifier(ServiceProviderDetailCloseButtonStyle())
-        .accessibilityLabel("Close")
+        OperatorDetailEdgeCloseButton(action: onDismiss)
     }
     
     private func handleBookNow() {
@@ -1957,106 +1775,6 @@ struct ServiceProviderDetailSheet: View {
             isBookActionPending = true
             showingBookingFlow = true
         }
-    }
-}
-
-// MARK: - Provider detail: Services + About (stacked on front-facing card)
-
-/// Services listed first, About bio below — both visible when present.
-private struct ProviderDetailAboutServicesSection: View {
-    let provider: ServiceProvider
-    let detailHeadlineColor: Color
-    let detailEmphasisColor: Color
-    var useVibrantLiquidGlassStyling: Bool = false
-
-    private var bioText: String? {
-        provider.bio?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
-    }
-
-    private var orderedServices: [ServiceProvider.Service] {
-        provider.displayOrderedServices
-    }
-
-    private var hasAbout: Bool { bioText != nil }
-    private var hasServices: Bool { !orderedServices.isEmpty }
-
-    var body: some View {
-        Group {
-            if hasAbout || hasServices {
-                VStack(alignment: .leading, spacing: 20) {
-                    if hasServices {
-                        servicesSection
-                    }
-                    if hasAbout, let bioText {
-                        aboutSection(bioText)
-                    }
-                }
-            }
-        }
-    }
-
-    private var servicesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Services")
-                .font(OnCutsFont.headlineSmall)
-                .foregroundStyle(detailHeadlineColor)
-
-            VStack(spacing: 12) {
-                ForEach(orderedServices) { service in
-                    serviceRow(service)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .center)
-        }
-    }
-
-    private func isPrimaryHaircutService(_ service: ServiceProvider.Service) -> Bool {
-        service.name.trimmingCharacters(in: .whitespacesAndNewlines)
-            .caseInsensitiveCompare("Haircut") == .orderedSame
-    }
-
-    private func serviceRow(_ service: ServiceProvider.Service) -> some View {
-        let isPrimaryHaircut = isPrimaryHaircutService(service)
-        let nameFont = isPrimaryHaircut ? OnCutsFont.headlineSmall : OnCutsFont.bodySmall
-        let priceFont = isPrimaryHaircut
-            ? OnCutsFont.headlineSmall(weight: .medium)
-            : OnCutsFont.bodySmall(weight: .medium)
-
-        return HStack(spacing: 4) {
-            Text(service.name)
-                .font(nameFont)
-                .foregroundStyle(detailEmphasisColor)
-
-            Text("•")
-                .font(isPrimaryHaircut ? OnCutsFont.headlineSmall : OnCutsFont.bodySmall)
-                .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary.opacity(0.6) : Color.white.opacity(0.5))
-                .padding(.leading, 4)
-
-            Text(service.formattedPrice)
-                .font(priceFont)
-                .foregroundStyle(detailEmphasisColor)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private func aboutSection(_ bioText: String) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("About")
-                .font(OnCutsFont.headlineSmall)
-                .foregroundStyle(detailHeadlineColor)
-
-            Text(bioText)
-                .font(OnCutsFont.bodyMedium)
-                .foregroundStyle(useVibrantLiquidGlassStyling ? Color.secondary : Color.white.opacity(0.85))
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-}
-
-private extension String {
-    var nilIfEmpty: String? {
-        isEmpty ? nil : self
     }
 }
 
@@ -2322,23 +2040,20 @@ private struct StatItem: View {
     }
 }
 
-private struct InstagramLinkGlassButtonStyle: ViewModifier {
-    let useVibrantLiquidGlassStyling: Bool
-    
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, macOS 26.0, *), useVibrantLiquidGlassStyling {
-            content.buttonStyle(.glass)
-        } else {
-            content.buttonStyle(.plain)
-        }
-    }
-}
+private struct OperatorDetailEdgeCloseButton: View {
+    let action: () -> Void
 
-/// Plain style so the dismiss control stays glyph-only (no system glass / grey disc behind the X).
-private struct ServiceProviderDetailCloseButtonStyle: ViewModifier {
-    func body(content: Content) -> some View {
-        content.buttonStyle(.plain)
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "xmark")
+                .font(OnCutsFont.system(size: 13, weight: .bold))
+                .foregroundStyle(Color.primary)
+                .frame(width: 32, height: 32)
+                .background(Circle().fill(Color(.systemBackground)))
+                .shadow(color: .black.opacity(0.22), radius: 5, y: 1)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Close")
     }
 }
 

@@ -29,6 +29,11 @@ struct DiscoverServiceAreasMap: View {
     var onVisibleRegionChange: ((MKCoordinateRegion) -> Void)? = nil
     /// When the user pinches the map, report the new visible radius in miles so the utility pill stays linked.
     var onVisibleRadiusMilesChange: ((Double) -> Void)? = nil
+    /// Operators drawn as pins (thumbnail, next open time, starting price).
+    var operators: [ServiceProvider] = []
+    /// Dark pin: closest operator, or the one the client last featured.
+    var featuredOperatorId: String? = nil
+    var onOperatorTap: ((ServiceProvider) -> Void)? = nil
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -47,44 +52,27 @@ struct DiscoverServiceAreasMap: View {
     /// Until the pill-driven frame has settled, ignore MapKit’s initial camera (often ~world/100mi).
     @State private var hasCompletedInitialBrowseFrame = false
 
-    /// Unselected dashed rings: black on light maps, white on dark maps.
-    private var areaRingStrokeColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.92) : Color.black.opacity(0.88)
-    }
-
-    private var areaRingFillColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04)
-    }
-
     var body: some View {
-        MapReader { proxy in
-            Map(position: $cameraPosition, interactionModes: [.pan, .zoom]) {
+        Map(position: $cameraPosition, interactionModes: [.pan, .zoom]) {
                 if let browseCenter, let browseRadiusMeters, browseRadiusMeters > 0 {
                     MapCircle(center: browseCenter, radius: browseRadiusMeters)
-                        .foregroundStyle(Color.oliveGreen.opacity(0.12))
-                        .stroke(Color.oliveGreen.opacity(0.95), lineWidth: 2.5)
+                        .foregroundStyle(Color.oliveGreen.opacity(0.10))
+                        .stroke(
+                            Color.oliveGreen.opacity(0.9),
+                            style: StrokeStyle(lineWidth: 1.75, dash: [7, 5])
+                        )
                 }
 
-                ForEach(displayedClusters) { cluster in
-                    let coordinate = CLLocationCoordinate2D(
-                        latitude: cluster.latitude,
-                        longitude: cluster.longitude
-                    )
-                    let isSelected = isClusterSelected(cluster)
-
-                    MapCircle(center: coordinate, radius: cluster.radiusMeters)
-                        .foregroundStyle(
-                            isSelected ? Color.oliveGreen.opacity(0.16) : areaRingFillColor
-                        )
-                        .stroke(
-                            isSelected
-                                ? (colorScheme == .dark ? Color.white : Color.oliveGreen)
-                                : areaRingStrokeColor,
-                            style: StrokeStyle(
-                                lineWidth: isSelected ? 2.5 : (cluster.memberAreaIds.count > 1 ? 1.25 : 1),
-                                dash: cluster.memberAreaIds.count > 1 ? [8, 6] : [6, 5]
+                ForEach(operators) { provider in
+                    if let coordinate = provider.serviceCoordinate {
+                        Annotation("", coordinate: coordinate, anchor: .bottom) {
+                            DiscoverOperatorMapPin(
+                                provider: provider,
+                                isFeatured: provider.id == featuredOperatorId,
+                                onTap: { onOperatorTap?(provider) }
                             )
-                        )
+                        }
+                    }
                 }
 
                 // Native MapCircle pin — always paints with Map content (no MapProxy / Annotation).
@@ -113,16 +101,11 @@ struct DiscoverServiceAreasMap: View {
                 onVisibleRegionChange?(context.region)
                 publishVisibleRadiusMilesIfNeeded(from: context.region)
             }
-            .onTapGesture { position in
-                guard let coordinate = proxy.convert(position, from: .local) else { return }
-                selectCluster(containing: coordinate)
-            }
             .accessibilityElement(children: .contain)
             .onAppear {
                 rebuildClusters()
                 applyBrowseRadiusCamera(animated: false)
             }
-        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .modifier(DiscoverMapChromeClip(fillsScreen: fillsScreen))
         .ignoresSafeArea(edges: fillsScreen ? .all : [])
@@ -232,15 +215,6 @@ struct DiscoverServiceAreasMap: View {
         onVisibleRadiusMilesChange?(miles)
     }
 
-    private func isClusterSelected(_ cluster: DiscoverMapAreaCluster) -> Bool {
-        guard let selectedAreaId else { return false }
-        if selectedAreaId == cluster.id { return true }
-        if cluster.memberAreaIds.contains(selectedAreaId) { return true }
-        return cluster.memberAreaIds.contains { memberId in
-            MyBarbersDiscover.selectionContainsArea(selectionId: selectedAreaId, areaId: memberId)
-        }
-    }
-
     private func rebuildClusters() {
         let region = visibleRegion ?? fallbackRegionForClustering()
         refreshClusters(for: region)
@@ -288,36 +262,6 @@ struct DiscoverServiceAreasMap: View {
             latitudinalMeters: 12_000,
             longitudinalMeters: 12_000
         )
-    }
-
-    private func selectCluster(containing coordinate: CLLocationCoordinate2D) {
-        let tap = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        var best: (cluster: DiscoverMapAreaCluster, distance: CLLocationDistance)?
-        for cluster in displayedClusters {
-            let center = CLLocation(latitude: cluster.latitude, longitude: cluster.longitude)
-            let distance = tap.distance(from: center)
-            guard distance <= cluster.radiusMeters else { continue }
-            if let current = best {
-                if distance < current.distance {
-                    best = (cluster, distance)
-                }
-            } else {
-                best = (cluster, distance)
-            }
-        }
-        guard let best else { return }
-
-        if isClusterSelected(best.cluster) {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                selectedAreaId = nil
-            }
-            return
-        }
-
-        withAnimation(.easeInOut(duration: 0.2)) {
-            selectedAreaId = best.cluster.id
-        }
-        onAreaSelected?()
     }
 
     /// Frames the map so the visible radius matches the utility-pill miles.
@@ -432,6 +376,84 @@ private extension UIView {
     }
 }
 
+private struct DiscoverOperatorMapPin: View {
+    let provider: ServiceProvider
+    let isFeatured: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 4) {
+                HStack(spacing: 6) {
+                    pinThumbnail
+                    Text(DiscoverNearbyCopy.pinCaption(for: provider))
+                        .font(OnCutsFont.system(size: 11, weight: .semibold))
+                        .foregroundStyle(isFeatured ? Color.white : Color.black)
+                        .lineLimit(1)
+                }
+                .padding(.leading, 4)
+                .padding(.trailing, 8)
+                .padding(.vertical, 4)
+                .background(isFeatured ? Color.black : Color.white, in: Capsule())
+                .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+
+                Circle()
+                    .fill(isFeatured ? Color.black : Color.white)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(provider.businessName), \(DiscoverNearbyCopy.pinCaption(for: provider))")
+    }
+
+    private var pinThumbnail: some View {
+        DiscoverPinAvatar(imageUrl: provider.profileImageUrl)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Map annotations often drop `AsyncImage` loads. Fetch through the same URL resolver the rest of the app uses.
+private struct DiscoverPinAvatar: View {
+    let imageUrl: String?
+    @State private var image: UIImage?
+
+    var body: some View {
+        ZStack {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                OnCutsDefaultProfileAvatarGlyph(slotDiameter: 22)
+            }
+        }
+        .frame(width: 22, height: 22)
+        .clipShape(Circle())
+        .task(id: imageUrl ?? "") {
+            await load()
+        }
+    }
+
+    private func load() async {
+        guard let url = ProfileImageURLResolver.urlForAsyncImage(from: imageUrl) else {
+            image = nil
+            return
+        }
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            guard !Task.isCancelled,
+                  let http = response as? HTTPURLResponse,
+                  (200 ... 299).contains(http.statusCode),
+                  let loaded = UIImage(data: data)
+            else { return }
+            image = loaded
+        } catch {
+            image = nil
+        }
+    }
+}
+
 #else
 
 struct DiscoverServiceAreasMap: View {
@@ -443,6 +465,9 @@ struct DiscoverServiceAreasMap: View {
     var onAreaSelected: (() -> Void)? = nil
     var onVisibleRegionChange: ((MKCoordinateRegion) -> Void)? = nil
     var onVisibleRadiusMilesChange: ((Double) -> Void)? = nil
+    var operators: [ServiceProvider] = []
+    var featuredOperatorId: String? = nil
+    var onOperatorTap: ((ServiceProvider) -> Void)? = nil
 
     var body: some View {
         Rectangle()
