@@ -67,9 +67,75 @@ final class ProviderViewModel {
         selectedBrowseServiceNames = []
     }
 
+    private enum FetchOutcome {
+        case success([ServiceProvider])
+        case cancelled
+        case failed(Error)
+    }
+
+    /// Launch fires several loads at once (home task, session restore, location change). Only the newest may set non-success state.
+    private var loadGeneration = 0
+    /// Generation of the last list applied, so an older response never replaces a newer one.
+    private var appliedSuccessGeneration = 0
+    private var emptyRecoveryAttempts = 0
+    private static let maxEmptyRecoveryAttempts = 2
+
     /// Tries OnCutsModule `fetchBrowseProviders`, then raw `GET …/barbers`, then legacy `/providers/list`.
     func loadProviders(bearerToken: String?) async {
+        loadGeneration &+= 1
+        let generation = loadGeneration
         state = .loading
+
+        let outcome = await fetchProviders(bearerToken: bearerToken)
+
+        switch outcome {
+        case let .success(providers):
+            guard generation > appliedSuccessGeneration else { return }
+            appliedSuccessGeneration = generation
+            lastSuccessfulProviders = providers
+            state = .success(providers)
+            if !providers.isEmpty { emptyRecoveryAttempts = 0 }
+            prefetchProviderProfileImages(providers)
+        case .cancelled:
+            guard generation == loadGeneration else { return }
+            if !lastSuccessfulProviders.isEmpty {
+                state = .success(lastSuccessfulProviders)
+            } else if !scheduleEmptyRecovery(bearerToken: bearerToken) {
+                state = .idle
+            }
+        case let .failed(err):
+            guard generation == loadGeneration else { return }
+            if !lastSuccessfulProviders.isEmpty {
+                state = .success(lastSuccessfulProviders)
+                return
+            }
+            // Cold starts can fail once (GPS, network, server wake-up); retry quietly before showing an error.
+            if scheduleEmptyRecovery(bearerToken: bearerToken) { return }
+            #if DEBUG
+            print("❌ All provider sources failed: \(err.localizedDescription)")
+            #endif
+            AlertManager.shared.presentUserFriendlyMessage(for: err)
+            ProductionLogging.recordNonFatal(err, context: ["area": "providers_list"])
+            state = .failed(err.localizedDescription)
+        }
+    }
+
+    /// Retries a load that ended with nothing on screen. Returns `false` once attempts are used up.
+    private func scheduleEmptyRecovery(bearerToken: String?) -> Bool {
+        guard emptyRecoveryAttempts < Self.maxEmptyRecoveryAttempts else { return false }
+        emptyRecoveryAttempts += 1
+        let delaySeconds: Double = emptyRecoveryAttempts == 1 ? 1.5 : 4
+        let generation = loadGeneration
+        state = .loading
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delaySeconds))
+            guard let self, self.loadGeneration == generation, self.lastSuccessfulProviders.isEmpty else { return }
+            await self.loadProviders(bearerToken: bearerToken)
+        }
+        return true
+    }
+
+    private func fetchProviders(bearerToken: String?) async -> FetchOutcome {
 
         #if os(iOS)
         let coord: CLLocationCoordinate2D?
@@ -100,18 +166,10 @@ final class ProviderViewModel {
                 #if DEBUG
                 print("✅ Providers: \(providers.count) via OnCutsModule fetchBrowseProviders")
                 #endif
-                lastSuccessfulProviders = providers
-                state = .success(providers)
-                prefetchProviderProfileImages(providers)
-                return
+                return .success(providers)
             } catch {
                 if OnCutsRefreshCancellation.isBenignCancellation(error) {
-                    if !lastSuccessfulProviders.isEmpty {
-                        state = .success(lastSuccessfulProviders)
-                    } else {
-                        state = .idle
-                    }
-                    return
+                    return .cancelled
                 }
                 lastError = error
                 #if DEBUG
@@ -172,18 +230,10 @@ final class ProviderViewModel {
                 }
                 #endif
 
-                lastSuccessfulProviders = providers
-                state = .success(providers)
-                prefetchProviderProfileImages(providers)
-                return
+                return .success(providers)
             } catch {
                 if OnCutsRefreshCancellation.isBenignCancellation(error) {
-                    if !lastSuccessfulProviders.isEmpty {
-                        state = .success(lastSuccessfulProviders)
-                    } else {
-                        state = .idle
-                    }
-                    return
+                    return .cancelled
                 }
                 lastError = error
                 #if DEBUG
@@ -194,23 +244,9 @@ final class ProviderViewModel {
 
         let err = lastError ?? URLError(.cannotConnectToHost)
         if OnCutsRefreshCancellation.isBenignCancellation(err) {
-            if !lastSuccessfulProviders.isEmpty {
-                state = .success(lastSuccessfulProviders)
-            } else {
-                state = .idle
-            }
-            return
+            return .cancelled
         }
-        #if DEBUG
-        print("❌ All provider sources failed: \(err.localizedDescription)")
-        #endif
-        AlertManager.shared.presentUserFriendlyMessage(for: err)
-        ProductionLogging.recordNonFatal(err, context: ["area": "providers_list"])
-        if lastSuccessfulProviders.isEmpty {
-            state = .failed(err.localizedDescription)
-        } else {
-            state = .success(lastSuccessfulProviders)
-        }
+        return .failed(err)
     }
 
     private func decodeProviders(data: Data, source: ProviderFetchSource, url: URL, label: String) throws -> [ServiceProvider] {

@@ -8,6 +8,11 @@
 
 import SwiftUI
 
+extension Notification.Name {
+    /// Hub pager landed on Bookings. Only the Bookings tab refreshes; `consumerBookingsListShouldRefresh` also reloads the Home shell.
+    static let consumerBookingsTabDidBecomeVisible = Notification.Name("consumerBookingsTabDidBecomeVisible")
+}
+
 struct ConsumerBookingsHubView: View {
     let sessionManager: AppSessionManager
     let coordinator: MainCoordinator
@@ -29,15 +34,19 @@ struct ConsumerBookingsHubView: View {
     @State private var supplementalDetailRowsByNormalizedId: [String: ConsumerBookingSimpleRow] = [:]
     /// Cancels superseded follow-up depth reports so rapid reminder → detail → back cannot apply a stale count.
     @State private var navigationDepthFollowUpTask: Task<Void, Never>?
-    private var projection: ConsumerBookingsTimelineProjection {
-        ConsumerBookingsTimelineProjection.build(from: rows)
-    }
+    /// Derived from `rows` only when they change — the hub pager re-renders this tab on every swipe.
+    @State private var projection = ConsumerBookingsTimelineProjection.build(from: [])
+    @State private var hasActiveConsumerBooking = false
+    @State private var lastListReloadAt: Date?
+
+    /// Tab-entry refreshes inside this window reuse the list already on screen.
+    private static let tabEntryReloadMinimumInterval: TimeInterval = 15
 
     private var hasAnyBooking: Bool {
         !rows.isEmpty
     }
 
-    private var hasActiveConsumerBooking: Bool {
+    private static func computeHasActiveConsumerBooking(_ rows: [ConsumerBookingSimpleRow]) -> Bool {
         rows.contains { row in
             let u = row.status.uppercased().trimmingCharacters(in: .whitespacesAndNewlines)
             guard u == "PENDING" || u == "ACCEPTED" else { return false }
@@ -216,7 +225,9 @@ struct ConsumerBookingsHubView: View {
         #endif
         .task {
             async let configRefresh: Void = PlatformFrontendConfigStore.shared.refresh()
-            await reloadBookingsList()
+            if lastListReloadAt.map({ Date().timeIntervalSince($0) >= Self.tabEntryReloadMinimumInterval }) ?? true {
+                await reloadBookingsList()
+            }
             await configRefresh
         }
         .onReceive(NotificationCenter.default.publisher(for: .onCutsNavigateToBookingsAfterBookingRequest)) { notification in
@@ -227,6 +238,16 @@ struct ConsumerBookingsHubView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .consumerBookingsListShouldRefresh)) { _ in
             scheduleReloadBookingsList()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .consumerBookingsTabDidBecomeVisible)) { _ in
+            if let last = lastListReloadAt, Date().timeIntervalSince(last) < Self.tabEntryReloadMinimumInterval {
+                return
+            }
+            scheduleReloadBookingsList()
+        }
+        .onChange(of: rows, initial: true) { _, newRows in
+            projection = ConsumerBookingsTimelineProjection.build(from: newRows)
+            hasActiveConsumerBooking = Self.computeHasActiveConsumerBooking(newRows)
         }
         .onReceive(NotificationCenter.default.publisher(for: .onCutsNavigateToConsumerHomeAfterPayment)) { _ in
             detailNavigationPath = NavigationPath()
@@ -314,17 +335,24 @@ struct ConsumerBookingsHubView: View {
     @MainActor
     private func reloadBookingsList() async {
         guard sessionManager.isAuthenticated else { return }
-        isLoading = true
-        error = nil
-        defer { isLoading = false }
+        lastListReloadAt = Date()
+        // Only the empty state shows a spinner; toggling this with rows on screen just re-renders the tab twice.
+        let showsSpinner = rows.isEmpty
+        if showsSpinner { isLoading = true }
+        if error != nil { error = nil }
+        defer { if showsSpinner { isLoading = false } }
         do {
-            rows = try await ConsumerBookingsSimpleAPI.fetchConsumerBookings(
+            let fetched = try await ConsumerBookingsSimpleAPI.fetchConsumerBookings(
                 bearerToken: sessionManager.currentSession?.token,
                 consumerUserId: sessionManager.currentSession?.userId
             )
+            let previous = rows
+            if fetched != rows { rows = fetched }
             mergeSupplementalDetailRowsIntoListIfMissing()
             chatViewModel.syncPaymentTakeover(withBookings: rows)
-            timelineScrollEpoch += 1
+            if rows != previous || timelineScrollEpoch == 0 {
+                timelineScrollEpoch += 1
+            }
         } catch {
             if ConsumerBookingsSimpleAPI.isUnauthorizedHTTPError(error) {
                 await sessionManager.recoverSessionAfterUnauthorized()

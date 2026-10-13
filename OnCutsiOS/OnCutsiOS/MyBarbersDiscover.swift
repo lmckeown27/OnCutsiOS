@@ -325,8 +325,12 @@ enum MyBarbersDiscover {
     // MARK: - Discover sort
 
     static func sortDiscoverProviders(_ providers: [ServiceProvider], now: Date = Date()) -> [ServiceProvider] {
-        providers.sorted { a, b in
-            switch (a.distanceMilesFromUser, b.distanceMilesFromUser) {
+        // Next-open is computed once per operator, not once per comparison.
+        let keyed = providers.map { provider in
+            (provider: provider, nextOpen: nextOpenInfo(availability: provider.availability, now: now).sortMinutesFromNow)
+        }
+        return keyed.sorted { a, b in
+            switch (a.provider.distanceMilesFromUser, b.provider.distanceMilesFromUser) {
             case let (da?, db?) where abs(da - db) > 0.05:
                 return da < db
             case (_?, nil):
@@ -336,9 +340,7 @@ enum MyBarbersDiscover {
             default:
                 break
             }
-            let na = nextOpenInfo(availability: a.availability, now: now).sortMinutesFromNow
-            let nb = nextOpenInfo(availability: b.availability, now: now).sortMinutesFromNow
-            switch (na, nb) {
+            switch (a.nextOpen, b.nextOpen) {
             case let (la?, lb?) where la != lb:
                 return la < lb
             case (_?, nil):
@@ -346,9 +348,10 @@ enum MyBarbersDiscover {
             case (nil, _?):
                 return false
             default:
-                return a.businessName.localizedCaseInsensitiveCompare(b.businessName) == .orderedAscending
+                return a.provider.businessName.localizedCaseInsensitiveCompare(b.provider.businessName) == .orderedAscending
             }
         }
+        .map(\.provider)
     }
 
     // MARK: - Discover map areas
@@ -645,7 +648,18 @@ enum MyBarbersDiscover {
         let endMinutes: Int
     }
 
+    /// Slot strings repeat across operators and renders; parsing runs regexes, so keep each result.
+    private static var parsedDaySlotCache: [String: ParsedDaySlot?] = [:]
+
     private static func parseDaySlot(_ raw: String) -> ParsedDaySlot? {
+        if let cached = parsedDaySlotCache[raw] { return cached }
+        let parsed = parseDaySlotUncached(raw)
+        if parsedDaySlotCache.count > 2_000 { parsedDaySlotCache.removeAll() }
+        parsedDaySlotCache[raw] = parsed
+        return parsed
+    }
+
+    private static func parseDaySlotUncached(_ raw: String) -> ParsedDaySlot? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let parts = trimmed.split(separator: "-", maxSplits: 1).map {
             $0.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -721,22 +735,36 @@ enum MyBarbersDiscover {
         return String(format: "%d:%02d%@", h12, m, ampm)
     }
 
+    private static let isoFractionalParser: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let isoPlainParser: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    private static let utcFallbackParsers: [DateFormatter] = ["yyyy-MM-dd'T'HH:mm:ss.SSSZ", "yyyy-MM-dd'T'HH:mm:ssZ"].map { format in
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(secondsFromGMT: 0)
+        f.dateFormat = format
+        return f
+    }
+
     static func parseISODate(_ raw: String?) -> Date? {
         guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
             return nil
         }
-        let iso = ISO8601DateFormatter()
-        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = iso.date(from: raw) { return d }
-        iso.formatOptions = [.withInternetDateTime]
-        if let d = iso.date(from: raw) { return d }
-        let fallback = DateFormatter()
-        fallback.locale = Locale(identifier: "en_US_POSIX")
-        fallback.timeZone = TimeZone(secondsFromGMT: 0)
-        fallback.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
-        if let d = fallback.date(from: raw) { return d }
-        fallback.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
-        return fallback.date(from: raw)
+        if let d = isoFractionalParser.date(from: raw) { return d }
+        if let d = isoPlainParser.date(from: raw) { return d }
+        for parser in utcFallbackParsers {
+            if let d = parser.date(from: raw) { return d }
+        }
+        return nil
     }
 }
 

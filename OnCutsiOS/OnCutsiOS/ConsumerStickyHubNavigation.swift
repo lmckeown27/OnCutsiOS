@@ -2,8 +2,7 @@
 //  ConsumerStickyHubNavigation.swift
 //  OnCuts
 //
-//  Hub rail: cream bubble tracks `TabView` scroll, animates on tab taps, and can be dragged horizontally
-//  with haptics; icons flip to deep charcoal when the bubble centers on that segment.
+//  Hub tab bar: full-width bar with outlined icons that fill when selected; pages still swipe.
 //
 
 import SwiftUI
@@ -12,20 +11,14 @@ import UIKit
 #endif
 
 enum ConsumerStickyHubMetrics {
-    /// Expanded rail height (reference for layout).
-    static let chromeHeight: CGFloat = 54
-    /// Collapsed rail height when the user scrolls down.
-    static let minimizedChromeHeight: CGFloat = 38
-    /// Vertical scroll (points) to fully collapse the overlay bar.
+    /// Tab bar height above the home indicator.
+    static let chromeHeight: CGFloat = 49
+    /// Space between the icon row and the home indicator.
+    static let iconRowBottomLift: CGFloat = 20
+    /// Vertical scroll (points) to fully collapse the guest sign-in bar.
     static let collapseScrollDistance: CGFloat = 72
-    /// Extra scroll content padding so the last row clears the floating bar.
-    static let overlayContentBottomPadding: CGFloat = 76
-
-    static func overlayContentBottomInset(collapseProgress: CGFloat) -> CGFloat {
-        let expanded = overlayContentBottomPadding
-        let collapsed = minimizedChromeHeight + 16
-        return expanded - (expanded - collapsed) * min(1, max(0, collapseProgress))
-    }
+    /// Scroll content padding so the last row clears the tab bar.
+    static let overlayContentBottomPadding: CGFloat = chromeHeight + iconRowBottomLift
 }
 
 /// Named coordinate space for mapping finger position → tab progress on the rail.
@@ -113,10 +106,40 @@ extension Color {
 
 /// Tracks vertical scroll from hub tab content to collapse the floating navigation rail.
 struct OnCutsHubBarScrollOffsetHandler {
+    /// Stable box the shell keeps in `@State`. SwiftUI diffs environment values field by field (ignoring `Equatable`),
+    /// so fresh closures here would re-render every hub page on each shell render.
+    final class Relay {
+        var onOffsetChange: ((Int, CGFloat) -> Void)?
+        var onResyncLastSample: ((Int, CGFloat) -> Void)?
+
+        func updating(
+            onOffsetChange: @escaping (Int, CGFloat) -> Void,
+            onResyncLastSample: @escaping (Int, CGFloat) -> Void
+        ) -> OnCutsHubBarScrollOffsetHandler {
+            self.onOffsetChange = onOffsetChange
+            self.onResyncLastSample = onResyncLastSample
+            return OnCutsHubBarScrollOffsetHandler(relay: self)
+        }
+    }
+
+    private var relay: Relay?
+
     /// `pageIndex` matches hub `TabView` tags: 0 Home, 1 Messages, 2 Bookings, 3 Profile.
-    var onOffsetChange: ((Int, CGFloat) -> Void)? = nil
+    var onOffsetChange: ((Int, CGFloat) -> Void)? { relay?.onOffsetChange }
     /// UIKit resync after hub tab switches — only realigns the delta baseline (see ``OnCutsHubBarCollapseController/resyncLastOffsetY``).
-    var onResyncLastSample: ((Int, CGFloat) -> Void)? = nil
+    var onResyncLastSample: ((Int, CGFloat) -> Void)? { relay?.onResyncLastSample }
+
+    init() {}
+
+    private init(relay: Relay) {
+        self.relay = relay
+    }
+}
+
+extension OnCutsHubBarScrollOffsetHandler: Equatable {
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.relay === rhs.relay
+    }
 }
 
 private struct OnCutsHubBarScrollOffsetHandlerKey: EnvironmentKey {
@@ -245,419 +268,114 @@ private struct OnCutsNotificationNodePulseModifier: ViewModifier {
     }
 }
 
-// MARK: - Floating glass rail
+// MARK: - Tab bar
 
+/// Full-width bottom bar: outlined icons, filled when selected, profile photo on the Profile tab.
 struct ConsumerStickyHubBar: View {
     /// 0 = Home, 1 = Messages, 2 = Bookings, 3 = Profile — bound to the main hub `TabView`.
     @Binding var hubPageIndex: Int
 
-    /// UIKit scroll bridge + cream bubble driver (no SwiftUI layout during page swipes).
     #if os(iOS)
     var pagingCoordinator: HubPagingCoordinator
     #endif
 
     let unreadMessageCount: Int
     let upcomingBookingCount: Int
+    var profileImageURL: URL? = nil
 
     /// `animated` selects instant vs animated hub change in the parent (`navigateHubPage`).
     let onNavigateToPage: (Int, Bool) -> Void
 
-    /// During a programmatic snap, bubble tracks selection instead of a stale paging offset.
-    var bubbleAnchoredToPageIndex: Bool = false
-    /// 0 = fully expanded overlay; 1 = minimized while scrolling down page content.
-    var collapseProgress: CGFloat = 0
-    /// When `true`, hub scroll observation is suppressed in the parent to avoid `TabView` flicker during bubble drag.
-    @Binding var isHubBubbleDragging: Bool
-
-    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
-    #if os(iOS)
-    @Environment(\.scenePhase) private var scenePhase
-    #endif
-
-    @State private var isDraggingHubBubble = false
-    /// Visual “caught” state — squeeze + cream shadow while finger is on the rail drag.
-    @State private var isDragging = false
-    @State private var lastHapticTabDuringDrag: Int = -1
-    @State private var tapFlightWidthScale: CGFloat = 1
-    /// Throttled from UIKit scroll KVO — drives icon active tint only (not bubble layout).
-    @State private var iconScrollProgress: CGFloat = 0
-
-    private static let hubNavigateSpring = Animation.spring(response: 0.4, dampingFraction: 0.7)
-
-    private static let centerAlignmentSlop: CGFloat = 0.22
-    /// Minimum movement before a drag competes with taps (keeps icon buttons reliable).
-    private static let dragMinimumDistance: CGFloat = 12
-
-    private func bubbleMetrics(w: CGFloat, h: CGFloat) -> (segmentW: CGFloat, baseW: CGFloat) {
-        let segmentW = w / 4
-        let baseW = max(40, segmentW * 0.82)
-        return (segmentW, baseW)
-    }
-
-    private func bubbleCenterX(segmentW: CGFloat) -> CGFloat {
-        #if os(iOS)
-        if pagingCoordinator.isUserScrolling {
-            let p = CGFloat(hubPageIndex)
-            return p * segmentW + segmentW / 2
-        }
-        if isDraggingHubBubble {
-            let clamped = min(3, max(0, iconScrollProgress))
-            return clamped * segmentW + segmentW / 2
-        }
-        #endif
-        let p = CGFloat(hubPageIndex)
-        return p * segmentW + segmentW / 2
-    }
-
-    /// Maps normalized x in rail [0, width] → progress 0…3 (matches `location.x / width * 3` for four segments).
-    private func progressFromRailLocationX(_ x: CGFloat, railWidth: CGFloat) -> CGFloat {
-        guard railWidth > 1 else { return CGFloat(hubPageIndex) }
-        let clampedX = min(railWidth, max(0, x))
-        return min(3, max(0, (clampedX / railWidth) * 3))
-    }
-
-    /// Picks the tab whose segment has the largest horizontal overlap with the bubble; any positive overlap counts toward that tab.
-    private func tabIndexForBubbleOverlap(clampedProgress: CGFloat, segmentW: CGFloat, baseW: CGFloat) -> Int {
-        let clamped = min(3, max(0, clampedProgress))
-        #if os(iOS)
-        let metrics = HubBubbleLayout.metrics(
-            railWidth: segmentW * 4,
-            railHeight: 44,
-            progress: clamped,
-            widthScale: tapFlightWidthScale
-        )
-        let bubbleW = metrics.frame.width
-        let bubbleCenterX = metrics.centerX
-        let bubbleLeading = metrics.frame.minX
-        #else
-        let bubbleW = baseW * tapFlightWidthScale
-        let bubbleCenterX = clamped * segmentW + segmentW / 2
-        let bubbleLeading = bubbleCenterX - bubbleW / 2
-        #endif
-        let bubbleTrailing = bubbleLeading + bubbleW
-
-        var overlaps: [CGFloat] = []
-        overlaps.reserveCapacity(4)
-        for i in 0 ..< 4 {
-            let tabL = CGFloat(i) * segmentW
-            let tabR = CGFloat(i + 1) * segmentW
-            overlaps.append(max(0, min(bubbleTrailing, tabR) - max(bubbleLeading, tabL)))
-        }
-        guard let maxOverlap = overlaps.max(), maxOverlap > 0 else {
-            return min(3, max(0, Int(round(clamped))))
-        }
-        let tied = (0 ..< 4).filter { overlaps[$0] >= maxOverlap - 0.001 }
-        if tied.count == 1 { return tied[0] }
-        return tied.min(by: { a, b in
-            let ca = CGFloat(a) * segmentW + segmentW / 2
-            let cb = CGFloat(b) * segmentW + segmentW / 2
-            return abs(bubbleCenterX - ca) < abs(bubbleCenterX - cb)
-        })!
-    }
-
-    private func handleTabTap(index: Int) {
-        guard !isDraggingHubBubble else { return }
-        guard index != hubPageIndex else { return }
-        let from = hubPageIndex
-        let multiJump = abs(index - from) > 1
-        if accessibilityReduceMotion {
-            tapFlightWidthScale = 1
-            onNavigateToPage(index, false)
-            return
-        }
-        // Bubble “flight” width on multi-hop taps; parent `navigateHubPage` snaps multi-hop / rapid hops.
-        if multiJump {
-            var t = Transaction()
-            t.disablesAnimations = true
-            withTransaction(t) {
-                tapFlightWidthScale = 1.3
-            }
-            withAnimation(Self.hubNavigateSpring) {
-                tapFlightWidthScale = 1
-            }
-        }
-        // Icon taps always snap the pager instantly; bubble motion is handled in `navigateHubPage`.
-        onNavigateToPage(index, false)
-    }
-
-    #if os(iOS)
-    private static let selectionFeedback = UISelectionFeedbackGenerator()
-    #endif
-
-    private func prepareDragHaptics() {
-        #if os(iOS)
-        Self.selectionFeedback.prepare()
-        #endif
-    }
-
-    private func fireCrossingHaptic() {
-        #if os(iOS)
-        Self.selectionFeedback.selectionChanged()
-        Self.selectionFeedback.prepare()
-        #endif
-    }
-
     var body: some View {
-        hubBarChrome
-            .scaleEffect(1.0 - 0.12 * collapseProgress, anchor: .center)
-            .offset(y: 22 * collapseProgress)
-            .opacity(1.0 - 0.22 * collapseProgress)
-            .shadow(color: .black.opacity(0.18 * (1.0 - collapseProgress * 0.35)), radius: 14, y: 4)
-            .animation(.spring(response: 0.34, dampingFraction: 0.86), value: collapseProgress)
-        #if os(iOS)
-        .onChange(of: scenePhase) { _, phase in
-            guard phase == .active else { return }
-            isDraggingHubBubble = false
-            isDragging = false
-            isHubBubbleDragging = false
-            lastHapticTabDuringDrag = -1
-            tapFlightWidthScale = 1
-            pagingCoordinator.tapFlightWidthScale = 1
-            pagingCoordinator.manualDragProgress = nil
-        }
-        .onChange(of: hubPageIndex) { _, new in
-            iconScrollProgress = CGFloat(new)
-            #if os(iOS)
-            pagingCoordinator.animateBubbleToPage(new, animated: false)
-            #endif
-        }
-        .onChange(of: bubbleAnchoredToPageIndex) { _, anchored in
-            pagingCoordinator.bubbleAnchoredToPageIndex = anchored
-        }
-        .onChange(of: tapFlightWidthScale) { _, scale in
-            pagingCoordinator.tapFlightWidthScale = scale
-            pagingCoordinator.refreshBubbleLayout(animated: false)
-        }
-        #endif
-    }
-
-    /// Glass pill + icons + selection bubble — collapsed as one unit (background must not outlive icon scale).
-    private var hubBarChrome: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            let h = geo.size.height
-            let metrics = bubbleMetrics(w: w, h: h)
-            let segmentW = metrics.segmentW
-            let centerX = bubbleCenterX(segmentW: segmentW)
-
-            ZStack(alignment: .topLeading) {
-                #if os(iOS)
-                HubBubbleUIKitHost(
-                    coordinator: pagingCoordinator,
-                    railWidth: w,
-                    railHeight: h,
-                    visualScale: isDragging ? 0.9 : 1,
-                    dragGlow: isDragging
-                )
-                #else
-                let macBubble = HubBubbleLayout.metrics(
-                    railWidth: w,
-                    railHeight: h,
-                    progress: CGFloat(hubPageIndex)
-                )
-                RoundedRectangle(cornerRadius: macBubble.cornerRadius, style: .continuous)
-                    .fill(Color.onCutsNavigationHubCream)
-                    .frame(width: macBubble.frame.width, height: macBubble.frame.height)
-                    .offset(x: macBubble.frame.minX, y: macBubble.frame.minY)
-                    .allowsHitTesting(false)
-                #endif
-
-                HStack(spacing: 0) {
-                    hubSegment(
-                        index: 0,
-                        systemName: "house.fill",
-                        label: "Home",
-                        segmentW: segmentW,
-                        bubbleCenterX: centerX,
-                        badgeCount: 0,
-                        badgeKind: .none
-                    )
-                    hubSegment(
-                        index: 1,
-                        systemName: "bubble.left.and.bubble.right.fill",
-                        label: "Messages",
-                        segmentW: segmentW,
-                        bubbleCenterX: centerX,
-                        badgeCount: unreadMessageCount,
-                        badgeKind: .messages
-                    )
-                    hubSegment(
-                        index: 2,
-                        systemName: "calendar.badge.clock",
-                        label: "Bookings",
-                        segmentW: segmentW,
-                        bubbleCenterX: centerX,
-                        badgeCount: upcomingBookingCount,
-                        badgeKind: .bookings
-                    )
-                    hubSegment(
-                        index: 3,
-                        systemName: "person.fill",
-                        label: "Profile",
-                        segmentW: segmentW,
-                        bubbleCenterX: centerX,
-                        badgeCount: 0,
-                        badgeKind: .none
-                    )
-                }
-                .frame(width: w, height: h)
+        HStack(spacing: 0) {
+            tab(index: 0, label: "Home", badgeCount: 0, badgeNoun: nil) { selected in
+                symbol(selected ? "house.fill" : "house", selected: selected)
             }
-            .frame(width: w, height: h)
-            .coordinateSpace(name: ConsumerStickyHubRailSpace.rail)
-            .contentShape(Rectangle())
-            .onAppear {
-                #if os(iOS)
-                iconScrollProgress = CGFloat(hubPageIndex)
-                pagingCoordinator.hubPageIndex = hubPageIndex
-                pagingCoordinator.bubbleAnchoredToPageIndex = bubbleAnchoredToPageIndex
-                pagingCoordinator.tapFlightWidthScale = tapFlightWidthScale
-                pagingCoordinator.bubbleVisualScale = isDragging ? 0.9 : 1
-                pagingCoordinator.bubbleDragGlow = isDragging
-                pagingCoordinator.onScrollSettled = { progress in
-                    iconScrollProgress = progress
-                }
-                pagingCoordinator.onIconScrollProgress = { progress in
-                    iconScrollProgress = progress
-                }
-                pagingCoordinator.syncBubbleAfterHubBarMount(page: hubPageIndex)
-                #endif
+            tab(index: 1, label: "Messages", badgeCount: unreadMessageCount, badgeNoun: "unread") { selected in
+                symbol(selected ? "message.fill" : "message", selected: selected)
             }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: Self.dragMinimumDistance, coordinateSpace: .named(ConsumerStickyHubRailSpace.rail))
-                    .onChanged { value in
-                        if !isHubBubbleDragging {
-                            isHubBubbleDragging = true
-                        }
-                        if !isDragging {
-                            isDragging = true
-                        }
-                        if !isDraggingHubBubble {
-                            prepareDragHaptics()
-                            lastHapticTabDuringDrag = tabIndexForBubbleOverlap(
-                                clampedProgress: iconScrollProgress,
-                                segmentW: segmentW,
-                                baseW: metrics.baseW
-                            )
-                            isDraggingHubBubble = true
-                        }
-                        let railProgress = progressFromRailLocationX(value.location.x, railWidth: w)
-                        #if os(iOS)
-                        pagingCoordinator.manualDragProgress = railProgress
-                        pagingCoordinator.bubbleVisualScale = 0.9
-                        pagingCoordinator.bubbleDragGlow = true
-                        pagingCoordinator.refreshBubbleLayout(animated: false)
-                        #endif
-                        iconScrollProgress = railProgress
-                        let dominantTab = tabIndexForBubbleOverlap(clampedProgress: railProgress, segmentW: segmentW, baseW: metrics.baseW)
-                        if dominantTab != lastHapticTabDuringDrag {
-                            lastHapticTabDuringDrag = dominantTab
-                            fireCrossingHaptic()
-                        }
-                    }
-                    .onEnded { value in
-                        defer {
-                            isHubBubbleDragging = false
-                            isDragging = false
-                            #if os(iOS)
-                            pagingCoordinator.manualDragProgress = nil
-                            pagingCoordinator.bubbleVisualScale = 1
-                            pagingCoordinator.bubbleDragGlow = false
-                            #endif
-                        }
-                        guard isDraggingHubBubble else { return }
-                        let railProgress = progressFromRailLocationX(value.location.x, railWidth: w)
-                        let snapped = tabIndexForBubbleOverlap(clampedProgress: railProgress, segmentW: segmentW, baseW: metrics.baseW)
-                        isDraggingHubBubble = false
-                        lastHapticTabDuringDrag = -1
-                        onNavigateToPage(snapped, false)
-                    }
-            )
+            tab(index: 2, label: "Bookings", badgeCount: upcomingBookingCount, badgeNoun: "upcoming") { selected in
+                // No filled calendar glyph exists; the circle variant draws smaller, so weight marks selection instead.
+                symbol("calendar", selected: selected)
+            }
+            tab(index: 3, label: "Profile", badgeCount: 0, badgeNoun: nil) { selected in
+                ConsumerHubProfileTabAvatar(url: profileImageURL, isSelected: selected)
+            }
         }
-        .frame(height: 44 - 8 * collapseProgress)
-        .padding(.horizontal, 10 - 3 * collapseProgress)
-        .padding(.vertical, 5 - 2 * collapseProgress)
-        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: collapseProgress)
+        .frame(height: ConsumerStickyHubMetrics.chromeHeight)
+        .padding(.bottom, ConsumerStickyHubMetrics.iconRowBottomLift)
+        .frame(maxWidth: .infinity)
         .background {
-            Capsule(style: .continuous)
-                .fill(.ultraThinMaterial)
+            Color.onCutsShellBackground
+                .ignoresSafeArea(edges: .bottom)
         }
-        .overlay {
-            Capsule(style: .continuous)
-                .stroke(Color.onCutsShellGlassStroke, lineWidth: 1)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.primary.opacity(0.12))
+                .frame(height: 0.5)
         }
     }
 
-    private func iconIsDeepCharcoal(index: Int, bubbleCenterX: CGFloat, segmentW: CGFloat) -> Bool {
-        #if os(iOS)
-        // Only crossfade from bubble overlap while swiping pages or dragging the rail; otherwise pin to selection
-        // so utility-pill search / layout passes cannot snap `iconScrollProgress` and invert icon colors.
-        if !isDraggingHubBubble && !pagingCoordinator.isUserScrolling {
-            return index == hubPageIndex
-        }
-        #endif
-        guard segmentW > 8 else { return index == hubPageIndex }
-        let segmentCenterX = CGFloat(index) * segmentW + segmentW / 2
-        return abs(bubbleCenterX - segmentCenterX) <= segmentW * Self.centerAlignmentSlop
+    private func symbol(_ name: String, selected: Bool) -> some View {
+        Image(systemName: name)
+            .font(OnCutsFont.system(size: 24, weight: selected ? .semibold : .regular))
+            .foregroundStyle(Color.primary)
     }
 
-    private enum HubSegmentBadgeKind {
-        case none
-        case messages
-        case bookings
-    }
-
-    @ViewBuilder
-    private func hubSegment(
+    private func tab<Icon: View>(
         index: Int,
-        systemName: String,
         label: String,
-        segmentW: CGFloat,
-        bubbleCenterX: CGFloat,
         badgeCount: Int,
-        badgeKind: HubSegmentBadgeKind
+        badgeNoun: String?,
+        @ViewBuilder icon: (Bool) -> Icon
     ) -> some View {
-        let tabActive = iconIsDeepCharcoal(index: index, bubbleCenterX: bubbleCenterX, segmentW: segmentW)
-        let showNotificationNode = badgeCount > 0 && (badgeKind == .messages || badgeKind == .bookings)
-        Button {
-            handleTabTap(index: index)
+        let selected = index == hubPageIndex
+        return Button {
+            guard index != hubPageIndex else { return }
+            onNavigateToPage(index, false)
         } label: {
-            Image(systemName: systemName)
-                .font(OnCutsFont.system(size: 22, weight: .semibold))
-                .foregroundStyle(
-                    tabActive
-                        ? Color.onCutsHubDeepCharcoal
-                        : Color.onCutsNavigationHubIconInactive
-                )
+            icon(selected)
+                .frame(width: 30, height: 30)
                 .overlay(alignment: .topTrailing) {
-                    if showNotificationNode {
-                        OnCutsTabNotificationNode(isTabActive: tabActive)
-                            .offset(x: 5, y: -5)
+                    if badgeCount > 0 {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 8, height: 8)
+                            .offset(x: 3, y: -1)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
-                .padding(.vertical, 4)
         }
         .buttonStyle(.plain)
-        .frame(width: segmentW)
-        .frame(maxHeight: .infinity)
-        .contentShape(Rectangle())
-        .accessibilityLabel(accessibilityLabel(for: label, badgeCount: badgeCount, badgeKind: badgeKind))
+        .accessibilityLabel(badgeCount > 0 && badgeNoun != nil ? "\(label), \(badgeCount) \(badgeNoun!)" : label)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
+}
 
-    private func accessibilityLabel(for title: String, badgeCount: Int, badgeKind: HubSegmentBadgeKind) -> String {
-        guard badgeCount > 0 else { return title }
-        switch badgeKind {
-        case .none:
-            return title
-        case .messages:
-            return "\(title), \(badgeCount) unread"
-        case .bookings:
-            return "\(title), \(badgeCount) upcoming"
+private struct ConsumerHubProfileTabAvatar: View {
+    let url: URL?
+    let isSelected: Bool
+
+    var body: some View {
+        AsyncImage(url: url) { phase in
+            if let image = phase.image {
+                image.resizable().scaledToFill()
+            } else {
+                Image(systemName: isSelected ? "person.crop.circle.fill" : "person.crop.circle")
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(Color.primary)
+            }
+        }
+        .frame(width: 26, height: 26)
+        .clipShape(Circle())
+        .padding(2)
+        .overlay {
+            if isSelected {
+                Circle().stroke(Color.primary, lineWidth: 1.5)
+            }
         }
     }
 }
 
-#if os(iOS)
-// HubBubbleUIKitHost + HubPagingCoordinator live in HubPagingCoordinator.swift
-#endif

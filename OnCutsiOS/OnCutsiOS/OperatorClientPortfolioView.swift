@@ -77,7 +77,7 @@ struct OperatorClientPortfolioView: View {
                     Link(destination: url) {
                         Text(profile.instagramDisplayHandle)
                             .font(OnCutsFont.caption.weight(.semibold))
-                            .foregroundStyle(Color.oliveGreen)
+                            .foregroundStyle(Color(hex: "#8A3AB9"))
                             .lineLimit(1)
                     }
                 }

@@ -25,6 +25,12 @@ struct DiscoverOperatorsPullUpSheet: View {
     var reopenToken: Int = 0
     /// Increment to return from the full list to the split stop.
     var collapseToSplitToken: Int = 0
+    /// Increment to open the full list (e.g. when search gains focus).
+    var expandToFullToken: Int = 0
+    /// Search and tags, shown under the title. Kept out of the drag area so the tag strip can scroll sideways.
+    var controls: AnyView? = nil
+    /// Browse location control; replaces the title row. Outside the drag area so its field and toggle stay interactive.
+    var location: AnyView? = nil
     var preferredIsOpen: Bool? = nil
     var onOpened: (() -> Void)? = nil
     var onDetentChange: (DiscoverNearbySheetDetent) -> Void = { _ in }
@@ -35,13 +41,24 @@ struct DiscoverOperatorsPullUpSheet: View {
     @State private var dragStartHeight: CGFloat = 0
     @State private var isDragging: Bool = false
 
-    private var peekHeight: CGFloat { 58 + bottomInset }
+    private var peekHeight: CGFloat { Self.peekHeight(bottomInset: bottomInset) }
     private var splitHeight: CGFloat {
-        let proposed = 420 + bottomInset
-        return min(max(peekHeight + 120, proposed), fullHeight)
+        Self.splitHeight(bottomInset: bottomInset, containerHeight: containerHeight, topChromeInset: topChromeInset)
     }
     private var fullHeight: CGFloat {
-        max(peekHeight + 160, containerHeight - topChromeInset)
+        Self.fullHeight(bottomInset: bottomInset, containerHeight: containerHeight, topChromeInset: topChromeInset)
+    }
+
+    static func peekHeight(bottomInset: CGFloat) -> CGFloat { 58 + bottomInset }
+
+    static func splitHeight(bottomInset: CGFloat, containerHeight: CGFloat, topChromeInset: CGFloat) -> CGFloat {
+        let proposed = 420 + bottomInset
+        let full = fullHeight(bottomInset: bottomInset, containerHeight: containerHeight, topChromeInset: topChromeInset)
+        return min(max(peekHeight(bottomInset: bottomInset) + 120, proposed), full)
+    }
+
+    static func fullHeight(bottomInset: CGFloat, containerHeight: CGFloat, topChromeInset: CGFloat) -> CGFloat {
+        max(peekHeight(bottomInset: bottomInset) + 160, containerHeight - topChromeInset)
     }
 
     private var renderedSheetHeight: CGFloat {
@@ -62,6 +79,27 @@ struct DiscoverOperatorsPullUpSheet: View {
         VStack(spacing: 0) {
             header
                 .highPriorityGesture(sheetDragGesture)
+
+            if let location {
+                HStack(spacing: 10) {
+                    location
+                    operatorCount
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+                .opacity(Double(listProgress))
+                .allowsHitTesting(listProgress > 0.55 && !isDragging)
+                // Place suggestions drop down over the controls and list below.
+                .zIndex(2)
+            }
+
+            if let controls {
+                controls
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+                    .opacity(Double(listProgress))
+                    .allowsHitTesting(listProgress > 0.55 && !isDragging)
+            }
 
             Group {
                 if isLoading && providers.isEmpty {
@@ -90,6 +128,7 @@ struct DiscoverOperatorsPullUpSheet: View {
                         .padding(.bottom, bottomInset + 12)
                     }
                     .scrollDisabled(isDragging)
+                    .scrollDismissesKeyboard(.immediately)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -136,6 +175,9 @@ struct DiscoverOperatorsPullUpSheet: View {
         .onChange(of: collapseToSplitToken) { _, _ in
             settle(.split)
         }
+        .onChange(of: expandToFullToken) { _, _ in
+            settle(.full)
+        }
         .onChange(of: preferredIsOpen) { _, preferred in
             guard let preferred else { return }
             settle(preferred ? .split : .peek)
@@ -152,29 +194,36 @@ struct DiscoverOperatorsPullUpSheet: View {
                 .contentShape(Rectangle())
                 .onTapGesture { toggleDetent() }
 
-            HStack(alignment: .firstTextBaseline) {
-                Text("Nearby · closest first")
-                    .font(OnCutsFont.headlineSmall.weight(.semibold))
-                    .foregroundStyle(Color.primary)
-                    .lineLimit(1)
-                Spacer(minLength: 8)
-                if !providers.isEmpty {
-                    Text("\(providers.count)")
-                        .font(OnCutsFont.caption.weight(.semibold))
-                        .foregroundStyle(Color.neutral500)
-                        .monospacedDigit()
+            if location == nil {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Nearby · closest first")
+                        .font(OnCutsFont.headlineSmall.weight(.semibold))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    operatorCount
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+                .opacity(Double(listProgress))
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 12)
-            .opacity(Double(listProgress))
         }
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Nearby, closest first")
+        .accessibilityLabel(location == nil ? "Nearby, closest first" : "Nearby operators")
         .accessibilityHint("Swipe to resize the list")
         .accessibilityAddTraits(.isButton)
+    }
+
+    @ViewBuilder
+    private var operatorCount: some View {
+        if !providers.isEmpty {
+            Text("\(providers.count)")
+                .font(OnCutsFont.caption.weight(.semibold))
+                .foregroundStyle(Color.neutral500)
+                .monospacedDigit()
+        }
     }
 
     private var mapPill: some View {

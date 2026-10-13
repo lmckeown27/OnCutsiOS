@@ -54,11 +54,11 @@ enum BookingNavigationDestination: Hashable {
 enum BookingPacificSchedule {
     static let pacificTimeZone = TimeZone(identifier: "America/Los_Angeles")!
 
-    static var pacificCalendar: Calendar {
+    static let pacificCalendar: Calendar = {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = pacificTimeZone
         return cal
-    }
+    }()
 
     /// Start of the Pacific calendar day containing `date`.
     static func pacificStartOfDay(for date: Date) -> Date {
@@ -133,10 +133,7 @@ enum BookingPacificSchedule {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "Time TBD" }
         guard let instant = parseScheduledInstantForDisplay(trimmed) else { return trimmed }
-        let out = DateFormatter()
-        out.locale = Locale(identifier: "en_US_POSIX")
-        out.timeZone = pacificTimeZone
-        out.dateFormat = fullMonthName ? "EEEE, MMMM d 'at' h:mm a" : "EEEE, MMM d 'at' h:mm a"
+        let out = fullMonthName ? fullScheduledTimeFormatter : abbreviatedScheduledTimeFormatter
         var s = out.string(from: instant)
         s = s.replacingOccurrences(of: "AM", with: "am")
         s = s.replacingOccurrences(of: "PM", with: "pm")
@@ -149,11 +146,7 @@ enum BookingPacificSchedule {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         guard let instant = parseScheduledInstantForDisplay(trimmed) else { return nil }
-        let out = DateFormatter()
-        out.locale = Locale(identifier: "en_US_POSIX")
-        out.timeZone = pacificTimeZone
-        out.dateFormat = "MMM d · h:mm a"
-        var s = out.string(from: instant)
+        var s = compactScheduledTimeFormatter.string(from: instant)
         s = s.replacingOccurrences(of: "AM", with: "am")
         s = s.replacingOccurrences(of: "PM", with: "pm")
         return s.trimmingCharacters(in: .whitespaces)
@@ -163,26 +156,68 @@ enum BookingPacificSchedule {
         parseAPIInstant(trimmed)
     }
 
+    private static func pacificFormatter(_ format: String, locale: Locale) -> DateFormatter {
+        let f = DateFormatter()
+        f.locale = locale
+        f.timeZone = pacificTimeZone
+        f.dateFormat = format
+        return f
+    }
+
+    private static let fullScheduledTimeFormatter = pacificFormatter("EEEE, MMMM d 'at' h:mm a", locale: Locale(identifier: "en_US_POSIX"))
+    private static let abbreviatedScheduledTimeFormatter = pacificFormatter("EEEE, MMM d 'at' h:mm a", locale: Locale(identifier: "en_US_POSIX"))
+    private static let compactScheduledTimeFormatter = pacificFormatter("MMM d · h:mm a", locale: Locale(identifier: "en_US_POSIX"))
+    private static let pacificTimeWithMinutesFormatter = pacificFormatter("h:mm a", locale: .autoupdatingCurrent)
+    private static let abbreviatedPacificDayFormatter = pacificFormatter("E, MMM d", locale: .autoupdatingCurrent)
+    private static let abbreviatedPacificDayWithTimeFormatter = pacificFormatter("E, MMM d · h:mm a", locale: .autoupdatingCurrent)
+
+    private static let isoFractionalParser: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let isoPlainParser: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    private static let isoPacificWallClockParser: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withFullDate, .withTime, .withColonSeparatorInTime]
+        f.timeZone = pacificTimeZone
+        return f
+    }()
+
+    private static let postgresParsers: [DateFormatter] = ["yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss"].map { format in
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = pacificTimeZone
+        f.dateFormat = format
+        return f
+    }
+
+    /// Timeline sorts and segment checks parse the same few strings on every render; formatter setup dominated the cost.
+    private static var parsedInstantCache: [String: Date?] = [:]
+
     /// Single parser for API `scheduledTime` strings (UTC `Z`, fractional seconds, or Pacific wall-clock without offset).
     static func parseAPIInstant(_ raw: String) -> Date? {
+        if let cached = parsedInstantCache[raw] { return cached }
+        let parsed = parseAPIInstantUncached(raw)
+        if parsedInstantCache.count > 1_000 { parsedInstantCache.removeAll() }
+        parsedInstantCache[raw] = parsed
+        return parsed
+    }
+
+    private static func parseAPIInstantUncached(_ raw: String) -> Date? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        let isoFrac = ISO8601DateFormatter()
-        isoFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = isoFrac.date(from: trimmed) { return d }
-        let isoPlain = ISO8601DateFormatter()
-        isoPlain.formatOptions = [.withInternetDateTime]
-        if let d = isoPlain.date(from: trimmed) { return d }
-        let pacificFull = ISO8601DateFormatter()
-        pacificFull.formatOptions = [.withFullDate, .withTime, .withColonSeparatorInTime]
-        pacificFull.timeZone = pacificTimeZone
-        if let d = pacificFull.date(from: trimmed) { return d }
-        let pg = DateFormatter()
-        pg.locale = Locale(identifier: "en_US_POSIX")
-        pg.timeZone = pacificTimeZone
-        for format in ["yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss"] {
-            pg.dateFormat = format
-            if let d = pg.date(from: trimmed) { return d }
+        if let d = isoFractionalParser.date(from: trimmed) { return d }
+        if let d = isoPlainParser.date(from: trimmed) { return d }
+        if let d = isoPacificWallClockParser.date(from: trimmed) { return d }
+        for parser in postgresParsers {
+            if let d = parser.date(from: trimmed) { return d }
         }
         return nil
     }
@@ -210,10 +245,15 @@ enum BookingPacificSchedule {
 
     /// Wall-clock label that always includes minutes (e.g. `9:07 am`), for booking detail and lists.
     static func displayTimeWithMinutes(from date: Date, timeZone: TimeZone = pacificTimeZone) -> String {
-        let out = DateFormatter()
-        out.locale = Locale.current
-        out.timeZone = timeZone
-        out.dateFormat = "h:mm a"
+        let out: DateFormatter
+        if timeZone == pacificTimeZone {
+            out = pacificTimeWithMinutesFormatter
+        } else {
+            out = DateFormatter()
+            out.locale = Locale.current
+            out.timeZone = timeZone
+            out.dateFormat = "h:mm a"
+        }
         var s = out.string(from: date)
         s = s.replacingOccurrences(of: "AM", with: "am")
         s = s.replacingOccurrences(of: "PM", with: "pm")
@@ -222,20 +262,12 @@ enum BookingPacificSchedule {
 
     /// Pacific weekday + month + day (e.g. `Wed, Jul 10`) for reminder cards and lists.
     static func displayAbbreviatedPacificDay(from date: Date) -> String {
-        let out = DateFormatter()
-        out.locale = Locale.current
-        out.timeZone = pacificTimeZone
-        out.dateFormat = "E, MMM d"
-        return out.string(from: date)
+        abbreviatedPacificDayFormatter.string(from: date)
     }
 
     /// Pacific weekday + month + day + time (e.g. `Wed, Jul 10 · 9:30 am`).
     static func displayAbbreviatedPacificDayWithTime(from date: Date) -> String {
-        let out = DateFormatter()
-        out.locale = Locale.current
-        out.timeZone = pacificTimeZone
-        out.dateFormat = "E, MMM d · h:mm a"
-        var s = out.string(from: date)
+        var s = abbreviatedPacificDayWithTimeFormatter.string(from: date)
         s = s.replacingOccurrences(of: "AM", with: "am")
         s = s.replacingOccurrences(of: "PM", with: "pm")
         return s.trimmingCharacters(in: .whitespaces)

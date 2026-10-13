@@ -94,7 +94,8 @@ final class ConsumerBrowseLocationController {
         if deviceTrackingEnabled {
             switch await ConsumerLocationFetcher.shared.resolveForNearbyProviders() {
             case let .coordinate(coord):
-                await refreshDeviceLabel(for: coord)
+                // The city label is cosmetic; don't hold the operator fetch on a reverse-geocode round trip.
+                Task { await refreshDeviceLabel(for: coord) }
                 return (coord.latitude, coord.longitude)
             case .permissionDenied:
                 ConsumerLocationFetcher.shared.presentPermissionDeniedGuidanceIfNeeded()
@@ -151,6 +152,7 @@ final class ConsumerBrowseLocationController {
             placeFieldResignGeneration &+= 1
 #if os(iOS)
             completionBySuggestionID.removeAll()
+            lastGeocodedLocation = nil
 #endif
             Task { _ = await resolveBrowseCenter() }
         } else {
@@ -301,8 +303,14 @@ final class ConsumerBrowseLocationController {
     }
 
 #if os(iOS)
+    /// Where the current device label was geocoded; the city can't change within this distance.
+    @ObservationIgnored private var lastGeocodedLocation: CLLocation?
+    private static let relabelDistanceMeters: CLLocationDistance = 1_000
+
     private func refreshDeviceLabel(for coord: CLLocationCoordinate2D) async {
         let location = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
+        // Home re-appears on every hub swipe; skip the geocode round trip and the label write that re-renders its readers.
+        if let last = lastGeocodedLocation, last.distance(from: location) < Self.relabelDistanceMeters { return }
         do {
             let placemarks = try await geocoder.reverseGeocodeLocation(location)
             if Task.isCancelled { return }
@@ -310,7 +318,8 @@ final class ConsumerBrowseLocationController {
                 let city = (mark.locality ?? mark.subAdministrativeArea ?? mark.administrativeArea)?
                     .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 if !city.isEmpty {
-                    locationLabel = city
+                    lastGeocodedLocation = location
+                    setLocationLabelIfChanged(city)
                     return
                 }
             }
@@ -318,10 +327,16 @@ final class ConsumerBrowseLocationController {
             // Fall through to saved place / default.
         }
         if let place = ConsumerBrowseDistancePreference.manualPlace, !place.trimmedLabel.isEmpty {
-            locationLabel = place.trimmedLabel
+            setLocationLabelIfChanged(place.trimmedLabel)
         } else {
-            locationLabel = "Location from device"
+            setLocationLabelIfChanged("Location from device")
         }
+    }
+
+    /// Observation notifies on every write, even an identical one.
+    private func setLocationLabelIfChanged(_ label: String) {
+        guard locationLabel != label else { return }
+        locationLabel = label
     }
 
     private func schedulePlaceSearch(query: String) {

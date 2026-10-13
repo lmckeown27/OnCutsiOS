@@ -304,17 +304,13 @@ struct LiveBookingView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
 
-            if let igURL = provider.instagramProfileURL {
+            if let igURL = provider.instagramProfileURL, !provider.instagramDisplayHandle.isEmpty {
                 Link(destination: igURL) {
-                    Image("Instagram")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 40, height: 40)
-                        .frame(width: 52, height: 52)
-                        .background {
-                            Circle().fill(.ultraThinMaterial)
-                        }
-                        .accessibilityLabel("Open Instagram")
+                    Text(provider.instagramDisplayHandle)
+                        .font(OnCutsFont.subheadline.weight(.semibold))
+                        .foregroundStyle(Color(hex: "#8A3AB9"))
+                        .lineLimit(1)
+                        .accessibilityLabel("Open Instagram \(provider.instagramDisplayHandle)")
                 }
             }
         }

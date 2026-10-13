@@ -12,12 +12,13 @@ struct ConsumerBrowseLocationChrome: View {
     @Bindable var locationController: ConsumerBrowseLocationController
     /// Compact glass header styling vs sticky legacy chrome.
     var usesGlassChrome: Bool = false
+    /// When `false`, the location and toggle sit directly on the host surface (e.g. the Discover sheet) with no capsule.
+    var showsContainer: Bool = true
 
     @FocusState private var isPlaceFieldFocused: Bool
 
-    /// Approximate field height so the overlapping dropdown can sit flush under the input.
-    private static var placeFieldContentHeight: CGFloat { 48 }
-    private static var fieldCornerRadius: CGFloat { 12 }
+    /// Matches the My Operators | Discover switch so the two rows read as one set.
+    private static var capsuleHeight: CGFloat { 56 }
     /// Visible suggestion rows before the menu scrolls.
     private static var maxVisibleSuggestionRows: Int { 5 }
     /// Approx. height of one suggestion row (title + subtitle + padding + divider).
@@ -29,10 +30,9 @@ struct ConsumerBrowseLocationChrome: View {
     }
 
     var body: some View {
-        VStack(alignment: .center, spacing: 8) {
+        Group {
             if locationController.deviceTrackingEnabled {
-                deviceLocationLabel
-                trackingToggleRow
+                deviceLocationCapsule
             } else {
                 manualPlaceBlock
             }
@@ -54,57 +54,92 @@ struct ConsumerBrowseLocationChrome: View {
         }
     }
 
-    private var deviceLocationLabel: some View {
-        Text(locationController.locationLabel)
-            .font(OnCutsFont.headlineSmall.weight(.bold))
-            .foregroundStyle(Color.primary)
-            .multilineTextAlignment(.center)
-            .lineLimit(2)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .accessibilityLabel("Browse location \(locationController.locationLabel)")
+    /// Same frosted capsule as the My Operators | Discover switch: location, then the tracking toggle.
+    private var deviceLocationCapsule: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "location.fill")
+                .font(OnCutsFont.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.oliveGreen)
+                .accessibilityHidden(true)
+            Text(locationController.locationLabel)
+                .font(OnCutsFont.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .accessibilityLabel("Browse location \(locationController.locationLabel)")
+            if !showsContainer {
+                Spacer(minLength: 8)
+            }
+            trackingToggle
+        }
+        .padding(.leading, showsContainer ? 16 : 0)
+        .padding(.trailing, showsContainer ? 6 : 0)
+        .frame(minHeight: showsContainer ? Self.capsuleHeight : 44)
+        .background {
+            if showsContainer {
+                Capsule().fill(.ultraThinMaterial)
+            }
+        }
+        .overlay {
+            if showsContainer {
+                Capsule()
+                    .stroke(Color.lavaShellCream, lineWidth: 1)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 
-    /// Grey form-style field + matching attached dropdown.
+    /// Container only while suggestions are open, so the dropdown stays readable over the list.
+    private var manualPlaceShowsContainer: Bool {
+        showsContainer || showsAttachedDropdown
+    }
+
+    private var manualPlaceRowHeight: CGFloat {
+        showsContainer ? Self.capsuleHeight : 44
+    }
+
+    /// City field and tracking toggle share one frosted container; suggestions open beneath without pushing the layout.
     private var manualPlaceBlock: some View {
-        ZStack(alignment: .top) {
-            VStack(spacing: 8) {
-                Color.clear
-                    .frame(height: Self.placeFieldContentHeight)
-                if !locationController.isPlaceFieldEditing {
-                    trackingToggleRow
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-            }
+        Color.clear
+            .frame(height: manualPlaceRowHeight)
+            .overlay(alignment: .top) {
+                VStack(spacing: 0) {
+                    HStack(spacing: 4) {
+                        placeTextField
+                        trackingToggle
+                            .padding(.trailing, manualPlaceShowsContainer ? 6 : 0)
+                    }
+                    .frame(minHeight: manualPlaceRowHeight)
 
-            VStack(spacing: 0) {
-                placeTextField
-                    .frame(minHeight: Self.placeFieldContentHeight)
-
-                if showsAttachedDropdown {
-                    connectedSuggestionsDropdown
+                    if showsAttachedDropdown {
+                        connectedSuggestionsDropdown
+                    }
                 }
+                .background {
+                    if manualPlaceShowsContainer {
+                        RoundedRectangle(cornerRadius: Self.capsuleHeight / 2, style: .continuous)
+                            .fill(showsAttachedDropdown ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.ultraThinMaterial))
+                    }
+                }
+                .overlay {
+                    if manualPlaceShowsContainer {
+                        RoundedRectangle(cornerRadius: Self.capsuleHeight / 2, style: .continuous)
+                            .stroke(
+                                isPlaceFieldFocused || showsAttachedDropdown ? Color.oliveGreen : Color.lavaShellCream,
+                                lineWidth: 1
+                            )
+                            .allowsHitTesting(false)
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: Self.capsuleHeight / 2, style: .continuous))
+                .shadow(
+                    color: Color.black.opacity(showsAttachedDropdown ? 0.2 : 0),
+                    radius: showsAttachedDropdown ? 12 : 0,
+                    y: showsAttachedDropdown ? 6 : 0
+                )
+                .compositingGroup()
             }
-            .background {
-                RoundedRectangle(cornerRadius: Self.fieldCornerRadius, style: .continuous)
-                    .fill(manualInputGreyFill)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: Self.fieldCornerRadius, style: .continuous)
-                    .strokeBorder(
-                        fieldBorderColor,
-                        lineWidth: isPlaceFieldFocused || showsAttachedDropdown ? 1.5 : 1
-                    )
-            }
-            .clipShape(RoundedRectangle(cornerRadius: Self.fieldCornerRadius, style: .continuous))
-            .shadow(
-                color: Color.black.opacity(showsAttachedDropdown ? 0.2 : 0.06),
-                radius: showsAttachedDropdown ? 12 : 2,
-                y: showsAttachedDropdown ? 6 : 1
-            )
-            .compositingGroup()
-        }
-        .animation(.spring(response: 0.32, dampingFraction: 0.88), value: locationController.isPlaceFieldEditing)
-        .zIndex(locationController.isPlaceFieldEditing ? 80 : 1)
+            .zIndex(locationController.isPlaceFieldEditing ? 80 : 1)
     }
 
     private var placeTextField: some View {
@@ -144,9 +179,10 @@ struct ConsumerBrowseLocationChrome: View {
             .accessibilityLabel("Clear location")
             .accessibilityHidden(locationController.placeQuery.isEmpty)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, minHeight: Self.placeFieldContentHeight)
+        .padding(.leading, manualPlaceShowsContainer ? 18 : 0)
+        .padding(.trailing, 4)
+        .padding(.vertical, manualPlaceShowsContainer ? 12 : 8)
+        .frame(maxWidth: .infinity, minHeight: manualPlaceRowHeight)
         .tint(Color.oliveGreen)
     }
 
@@ -201,53 +237,19 @@ struct ConsumerBrowseLocationChrome: View {
             .scrollIndicators(.visible)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(manualInputGreyFill)
     }
 
-    /// Adaptive grey fill — readable in light and dark mode.
-    private var manualInputGreyFill: Color {
-        #if os(iOS)
-        return Color(uiColor: .secondarySystemBackground)
-        #else
-        return Color.primary.opacity(0.08)
-        #endif
-    }
-
-    private var fieldBorderColor: Color {
-        if isPlaceFieldFocused || showsAttachedDropdown {
-            return Color.primary.opacity(0.35)
-        }
-        return Color.primary.opacity(0.18)
-    }
-
-    private var trackingToggleRow: some View {
-        ZStack {
-            Text(helperCopy)
-                .font(OnCutsFont.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity, alignment: .center)
-
-            HStack {
-                Spacer(minLength: 0)
-                Toggle(
-                    "Device tracking",
-                    isOn: Binding(
-                        get: { locationController.deviceTrackingEnabled },
-                        set: { locationController.setDeviceTracking($0) }
-                    )
-                )
-                .labelsHidden()
-                .tint(Color.oliveGreen)
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    private var helperCopy: String {
-        locationController.deviceTrackingEnabled
-            ? "Toggle off to turn off device tracking"
-            : "Toggle on to turn on device tracking"
+    private var trackingToggle: some View {
+        Toggle(
+            "Device tracking",
+            isOn: Binding(
+                get: { locationController.deviceTrackingEnabled },
+                set: { locationController.setDeviceTracking($0) }
+            )
+        )
+        .labelsHidden()
+        .tint(Color.oliveGreen)
+        .accessibilityLabel("Device tracking")
     }
 
     @MainActor

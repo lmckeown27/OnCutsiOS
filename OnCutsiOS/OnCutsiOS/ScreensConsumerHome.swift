@@ -410,7 +410,10 @@ struct ConsumerHomeScreen: View {
                 ConversationListView(
                     sessionManager: sessionManager,
                     coordinator: coordinator,
-                    onBrowseServiceProviders: { showMessagesInbox = false }
+                    onBrowseServiceProviders: {
+                        homeBrowseSegment = .discover
+                        showMessagesInbox = false
+                    }
                 )
             }
             .navigationDestination(isPresented: $showBookingChatsHub) {
@@ -587,10 +590,11 @@ struct ConsumerHomeScreen: View {
             return
         }
         do {
-            consumerBookingRows = try await ConsumerBookingsSimpleAPI.fetchConsumerBookings(
+            let fetched = try await ConsumerBookingsSimpleAPI.fetchConsumerBookings(
                 bearerToken: sessionManager.currentSession?.token,
                 consumerUserId: sessionManager.currentSession?.userId
             )
+            if fetched != consumerBookingRows { consumerBookingRows = fetched }
             chatViewModel.syncPaymentTakeover(withBookings: consumerBookingRows)
             #if os(iOS)
             UpcomingBookingAppBadge.syncFromConsumerRows(consumerBookingRows)
@@ -629,14 +633,8 @@ struct ConsumerHomeScreen: View {
     private var consumerBrowseLiquidGlassRoot: some View {
         GlassHeaderProviderBrowse(
             searchText: $searchText,
-            selectedServiceType: Binding(
-                get: { providerVM.selectedServiceType },
-                set: { providerVM.selectedServiceType = $0 }
-            ),
-            selectedBrowseServiceNames: Binding(
-                get: { providerVM.selectedBrowseServiceNames },
-                set: { providerVM.selectedBrowseServiceNames = $0 }
-            ),
+            selectedServiceType: $providerVM.selectedServiceType,
+            selectedBrowseServiceNames: $providerVM.selectedBrowseServiceNames,
             displayedProviders: displayedProviders,
             isLoading: isLoading,
             glassNamespace: providerGlassNamespace,
@@ -872,7 +870,7 @@ struct ConsumerHomeScreen: View {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let noProvidersInRadius = providers.isEmpty
         let locationLabel = ConsumerBrowseLocationController.shared.locationLabel
-        let miles = Int(ConsumerBrowseDistancePreference.maxDistanceMiles.rounded())
+        let miles = Int(ConsumerBrowseDistancePreference.nearbyBrowseMiles.rounded())
         let distanceOn = ConsumerBrowseDistancePreference.constrainBrowseListByDistance
 
         if trimmed.isEmpty, noProvidersInRadius {
@@ -2104,6 +2102,7 @@ struct UnifiedProviderHomeScreen: View {
     @State private var showIntegratedSignUpSheet = false
     @State private var authEmailHandoff: String?
     @State private var showLoginPrompt = false
+    @State private var hubBarScrollRelay = OnCutsHubBarScrollOffsetHandler.Relay()
     @State private var selectedProvider: ServiceProvider?
     /// When `false`, the browse list receives taps even if the detail overlay is still animating out.
     @State private var isProviderDetailCapturingTouches = false
@@ -2382,6 +2381,7 @@ struct UnifiedProviderHomeScreen: View {
     private var unifiedHubPagedContent: some View {
         TabView(selection: $hubPageIndex) {
             unifiedHubHomePage
+                .modifier(OnCutsHubOffPageInsetFreeze(frozenInset: hubPageIndex == 0 ? nil : hubBarOverlayBottomInset))
                 .tag(0)
                 .onCutsHubPageInteractionLock(pageIndex: 0, coordinator: hubPagingCoordinator)
 
@@ -2390,6 +2390,7 @@ struct UnifiedProviderHomeScreen: View {
                     sessionManager: sessionManager,
                     coordinator: coordinator,
                     onBrowseServiceProviders: {
+                        homeBrowseSegment = .discover
                         navigateHubPage(0, animated: true)
                     },
                     onThreadPresentationChanged: { visible, _ in messagesThreadPresentedForHubPaging = visible },
@@ -2577,8 +2578,9 @@ struct UnifiedProviderHomeScreen: View {
             guard abs(pageProgress - CGFloat(hubPageIndex)) < 0.02 else { return }
         }
         #endif
-        guard unifiedShowsHubBottomChrome else {
-            hubBarCollapseProgress = 0
+        // Only the guest sign-in bar collapses on scroll; the tab bar stays full size.
+        guard unifiedShowsHubBottomChrome, unifiedShowsGuestSignInBar else {
+            if hubBarCollapseProgress != 0 { hubBarCollapseProgress = 0 }
             hubBarLastScrollOffsetY = 0
             return
         }
@@ -2624,8 +2626,8 @@ struct UnifiedProviderHomeScreen: View {
                     collapseProgress: hubBarCollapseProgress
                 )
             }
-            // Signed in: clear the sticky hub navbar.
-            return ConsumerStickyHubMetrics.overlayContentBottomInset(collapseProgress: hubBarCollapseProgress)
+            // Signed in: clear the tab bar.
+            return ConsumerStickyHubMetrics.overlayContentBottomPadding
         }()
         return expandedInset * (1.0 - hubBarUtilitySuppressionProgress)
     }
@@ -2650,6 +2652,9 @@ struct UnifiedProviderHomeScreen: View {
                         collapseProgress: hubBarCollapseProgress,
                         authChromeActive: $isGuestSignInChromeActive,
                     )
+                    .scaleEffect(1.0 - 0.12 * hubBarUtilitySuppressionProgress, anchor: .bottom)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
                 } else if unifiedShowsConsumerStickyHubBar {
                     #if os(iOS)
                     ConsumerStickyHubBar(
@@ -2657,31 +2662,24 @@ struct UnifiedProviderHomeScreen: View {
                         pagingCoordinator: hubPagingCoordinator,
                         unreadMessageCount: chatViewModel.unreadMessageCount,
                         upcomingBookingCount: upcomingBookingIndicatorCount,
-                        onNavigateToPage: { page, animated in navigateHubPage(page, animated: animated) },
-                        bubbleAnchoredToPageIndex: hubBubbleAnchoredToPageIndex,
-                        collapseProgress: hubBarCollapseProgress,
-                        isHubBubbleDragging: $isHubBubbleDragging
+                        profileImageURL: unifiedToolbarProfileFallbackURL,
+                        onNavigateToPage: { page, animated in navigateHubPage(page, animated: animated) }
                     )
                     #else
                     ConsumerStickyHubBar(
                         hubPageIndex: $hubPageIndex,
                         unreadMessageCount: chatViewModel.unreadMessageCount,
                         upcomingBookingCount: upcomingBookingIndicatorCount,
-                        onNavigateToPage: { page, animated in navigateHubPage(page, animated: animated) },
-                        bubbleAnchoredToPageIndex: hubBubbleAnchoredToPageIndex,
-                        collapseProgress: hubBarCollapseProgress,
-                        isHubBubbleDragging: $isHubBubbleDragging
+                        profileImageURL: unifiedToolbarProfileFallbackURL,
+                        onNavigateToPage: { page, animated in navigateHubPage(page, animated: animated) }
                     )
                     #endif
                 }
             }
-            .scaleEffect(1.0 - 0.12 * hubBarUtilitySuppressionProgress, anchor: .bottom)
-            .offset(y: 24 * hubBarUtilitySuppressionProgress)
+            .offset(y: (ConsumerStickyHubMetrics.overlayContentBottomPadding + 40) * hubBarUtilitySuppressionProgress)
             .opacity((unifiedShowsHubBottomChrome ? 1 : 0) * (1.0 - 0.96 * hubBarUtilitySuppressionProgress))
             .allowsHitTesting(unifiedShowsHubBottomChrome && hubBarUtilitySuppressionProgress < 0.04)
             .accessibilityHidden(!unifiedShowsHubBottomChrome || hubBarUtilitySuppressionProgress > 0.96)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 8)
             .animation(Self.hubBarUtilitySuppressionSpring, value: hubBarUtilitySuppressionProgress)
             .animation(.spring(response: 0.32, dampingFraction: 0.86), value: unifiedShowsHubBottomChrome)
         }
@@ -2737,7 +2735,7 @@ struct UnifiedProviderHomeScreen: View {
             }
             #endif
             .environment(\.onCutsHubBarOverlayBottomInset, hubBarOverlayBottomInset)
-            .environment(\.onCutsHubBarScrollOffsetHandler, OnCutsHubBarScrollOffsetHandler(
+            .environment(\.onCutsHubBarScrollOffsetHandler, hubBarScrollRelay.updating(
                 onOffsetChange: { pageIndex, offsetY in
                     handleHubPageVerticalScrollOffset(pageIndex: pageIndex, offsetY: offsetY)
                 },
@@ -2812,7 +2810,7 @@ struct UnifiedProviderHomeScreen: View {
                 }
                 // Bookings tab: same reload as pull-to-refresh (timeline `ScrollView` owns `.refreshable`).
                 if new == 2, old != 2, sessionManager.isAuthenticated {
-                    NotificationCenter.default.post(name: .consumerBookingsListShouldRefresh, object: nil)
+                    NotificationCenter.default.post(name: .consumerBookingsTabDidBecomeVisible, object: nil)
                 }
                 // Messages tab: dismiss any pushed booking detail / thread on the Bookings stack so it doesn’t linger off-screen.
                 if new == 1, old != 1 {
@@ -3345,10 +3343,11 @@ struct UnifiedProviderHomeScreen: View {
             return
         }
         do {
-            consumerBookingRows = try await ConsumerBookingsSimpleAPI.fetchConsumerBookings(
+            let fetched = try await ConsumerBookingsSimpleAPI.fetchConsumerBookings(
                 bearerToken: sessionManager.currentSession?.token,
                 consumerUserId: sessionManager.currentSession?.userId
             )
+            if fetched != consumerBookingRows { consumerBookingRows = fetched }
             #if os(iOS)
             UpcomingBookingAppBadge.syncFromConsumerRows(consumerBookingRows)
             #endif
@@ -3392,14 +3391,8 @@ struct UnifiedProviderHomeScreen: View {
     private var unifiedBrowseLiquidGlassRoot: some View {
         GlassHeaderProviderBrowse(
             searchText: $searchText,
-            selectedServiceType: Binding(
-                get: { providerVM.selectedServiceType },
-                set: { providerVM.selectedServiceType = $0 }
-            ),
-            selectedBrowseServiceNames: Binding(
-                get: { providerVM.selectedBrowseServiceNames },
-                set: { providerVM.selectedBrowseServiceNames = $0 }
-            ),
+            selectedServiceType: $providerVM.selectedServiceType,
+            selectedBrowseServiceNames: $providerVM.selectedBrowseServiceNames,
             displayedProviders: displayedProviders,
             isLoading: isLoading,
             glassNamespace: providerGlassNamespace,
@@ -3689,7 +3682,7 @@ struct UnifiedProviderHomeScreen: View {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let noProvidersInRadius = serviceProviders.isEmpty
         let locationLabel = ConsumerBrowseLocationController.shared.locationLabel
-        let miles = Int(ConsumerBrowseDistancePreference.maxDistanceMiles.rounded())
+        let miles = Int(ConsumerBrowseDistancePreference.nearbyBrowseMiles.rounded())
         let distanceOn = ConsumerBrowseDistancePreference.constrainBrowseListByDistance
 
         if trimmed.isEmpty, noProvidersInRadius {
@@ -3918,7 +3911,7 @@ struct CategoryChip: View {
 
 /// Shown when `GET /barbers` returns no providers within the consumer’s distance preference.
 private struct HomeNoBarbersInRadiusEmptyLabel: View {
-    var miles: Int = Int(ConsumerBrowseDistancePreference.maxDistanceMiles.rounded())
+    var miles: Int = Int(ConsumerBrowseDistancePreference.nearbyBrowseMiles.rounded())
     var locationLabel: String = ConsumerBrowseLocationController.shared.locationLabel
 
     var body: some View {

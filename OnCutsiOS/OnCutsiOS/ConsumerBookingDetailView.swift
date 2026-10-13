@@ -31,6 +31,8 @@ struct ConsumerBookingDetailView: View {
     @State private var showMessagingUnavailableAlert = false
     @State private var rebookProvider: ServiceProvider?
     @State private var isLoadingRebook = false
+    @State private var portfolioProvider: ServiceProvider?
+    @State private var isLoadingPortfolio = false
     @State private var showActiveBookingAlert = false
     @State private var showLiveDataStripeAlert = false
 
@@ -283,6 +285,9 @@ struct ConsumerBookingDetailView: View {
 
     var body: some View {
         bookingDetailScrollRoot
+            .sheet(item: $portfolioProvider) { provider in
+                portfolioSheet(provider)
+            }
     }
 
     /// Split from `body` so the Swift compiler can type-check the stack (navigation + sheets + thread destination).
@@ -468,6 +473,10 @@ struct ConsumerBookingDetailView: View {
             if !isRequestChangeEditing,
                bookingRow.notes?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty != nil {
                 supplementaryDetailsCard
+            }
+
+            if showsViewPortfolioCTA {
+                viewPortfolioButton
             }
 
             if showsCancelBookingCTA {
@@ -682,6 +691,88 @@ struct ConsumerBookingDetailView: View {
             rebookProvider = rebookFallbackProvider(barberId: bid)
         }
         showRebookSheet = true
+    }
+
+    private var showsViewPortfolioCTA: Bool {
+        !isRequestChangeEditing
+            && bookingRow.barberId?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty != nil
+    }
+
+    private var viewPortfolioButton: some View {
+        Button {
+            Task { await openPortfolio() }
+        } label: {
+            HStack(spacing: 8) {
+                if isLoadingPortfolio {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(BookingSelectorTheme.cream)
+                } else {
+                    Image(systemName: "photo.on.rectangle.angled")
+                        .font(OnCutsFont.system(size: 15, weight: .semibold))
+                }
+                Text("View portfolio")
+                    .font(OnCutsFont.body(weight: .semibold))
+            }
+            .foregroundStyle(BookingSelectorTheme.cream)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 48)
+            .background {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(BookingSelectorTheme.cream.opacity(0.6), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(BookButtonStyle())
+        .disabled(isLoadingPortfolio || isConfirmingCancelBooking)
+        .opacity((isLoadingPortfolio || isConfirmingCancelBooking) ? 0.55 : 1)
+        .accessibilityLabel("View \(bookingRow.barberDisplayName)'s portfolio")
+    }
+
+    @MainActor
+    private func openPortfolio() async {
+        guard let bid = bookingRow.barberId?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty else { return }
+        guard !isLoadingPortfolio else { return }
+        isLoadingPortfolio = true
+        defer { isLoadingPortfolio = false }
+        do {
+            portfolioProvider = try await OnCutsBarberDetailAPI.fetchServiceProvider(
+                barberId: bid,
+                bearerToken: sessionManager.currentSession?.token
+            )
+        } catch {
+            portfolioProvider = rebookFallbackProvider(barberId: bid)
+        }
+    }
+
+    private func portfolioSheet(_ provider: ServiceProvider) -> some View {
+        NavigationStack {
+            ScrollView {
+                OperatorClientPortfolioView(
+                    provider: provider,
+                    onBook: {
+                        portfolioProvider = nil
+                        Task {
+                            // Presenting the booking sheet while this one is still dismissing gets dropped.
+                            try? await Task.sleep(nanoseconds: 450_000_000)
+                            await startRebookFlow()
+                        }
+                    }
+                )
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+            }
+            .navigationTitle("Portfolio")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { portfolioProvider = nil }
+                }
+            }
+        }
+        .tint(Color.oliveGreen)
     }
 
     private func rebookFallbackProvider(barberId: String) -> ServiceProvider {

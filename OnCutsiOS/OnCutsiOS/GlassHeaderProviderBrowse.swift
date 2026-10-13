@@ -388,6 +388,46 @@ private enum GlassHeaderConstants {
     static let pullRefreshWheelVerticalNudge: CGFloat = 8
 }
 
+// MARK: - Discover render isolation
+
+private struct DiscoverRootRenderKey: Equatable {
+    var providerIds: [String]
+    var areaIds: [String]
+    var selectedAreaId: String?
+    var overlappedOperatorIds: [String]
+    var browseCenterLatitude: Double?
+    var browseCenterLongitude: Double?
+    var isLoading: Bool
+    var safeAreaTop: CGFloat
+    var safeAreaBottom: CGFloat
+    var hubBarOverlayBottomInset: CGFloat
+    var chromeTopPadding: CGFloat
+    var headerHeight: CGFloat
+    var pullUpPreferredOpen: Bool?
+    var isDetailOverlayPresented: Bool
+    var isDetailCapturingTouches: Bool
+    var sheetReopenToken: Int
+    var sheetExpandToken: Int
+    var searchText: String
+    var selectedServiceType: ServiceType
+    var selectedBrowseServiceNames: Set<String>
+    var isTagsExpanded: Bool
+}
+
+/// Re-renders the Discover map and pull-up only when `key` changes, not on every browse re-render (e.g. hub tab swipes).
+private struct DiscoverRootRenderGate<Content: View>: View, Equatable {
+    let key: DiscoverRootRenderKey
+    @ViewBuilder var content: () -> Content
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.key == rhs.key
+    }
+
+    var body: some View {
+        content()
+    }
+}
+
 // MARK: - Radius slider (morphing utility pill)
 
 /// Minimal cream track + thumb; mileage label centered above the track.
@@ -531,17 +571,17 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     /// Direction-aware hide amount for the utility pill overlay (increases on scroll down, decreases on scroll up).
     @State private var utilityPillCollapseOffset: CGFloat = 0
     @State private var utilityPillScrollResyncGeneration = 0
-    @State private var headerMeasuredHeight: CGFloat = 4 + Self.utilityPillMainBarHeight + GlassHeaderConstants.utilityPillToBookingSpacing
+    @State private var headerMeasuredHeight: CGFloat = Self.headerHeightFallbackUtilityOnly
     /// Resolved browse center for Discover map radius (device GPS or manual place).
     @State private var resolvedDiscoverBrowseCenter: CLLocationCoordinate2D?
-    /// Visible Discover map region — pull-up operators follow zoom/pan.
-    @State private var discoverVisibleMapRegion: MKCoordinateRegion?
-    /// Only apply viewport filtering after MapKit reports a post-fit region (avoids blank sheet on `.automatic`).
-    @State private var discoverMapViewportFilterEnabled = false
     /// Bumped when a dashed operator circle is tapped so a closed pull-up reopens.
     @State private var discoverOperatorsSheetReopenToken: Int = 0
     /// Operators shown in the pull-up after the client taps a combined map label.
     @State private var overlappedOperatorIds: [String] = []
+    /// Tag chips under the search field inside the Discover pull-up.
+    @State private var isDiscoverTagsExpanded = false
+    /// Bumped when Discover search gains focus so the pull-up opens to the full list.
+    @State private var discoverSheetExpandToken: Int = 0
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(\.onCutsHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
     @Environment(\.onCutsHubBarScrollOffsetHandler) private var hubBarScrollHandler
@@ -606,18 +646,14 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     private static var pullRefreshWheelRevealDistance: CGFloat { 56 }
     /// Taller than the collapsed utility pill so service chips are easier to scan and tap.
     private static var serviceTagsExpandedBarMinHeight: CGFloat { 88 }
-    /// Fallback before the utility chrome preference reports — location chrome + pill row + top inset + list gap.
+    /// Fallback before the utility chrome preference reports — top inset + switch row + bottom pad.
     private static var headerHeightFallbackUtilityOnly: CGFloat {
-        #if os(iOS)
-        return 4 + 72 + utilityPillMainBarHeight + GlassHeaderConstants.utilityPillToBookingSpacing
-        #else
-        return 4 + utilityPillMainBarHeight + GlassHeaderConstants.utilityPillToBookingSpacing
-        #endif
+        4 + utilityPillMainBarHeight + 8
     }
 
     private var shouldShowRadiusSlider: Bool {
         #if os(iOS)
-        isAdjustingRadius && onMaxDistanceTap != nil
+        isAdjustingRadius && onMaxDistanceTap != nil && homeBrowseSegment != .discover
         #else
         false
         #endif
@@ -635,12 +671,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             return sharedChromeTopPadding + headerMeasuredHeight + gap
         }
         let topInset = CGFloat(showsHomePinnedBookingStripes ? 2 : 4)
-        #if os(iOS)
-        let locationChromeEstimate: CGFloat = 72
-        #else
-        let locationChromeEstimate: CGFloat = 0
-        #endif
-        return sharedChromeTopPadding + topInset + locationChromeEstimate + Self.utilityPillMainBarHeight + gap
+        return sharedChromeTopPadding + topInset + Self.utilityPillMainBarHeight + gap
     }
 
     /// Same chrome builder for Discover / My Operators (full-bleed root).
@@ -661,11 +692,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 ? headerMeasuredHeight
                 : {
                     let topInset = CGFloat(showsHomePinnedBookingStripes ? 4 : 10)
-                    #if os(iOS)
-                    return topInset + 72 + Self.utilityPillMainBarHeight
-                    #else
                     return topInset + Self.utilityPillMainBarHeight
-                    #endif
                 }()
         )
         let gapBelowPill: CGFloat = showsHomePinnedBookingStripes
@@ -751,11 +778,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             displayedProviders,
             filteredBySelectedArea: selectedDiscoverArea
         )
-        let pool = (selectedDiscoverArea != nil && !byArea.isEmpty) ? byArea : displayedProviders
-        return MyBarbersDiscover.providers(
-            pool,
-            intersectingVisibleRegion: discoverMapViewportFilterEnabled ? discoverVisibleMapRegion : nil
-        )
+        return (selectedDiscoverArea != nil && !byArea.isEmpty) ? byArea : displayedProviders
     }
 
     private var selectedDiscoverArea: DiscoverServiceArea? {
@@ -987,8 +1010,7 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     @ViewBuilder
     private func discoverFullScreenRoot(safeAreaTop: CGFloat, safeAreaBottom: CGFloat) -> some View {
         let sheetBottomInset = max(hubBarOverlayBottomInset, safeAreaBottom > 0 ? 8 : 12)
-        let pillMiles = isAdjustingRadius ? radiusEditingMiles : displayedMaxDistanceMiles
-        let radiusMeters = max(1, pillMiles) * 1609.344
+        let radiusMeters = ConsumerBrowseDistancePreference.defaultMiles * 1609.344
         let nearby = MyBarbersDiscover.sortDiscoverProviders(discoverListProviders)
         let sheetProviders: [ServiceProvider] = {
             guard !overlappedOperatorIds.isEmpty else { return nearby }
@@ -997,7 +1019,15 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             return overlapped.isEmpty ? nearby : overlapped
         }()
         let featuredOperatorId = nearby.first(where: \.hasFiniteServiceCoordinate)?.id
+        let sheetTopChromeInset = safeAreaTop + sharedChromeTopPadding + Self.utilityPillMainBarHeight + 28
         GeometryReader { geo in
+            let restingSheetHeight = discoverPullUpPreferredOpen == false
+                ? DiscoverOperatorsPullUpSheet.peekHeight(bottomInset: sheetBottomInset)
+                : DiscoverOperatorsPullUpSheet.splitHeight(
+                    bottomInset: sheetBottomInset,
+                    containerHeight: geo.size.height,
+                    topChromeInset: sheetTopChromeInset
+                )
             ZStack(alignment: .bottom) {
                 DiscoverServiceAreasMap(
                     areas: discoverAreas,
@@ -1007,16 +1037,6 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     fillsScreen: true,
                     onAreaSelected: {
                         discoverOperatorsSheetReopenToken &+= 1
-                    },
-                    onVisibleRegionChange: { region in
-                        discoverVisibleMapRegion = region
-                        let heightMeters = region.span.latitudeDelta * 111_320
-                        if heightMeters > 400 {
-                            discoverMapViewportFilterEnabled = true
-                        }
-                    },
-                    onVisibleRadiusMilesChange: { miles in
-                        applyVisibleMapRadiusMilesToUtilityPill(miles)
                     },
                     operators: nearby,
                     featuredOperatorId: featuredOperatorId,
@@ -1029,7 +1049,13 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                             overlappedOperatorIds = ids
                             discoverOperatorsSheetReopenToken &+= 1
                         }
-                    }
+                    },
+                    focusInsets: EdgeInsets(
+                        top: sharedChromeTopPadding + effectiveHeaderHeight,
+                        leading: 0,
+                        bottom: restingSheetHeight,
+                        trailing: 0
+                    )
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
@@ -1040,8 +1066,11 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     isLoading: isLoading,
                     bottomInset: sheetBottomInset,
                     containerHeight: geo.size.height,
-                    topChromeInset: safeAreaTop + sharedChromeTopPadding + Self.utilityPillMainBarHeight + 28,
+                    topChromeInset: sheetTopChromeInset,
                     reopenToken: discoverOperatorsSheetReopenToken,
+                    expandToFullToken: discoverSheetExpandToken,
+                    controls: AnyView(discoverSheetControls),
+                    location: discoverSheetLocation,
                     preferredIsOpen: discoverPullUpPreferredOpen,
                     onOpened: onDiscoverPullUpOpened,
                     onProviderTap: onProviderTap
@@ -1063,6 +1092,107 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                 }
             }
         }
+    }
+
+    /// Browse location in the Discover pull-up (in place of the header row it used to occupy).
+    private var discoverSheetLocation: AnyView? {
+        #if os(iOS)
+        AnyView(
+            ConsumerBrowseLocationChrome(
+                locationController: ConsumerBrowseLocationController.shared,
+                usesGlassChrome: true,
+                showsContainer: false
+            )
+        )
+        #else
+        nil
+        #endif
+    }
+
+    /// Search field and Tags button inside the Discover pull-up; tag chips open below them.
+    private var discoverSheetControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(OnCutsFont.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.neutral500)
+                        .accessibilityHidden(true)
+                    TextField("Search operators", text: $searchText)
+                        .font(OnCutsFont.bodyMedium)
+                        .textFieldStyle(.plain)
+                        .foregroundStyle(Color.primary)
+                        .focused($isSearchFieldFocused)
+                        .submitLabel(.search)
+                        .autocorrectionDisabled()
+                    #if os(iOS)
+                        .textInputAutocapitalization(.words)
+                    #endif
+                    if !searchText.isEmpty {
+                        Button {
+                            GlassCapsuleToolbarHaptics.lightTap()
+                            searchText = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(OnCutsFont.system(size: 16))
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(Color.secondary)
+                                .frame(width: 28, height: 28)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Clear search")
+                    }
+                }
+                .padding(.leading, 12)
+                .padding(.trailing, searchText.isEmpty ? 12 : 4)
+                .frame(maxWidth: .infinity, minHeight: 40)
+                .background(Color.primary.opacity(0.07), in: Capsule())
+
+                Button {
+                    GlassCapsuleToolbarHaptics.lightTap()
+                    withAnimation(Self.radiusMorphSpring) {
+                        isDiscoverTagsExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(tagsControlTitle)
+                            .lineLimit(1)
+                        Image(systemName: isDiscoverTagsExpanded ? "chevron.up" : "chevron.down")
+                            .font(OnCutsFont.system(size: 10, weight: .bold))
+                            .accessibilityHidden(true)
+                    }
+                    .font(OnCutsFont.system(size: 14, weight: .semibold))
+                    .foregroundStyle(hasActiveTagFilter ? Color.white : Color.primary)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 40)
+                    .background(
+                        hasActiveTagFilter ? Color.oliveGreen : Color.primary.opacity(0.07),
+                        in: Capsule()
+                    )
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(UtilityPillPhysicalPressStyle())
+                .accessibilityLabel("Tags, \(tagsAccessibilitySummary)")
+                .accessibilityHint(isDiscoverTagsExpanded ? "Hides tags" : "Shows tags")
+            }
+
+            if isDiscoverTagsExpanded {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        tagsSelectionChips
+                    }
+                    .padding(.vertical, 2)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .animation(Self.radiusMorphSpring, value: isDiscoverTagsExpanded)
+    }
+
+    private var hasActiveTagFilter: Bool {
+        selectedServiceType != .all || !selectedBrowseServiceNames.isEmpty
     }
 
     /// Label on the utility-pill Tags control: selected provider type replaces “Tags”.
@@ -1120,7 +1250,8 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     }
 
     private var showsSearchSuggestionsPanel: Bool {
-        isSearching
+        homeBrowseSegment != .discover
+            && isSearching
             && !searchQueryTrimmed.isEmpty
             && (!matchingSearchServiceTypes.isEmpty || !matchingSearchProviders.isEmpty)
     }
@@ -1150,22 +1281,6 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         ConsumerBrowseDistancePreference.maxDistanceMiles = clamped
         displayedMaxDistanceMiles = clamped
         radiusEditingMiles = clamped
-    }
-
-    /// Keeps the utility-pill miles in lockstep when the user pinches the Discover map.
-    private func applyVisibleMapRadiusMilesToUtilityPill(_ miles: Double) {
-        // Don't fight the slider while the user is dragging it.
-        guard !isAdjustingRadius else { return }
-        let stepped = miles.rounded()
-        let clamped = min(
-            ConsumerBrowseDistancePreference.maximumMiles,
-            max(ConsumerBrowseDistancePreference.minimumMiles, stepped)
-        )
-        guard abs(clamped - displayedMaxDistanceMiles) >= 1 else { return }
-        ConsumerBrowseDistancePreference.maxDistanceMiles = clamped
-        displayedMaxDistanceMiles = clamped
-        radiusEditingMiles = clamped
-        onBrowseRadiusCommitted?()
     }
 
     private func commitRadiusAdjustment() {
@@ -1204,24 +1319,33 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     private func refreshDiscoverBrowseCenter() async {
         #if os(iOS)
         if let resolved = await ConsumerBrowseLocationController.shared.resolveBrowseCenter() {
-            resolvedDiscoverBrowseCenter = CLLocationCoordinate2D(
-                latitude: resolved.latitude,
-                longitude: resolved.longitude
-            )
+            applyDiscoverBrowseCenter(CLLocationCoordinate2D(latitude: resolved.latitude, longitude: resolved.longitude))
             return
         }
         if let place = ConsumerBrowseDistancePreference.manualPlace {
-            resolvedDiscoverBrowseCenter = CLLocationCoordinate2D(
-                latitude: place.latitude,
-                longitude: place.longitude
-            )
+            applyDiscoverBrowseCenter(CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude))
             return
         }
-        resolvedDiscoverBrowseCenter = browseMapCenterCoordinate
+        applyDiscoverBrowseCenter(browseMapCenterCoordinate)
         #else
         resolvedDiscoverBrowseCenter = browseMapCenterCoordinate
         #endif
     }
+
+    /// GPS drifts a few meters between fixes. Moving the center re-renders and re-frames the whole map, so ignore drift.
+    private func applyDiscoverBrowseCenter(_ next: CLLocationCoordinate2D?) {
+        guard let next, let current = resolvedDiscoverBrowseCenter else {
+            resolvedDiscoverBrowseCenter = next
+            return
+        }
+        let moved = CLLocation(latitude: current.latitude, longitude: current.longitude)
+            .distance(from: CLLocation(latitude: next.latitude, longitude: next.longitude))
+        if moved >= Self.discoverBrowseCenterMinimumMoveMeters {
+            resolvedDiscoverBrowseCenter = next
+        }
+    }
+
+    private static var discoverBrowseCenterMinimumMoveMeters: CLLocationDistance { 150 }
 
     /// True when expanded search, tags, radius slider, or keyboard would steal the first list tap.
     private var shouldDismissUtilityChromeOnListTap: Bool {
@@ -1395,6 +1519,19 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         }
         .onChange(of: isSearchFieldFocused) { _, focused in
             utilitySearchFieldFocused?.wrappedValue = focused || isManualPlaceFieldEditing
+            if focused, showDiscover {
+                discoverSheetExpandToken &+= 1
+            }
+        }
+        .onChange(of: isManualPlaceFieldEditing) { _, editing in
+            if editing, showDiscover {
+                discoverSheetExpandToken &+= 1
+            }
+        }
+        .onChange(of: searchText) { _, _ in
+            if showDiscover, !overlappedOperatorIds.isEmpty {
+                overlappedOperatorIds = []
+            }
         }
         .onChange(of: isManualPlaceFieldEditing) { _, editing in
             utilityPillSuppressesHubPaging?.wrappedValue = utilityPillChromeBlocksParentHubPaging
@@ -1434,6 +1571,13 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         }
         .onChange(of: homeBrowseSegment) { _, segment in
             if segment == .discover {
+                if isAdjustingRadius {
+                    applyRadiusEditingToPreference()
+                    onBrowseRadiusCommitted?()
+                }
+                isSearchExpanded = false
+                isServiceTagsExpanded = false
+                isAdjustingRadius = false
                 Task { await refreshDiscoverBrowseCenter() }
             }
         }
@@ -1449,12 +1593,42 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     @ViewBuilder
     private var discoverFullBleedBody: some View {
         let windowInsets = Self.windowSafeAreaInsets
-        discoverFullScreenRoot(
-            safeAreaTop: windowInsets.top,
-            safeAreaBottom: windowInsets.bottom
-        )
+        DiscoverRootRenderGate(key: discoverRenderKey(safeAreaInsets: windowInsets)) {
+            discoverFullScreenRoot(
+                safeAreaTop: windowInsets.top,
+                safeAreaBottom: windowInsets.bottom
+            )
+        }
+        .equatable()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
+    }
+
+    /// Every input `discoverFullScreenRoot` reads. Hub tab swipes change none of these, so the map and sheet skip re-rendering.
+    private func discoverRenderKey(safeAreaInsets: EdgeInsets) -> DiscoverRootRenderKey {
+        DiscoverRootRenderKey(
+            providerIds: displayedProviders.map(\.id),
+            areaIds: discoverAreas.map(\.id),
+            selectedAreaId: selectedDiscoverAreaId,
+            overlappedOperatorIds: overlappedOperatorIds,
+            browseCenterLatitude: effectiveDiscoverBrowseCenter?.latitude,
+            browseCenterLongitude: effectiveDiscoverBrowseCenter?.longitude,
+            isLoading: isLoading,
+            safeAreaTop: safeAreaInsets.top,
+            safeAreaBottom: safeAreaInsets.bottom,
+            hubBarOverlayBottomInset: hubBarOverlayBottomInset,
+            chromeTopPadding: sharedChromeTopPadding,
+            headerHeight: effectiveHeaderHeight,
+            pullUpPreferredOpen: discoverPullUpPreferredOpen,
+            isDetailOverlayPresented: isProviderDetailOverlayPresented,
+            isDetailCapturingTouches: isProviderDetailCapturingTouches,
+            sheetReopenToken: discoverOperatorsSheetReopenToken,
+            sheetExpandToken: discoverSheetExpandToken,
+            searchText: searchText,
+            selectedServiceType: selectedServiceType,
+            selectedBrowseServiceNames: selectedBrowseServiceNames,
+            isTagsExpanded: isDiscoverTagsExpanded
+        )
     }
 
     /// My Operators list (chrome is owned by the shared parent overlay).
@@ -1543,35 +1717,17 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     .matchedGeometryEffect(id: "browseRadiusGlass", in: radiusMorphNamespace)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
-                    #if os(iOS)
-                    if !isSearchExpanded && !isServiceTagsExpanded {
-                        ConsumerBrowseLocationChrome(
-                            locationController: ConsumerBrowseLocationController.shared,
-                            usesGlassChrome: true
-                        )
-                        .zIndex(40)
-                    }
-                    #endif
                     // Hide utility row while typing a manual place (same idea as search hiding location chrome).
                     if !isManualPlaceFieldEditing {
                         HStack(alignment: .center, spacing: 10) {
-                            if isServiceTagsExpanded {
-                                expandedServiceTagsGlassBar
-                                    .scaleEffect(serviceTypeControlScale)
-                                    .frame(maxWidth: .infinity)
-                                    .matchedGeometryEffect(id: "browseServiceTagsGlass", in: serviceTagsMorphNamespace)
-                            } else {
-                                floatingUtilityPill
-                                    .scaleEffect(serviceTypeControlScale)
-                                    .frame(maxWidth: .infinity)
+                            // Both segments show only the switch; Discover's search, tags and location live in its pull-up.
+                            Spacer(minLength: 0)
+                            homeBrowseSegmentPill
+                                .scaleEffect(serviceTypeControlScale)
+                            Spacer(minLength: 0)
 
-                                if !isSearchExpanded && !isServiceTagsExpanded && !isAdjustingRadius {
-                                    homeBrowseSegmentPill
-                                        .scaleEffect(serviceTypeControlScale)
-                                }
-                            }
-
-                            if !hidesQuickNavigationIcons && !isSearchExpanded && !isServiceTagsExpanded {
+                            if homeBrowseSegment == .discover,
+                               !hidesQuickNavigationIcons, !isSearchExpanded, !isServiceTagsExpanded {
                                 rightNavOnlyCapsule
                             }
                         }
@@ -1663,11 +1819,9 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
             }
         }
         .onPreferenceChange(GlobalHeaderMeasuredHeightKey.self) { newHeight in
-            if newHeight > 2 {
-                headerMeasuredHeight = newHeight
-            } else {
-                headerMeasuredHeight = Self.headerHeightFallbackUtilityOnly
-            }
+            // A zero report (preference default during re-evaluation) must not replace a real measurement.
+            guard newHeight > 2, abs(newHeight - headerMeasuredHeight) > 0.5 else { return }
+            headerMeasuredHeight = newHeight
         }
         .zIndex(2)
     }

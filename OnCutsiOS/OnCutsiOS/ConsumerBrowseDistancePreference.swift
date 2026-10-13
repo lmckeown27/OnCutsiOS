@@ -150,8 +150,11 @@ enum ConsumerBrowseDistancePreference {
         }
     }
 
+    /// How far from the browse location operators load.
+    static let nearbyBrowseMiles: Double = 5
+
     /// Kilometers for `GET /barbers?maxDistance=` (backend expects km).
     static func maxDistanceKmForLocationQuery() -> Double {
-        maxDistanceMiles * 1.60934
+        nearbyBrowseMiles * 1.60934
     }
 }

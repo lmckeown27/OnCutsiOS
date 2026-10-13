@@ -19,7 +19,7 @@ enum MessagesEmptyStatePhase: Equatable {
 
 struct MessagesEmptyState: View {
     let phase: MessagesEmptyStatePhase
-    /// Dismisses inbox / navigates to browse so the user can find a service provider.
+    /// Dismisses inbox / navigates to the Discover map so the user can find an operator.
     let onBrowseServiceProviders: () -> Void
     /// Opens the booking’s provider conversation (same hub shell path as other booking message entry points).
     let onOpenBookingConversation: (ConsumerBookingSimpleRow) -> Void
@@ -66,7 +66,7 @@ struct MessagesEmptyState: View {
             .padding(.horizontal, 8)
 
             Button(action: onBrowseServiceProviders) {
-                Text("Browse providers")
+                Text("Discover operators")
                     .font(OnCutsFont.headline(weight: .semibold))
                     .foregroundStyle(Color.white)
                     .frame(maxWidth: .infinity)

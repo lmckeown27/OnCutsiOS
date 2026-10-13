@@ -36,8 +36,11 @@ struct DiscoverServiceAreasMap: View {
     var onOperatorTap: ((ServiceProvider) -> Void)? = nil
     /// Overlapping labels collapse to one control. Tapping it hands those operators to the pull-up.
     var onOperatorGroupTap: (([ServiceProvider]) -> Void)? = nil
+    /// Map edges covered by chrome (top bar, resting pull-up). The opening frame centers the client's pin in what's left.
+    var focusInsets: EdgeInsets = EdgeInsets()
 
     @Environment(\.colorScheme) private var colorScheme
+    @State private var mapSize: CGSize = .zero
 
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var visibleRegion: MKCoordinateRegion?
@@ -64,15 +67,6 @@ struct DiscoverServiceAreasMap: View {
             bounds: minimumCameraDistance.map { MapCameraBounds(minimumDistance: $0) },
             interactionModes: [.pan, .zoom]
         ) {
-                if let browseCenter, let browseRadiusMeters, browseRadiusMeters > 0 {
-                    MapCircle(center: browseCenter, radius: browseRadiusMeters)
-                        .foregroundStyle(Color.oliveGreen.opacity(0.10))
-                        .stroke(
-                            Color.oliveGreen.opacity(0.9),
-                            style: StrokeStyle(lineWidth: 1.75, dash: [7, 5])
-                        )
-                }
-
                 ForEach(labelClusters) { cluster in
                     let isFeatured = cluster.members.contains { $0.provider.id == featuredOperatorId }
                     MapCircle(center: cluster.center, radius: displayedRadius(for: cluster))
@@ -117,15 +111,19 @@ struct DiscoverServiceAreasMap: View {
                 MapCompass()
             }
             .onMapCameraChange(frequency: .continuous) { context in
-                visibleRegion = context.region
                 updateMinimumCameraDistance(from: context)
+                // Sub-pixel camera jitter would re-render every label and re-apply bounds, which can feed back forever.
+                guard Self.regionChangedVisibly(from: visibleRegion, to: context.region) else { return }
+                visibleRegion = context.region
                 refreshClusters(for: context.region)
                 onVisibleRegionChange?(context.region)
             }
             .onMapCameraChange(frequency: .onEnd) { context in
-                visibleRegion = context.region
-                refreshClusters(for: context.region)
-                onVisibleRegionChange?(context.region)
+                if Self.regionChangedVisibly(from: visibleRegion, to: context.region) {
+                    visibleRegion = context.region
+                    refreshClusters(for: context.region)
+                    onVisibleRegionChange?(context.region)
+                }
                 publishVisibleRadiusMilesIfNeeded(from: context.region)
             }
             .accessibilityElement(children: .contain)
@@ -134,6 +132,14 @@ struct DiscoverServiceAreasMap: View {
                 applyBrowseRadiusCamera(animated: false)
             }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+            let firstMeasure = mapSize.width < 1 && size.width > 0
+            mapSize = size
+            if firstMeasure, lastAppliedRadiusMeters > 0 {
+                lastAppliedRadiusMeters = -1
+                applyBrowseRadiusCamera(animated: false)
+            }
+        }
         .modifier(DiscoverMapChromeClip(fillsScreen: fillsScreen))
         .ignoresSafeArea(edges: fillsScreen ? .all : [])
         .background {
@@ -185,7 +191,7 @@ struct DiscoverServiceAreasMap: View {
         }
     }
 
-    /// Region used to size and group labels. Inside the opening frame, keep that opening size.
+    /// Region used to size the privacy circles. Inside the opening frame, keep that opening size.
     private var labelSizingRegion: MKCoordinateRegion? {
         guard let visibleRegion else { return nil }
         guard let locked = lockedLabelRadiusMeters, locked > 0,
@@ -199,16 +205,25 @@ struct DiscoverServiceAreasMap: View {
         )
     }
 
-    /// Grows the labels with the circles when zoomed in past the opening frame. Capped so a label never fills the screen.
+    /// Grows the labels when zoomed in past the opening frame, slower than the map zooms so nearby labels pull apart.
     private var labelZoomScale: CGFloat {
-        guard let visibleRegion,
-              let locked = lockedLabelRadiusMeters, locked > 0,
-              let visible = Self.visibleRadiusMeters(from: visibleRegion), visible > 0
+        guard let visible = currentVisibleRadiusMeters,
+              let locked = lockedLabelRadiusMeters, locked > 0
         else { return 1 }
-        return CGFloat(min(max(locked / visible, 1), Self.maxLabelZoomScale))
+        let zoom = max(locked / visible, 1)
+        return CGFloat(min(pow(zoom, Self.labelGrowthExponent), Self.maxLabelZoomScale))
     }
 
-    private static let maxLabelZoomScale: Double = 2.5
+    private var currentVisibleRadiusMeters: CLLocationDistance? {
+        guard let visibleRegion,
+              let visible = Self.visibleRadiusMeters(from: visibleRegion), visible > 0
+        else { return nil }
+        return visible
+    }
+
+    private static let maxLabelZoomScale: Double = 1.9
+    /// Below 1, labels grow slower than the map. 0.4 reaches the 1.9× cap at ~5× zoom.
+    private static let labelGrowthExponent: Double = 0.4
 
     /// Camera distance scales with visible radius, so any frame gives the distance at which labels stop growing.
     private func updateMinimumCameraDistance(from context: MapCameraUpdateContext) {
@@ -217,7 +232,7 @@ struct DiscoverServiceAreasMap: View {
               let visible = Self.visibleRadiusMeters(from: context.region), visible > 0,
               context.camera.distance > 0
         else { return }
-        let floorRadius = locked / Self.maxLabelZoomScale
+        let floorRadius = locked / pow(Self.maxLabelZoomScale, 1 / Self.labelGrowthExponent)
         minimumCameraDistance = context.camera.distance * floorRadius / visible
     }
 
@@ -228,15 +243,26 @@ struct DiscoverServiceAreasMap: View {
 
     /// One general area per operator. The drawn center is offset from the real coordinate so the circle shows the neighborhood without marking the shop.
     private var privacyAreas: [DiscoverOperatorPrivacyArea] {
-        let areas = operators.compactMap { provider in
+        operators.compactMap { provider in
             DiscoverOperatorPrivacyArea.make(for: provider, visibleRegion: labelSizingRegion)
         }
-        return DiscoverOperatorPrivacyArea.holdingSplitSize(areas)
     }
 
-    /// Labels that overlap at the opening zoom stay combined when the user zooms in closer.
+    /// Operators whose labels would collide on screen share one "X Operators" label; zooming in splits them apart.
     private var labelClusters: [DiscoverOperatorLabelCluster] {
-        DiscoverOperatorLabelCluster.build(from: privacyAreas, visibleRegion: labelSizingRegion)
+        DiscoverOperatorLabelCluster.build(
+            from: privacyAreas,
+            pointsPerMeter: screenPointsPerMeter,
+            labelScale: Double(labelZoomScale)
+        )
+    }
+
+    private var screenPointsPerMeter: Double? {
+        guard let visibleRegion, mapSize.width > 0 else { return nil }
+        let cosLat = max(0.2, abs(cos(visibleRegion.center.latitude * .pi / 180)))
+        let widthMeters = visibleRegion.span.longitudeDelta * 111_320 * cosLat
+        guard widthMeters > 0, widthMeters.isFinite else { return nil }
+        return Double(mapSize.width) / widthMeters
     }
 
     /// ~constant on-screen size for the user pin (scales with zoom like the dashed rings).
@@ -267,7 +293,7 @@ struct DiscoverServiceAreasMap: View {
            browseCenter.longitude.isFinite {
             cameraPosition = .region(
                 MKCoordinateRegion(
-                    center: browseCenter,
+                    center: framingCenter(for: browseCenter, radiusMeters: browseRadiusMeters),
                     latitudinalMeters: browseRadiusMeters * 2,
                     longitudinalMeters: browseRadiusMeters * 2
                 )
@@ -369,7 +395,7 @@ struct DiscoverServiceAreasMap: View {
         minimumCameraDistance = nil
 
         let region = MKCoordinateRegion(
-            center: browseCenter,
+            center: framingCenter(for: browseCenter, radiusMeters: browseRadiusMeters),
             latitudinalMeters: browseRadiusMeters * 2,
             longitudinalMeters: browseRadiusMeters * 2
         )
@@ -394,6 +420,32 @@ struct DiscoverServiceAreasMap: View {
         }
     }
 
+    /// Camera center that puts `pin` midway between the covered top and bottom edges instead of behind the pull-up.
+    /// A square region fits the map's width, so one point is `2 * radius / width` meters.
+    private func framingCenter(
+        for pin: CLLocationCoordinate2D,
+        radiusMeters: CLLocationDistance
+    ) -> CLLocationCoordinate2D {
+        guard mapSize.width > 0, mapSize.height > 0 else { return pin }
+        let openTop = min(focusInsets.top, mapSize.height)
+        let openBottom = max(openTop, mapSize.height - focusInsets.bottom)
+        let shiftPoints = (openTop + openBottom) / 2 - mapSize.height / 2
+        let shiftMeters = Double(shiftPoints) * radiusMeters * 2 / Double(mapSize.width)
+        return CLLocationCoordinate2D(latitude: pin.latitude + shiftMeters / 111_320, longitude: pin.longitude)
+    }
+
+    /// True when the camera moved or zoomed by more than ~0.2% of the view. Smaller changes aren't visible.
+    private static func regionChangedVisibly(from old: MKCoordinateRegion?, to new: MKCoordinateRegion) -> Bool {
+        guard let old else { return true }
+        let latSpan = max(new.span.latitudeDelta, 1e-9)
+        let lngSpan = max(new.span.longitudeDelta, 1e-9)
+        let threshold = 0.002
+        return abs(new.center.latitude - old.center.latitude) / latSpan > threshold
+            || abs(new.center.longitude - old.center.longitude) / lngSpan > threshold
+            || abs(new.span.latitudeDelta - old.span.latitudeDelta) / latSpan > threshold
+            || abs(new.span.longitudeDelta - old.span.longitudeDelta) / lngSpan > threshold
+    }
+
     private static func visibleRadiusMeters(from region: MKCoordinateRegion) -> CLLocationDistance? {
         MyBarbersDiscover.visibleMapRadiusMeters(from: region)
     }
@@ -414,6 +466,8 @@ private struct DiscoverMapChromeClip: ViewModifier {
 /// Forces underlying `MKMapView` to ignore safe-area layout margins so MapKit tiles
 /// fill the status-bar / home-indicator strips when SwiftUI has already bled the container.
 private struct DiscoverMapSafeAreaBleedBridge: UIViewRepresentable {
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
         view.isUserInteractionEnabled = false
@@ -422,10 +476,12 @@ private struct DiscoverMapSafeAreaBleedBridge: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
+        let coordinator = context.coordinator
+        // Already configured this map: skip the view-tree search (it ran on every update and could walk every hub tab).
+        if let configured = coordinator.mapView, configured.window != nil { return }
         DispatchQueue.main.async {
-            guard let mapView = uiView.onCuts_firstSuperviewMKMapView()
-                ?? uiView.window?.onCuts_firstDescendantMKMapView()
-            else { return }
+            guard let mapView = uiView.onCuts_nearbyMKMapView() else { return }
+            coordinator.mapView = mapView
             mapView.insetsLayoutMarginsFromSafeArea = false
             mapView.preservesSuperviewLayoutMargins = false
             if let superview = mapView.superview {
@@ -434,18 +490,24 @@ private struct DiscoverMapSafeAreaBleedBridge: UIViewRepresentable {
             }
         }
     }
+
+    final class Coordinator {
+        weak var mapView: MKMapView?
+    }
 }
 
 private extension UIView {
-    func onCuts_firstSuperviewMKMapView() -> MKMapView? {
+    /// The bridge sits in the map's `.background`, so the map is within a few ancestors. Never search the whole window.
+    func onCuts_nearbyMKMapView(maxAncestorLevels: Int = 6) -> MKMapView? {
         var current: UIView? = self
-        while let view = current {
+        var level = 0
+        while let view = current, level <= maxAncestorLevels {
             if let map = view as? MKMapView { return map }
-            for sub in view.subviews {
-                if let map = sub as? MKMapView { return map }
-                if let nested = sub.onCuts_firstDescendantMKMapView() { return nested }
+            for sub in view.subviews where sub !== self {
+                if let found = sub.onCuts_firstDescendantMKMapView() { return found }
             }
             current = view.superview
+            level += 1
         }
         return nil
     }
@@ -511,22 +573,6 @@ private struct DiscoverOperatorPrivacyArea: Identifiable {
         let scale = min(visible / oneMile, 3)
         return minimumRadiusMeters * scale
     }
-
-    /// Once a combined label splits, each operator keeps the size it had at the split. Zooming in further does not shrink it.
-    static func holdingSplitSize(_ areas: [DiscoverOperatorPrivacyArea]) -> [DiscoverOperatorPrivacyArea] {
-        guard areas.count > 1 else { return areas }
-        let locations = areas.map { CLLocation(latitude: $0.center.latitude, longitude: $0.center.longitude) }
-        return areas.enumerated().map { index, area in
-            var nearest = CLLocationDistance.infinity
-            for (otherIndex, other) in locations.enumerated() where otherIndex != index {
-                nearest = min(nearest, locations[index].distance(from: other))
-            }
-            guard nearest.isFinite else { return area }
-            let splitVisible = DiscoverOperatorLabelCluster.splitVisibleRadiusMeters(forDistance: nearest)
-            let held = max(area.radiusMeters, radiusMeters(forVisibleRadius: splitVisible))
-            return DiscoverOperatorPrivacyArea(provider: area.provider, center: area.center, radiusMeters: held)
-        }
-    }
 }
 
 private struct DiscoverOperatorLabelCluster: Identifiable {
@@ -537,63 +583,105 @@ private struct DiscoverOperatorLabelCluster: Identifiable {
     var id: String { members.map(\.id).sorted().joined(separator: "|") }
     var providers: [ServiceProvider] { members.map(\.provider) }
 
+    /// Used before the map has measured itself (no screen scale yet).
+    static let fallbackGroupingDistanceMeters: CLLocationDistance = 1_609.344
+    /// Breathing room between neighboring labels before they merge.
+    private static let labelGapPoints: Double = 6
+
+    /// Merges operators whose labels would overlap at the current zoom. A merged label is wider and sits at the
+    /// group's centroid, so passes repeat until no two labels collide.
     static func build(
         from areas: [DiscoverOperatorPrivacyArea],
-        visibleRegion: MKCoordinateRegion?
+        pointsPerMeter: Double?,
+        labelScale: Double
     ) -> [DiscoverOperatorLabelCluster] {
         guard !areas.isEmpty else { return [] }
-        let mergeMeters = mergeDistanceMeters(visibleRegion: visibleRegion)
-        var groups: [[DiscoverOperatorPrivacyArea]] = areas.map { [$0] }
-        var didMerge = true
-        while didMerge {
-            didMerge = false
-            var index = 0
-            while index < groups.count {
-                var other = index + 1
-                while other < groups.count {
-                    if groupsOverlap(groups[index], groups[other], mergeMeters: mergeMeters) {
-                        groups[index].append(contentsOf: groups[other])
-                        groups.remove(at: other)
-                        didMerge = true
-                    } else {
-                        other += 1
-                    }
+        guard let pointsPerMeter, pointsPerMeter > 0, pointsPerMeter.isFinite else {
+            return mergingPasses(areas.map { [$0] }) { lhs, rhs in
+                groundDistanceMeters(lhs.center, rhs.center) < fallbackGroupingDistanceMeters
+            }
+        }
+        var captionLengths: [String: Int] = [:]
+        for area in areas {
+            captionLengths[area.id] = DiscoverNearbyCopy.pinCaption(for: area.provider).count
+        }
+        return mergingPasses(areas.map { [$0] }) { lhs, rhs in
+            labelsOverlap(
+                lhs.estimatedLabelSize(scale: labelScale, captionLengths: captionLengths),
+                at: lhs.center,
+                rhs.estimatedLabelSize(scale: labelScale, captionLengths: captionLengths),
+                at: rhs.center,
+                pointsPerMeter: pointsPerMeter
+            )
+        }
+    }
+
+    private static func mergingPasses(
+        _ initial: [[DiscoverOperatorPrivacyArea]],
+        shouldMerge: (DiscoverOperatorLabelCluster, DiscoverOperatorLabelCluster) -> Bool
+    ) -> [DiscoverOperatorLabelCluster] {
+        var groups = initial
+        while true {
+            let clusters = groups.map(make)
+            var parent = Array(groups.indices)
+            func root(_ index: Int) -> Int {
+                var index = index
+                while parent[index] != index {
+                    parent[index] = parent[parent[index]]
+                    index = parent[index]
                 }
-                index += 1
+                return index
             }
+            var mergedAny = false
+            for lhs in clusters.indices {
+                for rhs in clusters.indices where rhs > lhs {
+                    let a = root(lhs), b = root(rhs)
+                    guard a != b, shouldMerge(clusters[lhs], clusters[rhs]) else { continue }
+                    parent[b] = a
+                    mergedAny = true
+                }
+            }
+            guard mergedAny else { return clusters }
+            var merged: [Int: [DiscoverOperatorPrivacyArea]] = [:]
+            var order: [Int] = []
+            for index in groups.indices {
+                let key = root(index)
+                if merged[key] == nil { order.append(key) }
+                merged[key, default: []].append(contentsOf: groups[index])
+            }
+            groups = order.compactMap { merged[$0] }
         }
-        return groups.map(make)
     }
 
-    /// Label footprint at the current zoom. Inside a mile, keep the 1-mile footprint so the label does not shrink or split.
-    static func mergeDistanceMeters(visibleRegion: MKCoordinateRegion?) -> CLLocationDistance {
-        let oneMile = 1_609.344
-        let visible = visibleRegion.flatMap { MyBarbersDiscover.visibleMapRadiusMeters(from: $0) } ?? oneMile
-        let sizingRadius = max(visible, oneMile)
-        return max(480, sizingRadius * mergeFactor)
-    }
-
-    /// Label width relative to the visible map radius. Labels closer than this share one "X Operators" label.
-    static let mergeFactor = 140.0 / 195.0
-
-    /// Visible map radius where two operators `distance` apart stop sharing a label.
-    static func splitVisibleRadiusMeters(forDistance distance: CLLocationDistance) -> CLLocationDistance {
-        max(1_609.344, distance / mergeFactor)
-    }
-
-    private static func groupsOverlap(
-        _ lhs: [DiscoverOperatorPrivacyArea],
-        _ rhs: [DiscoverOperatorPrivacyArea],
-        mergeMeters: CLLocationDistance
+    private static func labelsOverlap(
+        _ a: (width: Double, height: Double),
+        at lhs: CLLocationCoordinate2D,
+        _ b: (width: Double, height: Double),
+        at rhs: CLLocationCoordinate2D,
+        pointsPerMeter: Double
     ) -> Bool {
-        for left in lhs {
-            for right in rhs {
-                let distance = CLLocation(latitude: left.center.latitude, longitude: left.center.longitude)
-                    .distance(from: CLLocation(latitude: right.center.latitude, longitude: right.center.longitude))
-                if distance < mergeMeters { return true }
-            }
+        let cosLat = max(0.2, abs(cos((lhs.latitude + rhs.latitude) * 0.5 * .pi / 180)))
+        let dx = abs(lhs.longitude - rhs.longitude) * 111_320 * cosLat * pointsPerMeter
+        let dy = abs(lhs.latitude - rhs.latitude) * 111_320 * pointsPerMeter
+        return dx < (a.width + b.width) / 2 + labelGapPoints
+            && dy < (a.height + b.height) / 2 + labelGapPoints
+    }
+
+    /// Mirrors the padding in `DiscoverOperatorMapPin` / `DiscoverOperatorGroupLabel`; Inter averages ~0.56 em per glyph.
+    private func estimatedLabelSize(scale: Double, captionLengths: [String: Int]) -> (width: Double, height: Double) {
+        if members.count == 1, let only = members.first {
+            let caption = Double(captionLengths[only.id] ?? 12) * 11 * 0.56
+            return ((4 + 22 + 6 + 8 + caption) * scale, (22 + 8) * scale)
         }
-        return false
+        let text = Double("\(members.count) Operators".count) * 13 * 0.56
+        return ((24 + text) * scale, (16 + 16) * scale)
+    }
+
+    private static func groundDistanceMeters(_ lhs: CLLocationCoordinate2D, _ rhs: CLLocationCoordinate2D) -> CLLocationDistance {
+        let cosLat = max(0.2, abs(cos((lhs.latitude + rhs.latitude) * 0.5 * .pi / 180)))
+        let north = (lhs.latitude - rhs.latitude) * 111_320
+        let east = (lhs.longitude - rhs.longitude) * 111_320 * cosLat
+        return (north * north + east * east).squareRoot()
     }
 
     private static func make(_ members: [DiscoverOperatorPrivacyArea]) -> DiscoverOperatorLabelCluster {
@@ -694,9 +782,20 @@ private struct DiscoverPinAvatar: View {
         }
     }
 
+    /// Pins re-run `.task` whenever the Home page re-appears; reuse decoded avatars instead of refetching each time.
+    private static let cache: NSCache<NSURL, UIImage> = {
+        let cache = NSCache<NSURL, UIImage>()
+        cache.countLimit = 200
+        return cache
+    }()
+
     private func load() async {
         guard let url = ProfileImageURLResolver.urlForAsyncImage(from: imageUrl) else {
             image = nil
+            return
+        }
+        if let cached = Self.cache.object(forKey: url as NSURL) {
+            image = cached
             return
         }
         do {
@@ -704,8 +803,12 @@ private struct DiscoverPinAvatar: View {
             guard !Task.isCancelled,
                   let http = response as? HTTPURLResponse,
                   (200 ... 299).contains(http.statusCode),
-                  let loaded = UIImage(data: data)
+                  let raw = UIImage(data: data)
             else { return }
+            // Decode off the main thread so many pins loading at once don't stall scrolling.
+            let loaded = await raw.byPreparingForDisplay() ?? raw
+            guard !Task.isCancelled else { return }
+            Self.cache.setObject(loaded, forKey: url as NSURL)
             image = loaded
         } catch {
             image = nil

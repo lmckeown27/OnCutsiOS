@@ -309,13 +309,13 @@ struct BookingIntakeView: View {
                     .foregroundStyle(.primary)
                     .lineLimit(headerCollapse > 0.85 ? 1 : 2)
 
-                if let igURL = provider.instagramProfileURL {
+                if let igURL = provider.instagramProfileURL, !provider.instagramDisplayHandle.isEmpty {
                     Link(destination: igURL) {
-                        Image("Instagram")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 28, height: 28)
-                            .accessibilityLabel("Instagram")
+                        Text(provider.instagramDisplayHandle)
+                            .font(OnCutsFont.caption.weight(.semibold))
+                            .foregroundStyle(Color(hex: "#8A3AB9"))
+                            .lineLimit(1)
+                            .accessibilityLabel("Instagram \(provider.instagramDisplayHandle)")
                     }
                     .opacity(headerCollapse > 0.95 ? 0 : 1)
                     .frame(height: headerCollapse > 0.95 ? 0 : nil)
