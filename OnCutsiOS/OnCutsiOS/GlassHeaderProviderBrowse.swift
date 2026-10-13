@@ -540,6 +540,8 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
     @State private var discoverMapViewportFilterEnabled = false
     /// Bumped when a dashed operator circle is tapped so a closed pull-up reopens.
     @State private var discoverOperatorsSheetReopenToken: Int = 0
+    /// Operators shown in the pull-up after the client taps a combined map label.
+    @State private var overlappedOperatorIds: [String] = []
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
     @Environment(\.onCutsHubBarOverlayBottomInset) private var hubBarOverlayBottomInset
     @Environment(\.onCutsHubBarScrollOffsetHandler) private var hubBarScrollHandler
@@ -988,6 +990,12 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
         let pillMiles = isAdjustingRadius ? radiusEditingMiles : displayedMaxDistanceMiles
         let radiusMeters = max(1, pillMiles) * 1609.344
         let nearby = MyBarbersDiscover.sortDiscoverProviders(discoverListProviders)
+        let sheetProviders: [ServiceProvider] = {
+            guard !overlappedOperatorIds.isEmpty else { return nearby }
+            let selected = Set(overlappedOperatorIds)
+            let overlapped = nearby.filter { selected.contains($0.id) }
+            return overlapped.isEmpty ? nearby : overlapped
+        }()
         let featuredOperatorId = nearby.first(where: \.hasFiniteServiceCoordinate)?.id
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
@@ -1012,14 +1020,23 @@ struct GlassHeaderProviderBrowse<EmptyContent: View>: View {
                     },
                     operators: nearby,
                     featuredOperatorId: featuredOperatorId,
-                    onOperatorTap: onProviderTap
+                    onOperatorTap: onProviderTap,
+                    onOperatorGroupTap: { providers in
+                        let ids = providers.map(\.id)
+                        if overlappedOperatorIds == ids {
+                            overlappedOperatorIds = []
+                        } else {
+                            overlappedOperatorIds = ids
+                            discoverOperatorsSheetReopenToken &+= 1
+                        }
+                    }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
                 .allowsHitTesting(!isProviderDetailOverlayPresented)
 
                 DiscoverOperatorsPullUpSheet(
-                    providers: nearby,
+                    providers: sheetProviders,
                     isLoading: isLoading,
                     bottomInset: sheetBottomInset,
                     containerHeight: geo.size.height,
